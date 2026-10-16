@@ -1,0 +1,45 @@
+name: file_storage_workspace
+description: Корень монорепозитория (pub workspace + melos).
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+workspace:
+  - packages/core
+  - packages/protocol
+  - packages/cli
+  - packages/node
+  - packages/coordinator
+  - apps/app
+
+dev_dependencies:
+  melos: ^8.9.0
+  very_good_analysis: ^11.0.0
+
+melos:
+  sdkPath: .fvm/flutter_sdk
+
+  command:
+    version:
+      # Единая версия продукта для всех пакетов и один тег vX.Y.Z на релиз.
+      # Подробности в CONTRIBUTING.md.
+      mode: fixed
+      workspaceTag: true
+      versionPrivatePackages: true
+      branch: main
+      linkToCommits: false
+      workspaceChangelog: true
+
+  scripts:
+    check-deps:
+      description: Проверить, что пакеты ядра не зависят от Flutter.
+      run: dart run tool/check_no_flutter.dart
+
+    check:
+      description: Все локальные проверки (как в pre-commit хуке) и тесты.
+      steps:
+        - format --output none --set-exit-if-changed
+        - dart analyze --fatal-infos
+        - check-deps
+        - dart run melos:melos test

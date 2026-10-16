@@ -1,0 +1,21 @@
+name: app
+description: Настольное приложение (Flutter) для клиентов и хранителей.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  core: any
+  flutter:
+    sdk: flutter
+  protocol: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

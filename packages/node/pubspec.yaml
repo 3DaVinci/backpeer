@@ -1,0 +1,15 @@
+name: node
+description: Демон хранителя (в том числе headless для NAS и Raspberry Pi). Без Flutter.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  core: any
+  protocol: any
+
+dev_dependencies:
+  test: ^1.31.1

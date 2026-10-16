@@ -1,0 +1,25 @@
+# Git-хуки (задачи 0.1.5 и 0.1.7). Установка: `lefthook install`.
+# Используется Dart из версии, зафиксированной в .fvmrc.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      glob: "*.dart"
+      run: .fvm/flutter_sdk/bin/dart format --output none --set-exit-if-changed {staged_files}
+
+    - name: analyze
+      glob:
+        - "*.dart"
+        - "**/analysis_options.yaml"
+        - "**/pubspec.yaml"
+      run: .fvm/flutter_sdk/bin/dart analyze --fatal-infos
+
+    - name: no-flutter-in-core
+      glob: "**/pubspec.yaml"
+      run: .fvm/flutter_sdk/bin/dart run tool/check_no_flutter.dart
+
+commit-msg:
+  jobs:
+    - name: conventional-commits
+      run: .fvm/flutter_sdk/bin/dart run tool/check_commit_message.dart {1}

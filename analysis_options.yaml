@@ -1,0 +1,20 @@
+# Общие правила анализа для всех пакетов монорепозитория.
+# Пакеты не держат своих analysis_options.yaml: анализатор находит этот файл,
+# поднимаясь по каталогам.
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - .fvm/**
+    - "**/build/**"
+    - "**/*.g.dart"
+    - "**/*.pb.dart"
+    - "**/*.pbenum.dart"
+    - "**/*.pbjson.dart"
+    - "**/*.pbserver.dart"
+
+linter:
+  rules:
+    # Пакеты внутренние и не публикуются; документацию публичного API
+    # вводим позже, когда API стабилизируется.
+    public_member_api_docs: false

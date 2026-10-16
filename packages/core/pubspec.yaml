@@ -1,0 +1,11 @@
+name: core
+description: Ядро (шифрование, erasure coding, чанкинг, форматы данных). Без Flutter.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dev_dependencies:
+  test: ^1.31.1

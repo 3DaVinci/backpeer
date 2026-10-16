@@ -16,3 +16,6 @@ Thumbs.db
 
 # Claude Code: локальные настройки
 .claude/settings.local.json
+
+# FVM Version Cache
+.fvm/

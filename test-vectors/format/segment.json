@@ -1,0 +1,169 @@
+{
+  "spec": "format/segment",
+  "specVersion": 1,
+  "generator": "tool/format_vectors.py (Python, независимая реализация)",
+  "description": "Открытый текст сегмента и блоб (data-format.md, раздел 3). Большие результаты заданы длиной и хэшем BLAKE2b-256. Отклоняемые сегменты строятся из минимального (base = minimal: один чанк типа 1 с chunk_id из 32 нулей и содержимым \"x\") правкой patch (заменить байты с offset) или обрезкой truncate (оставить столько байт).",
+  "minimalSegment": {
+    "length": 65536,
+    "hash": "0fca9539da5d2e210828b80edb5b0f47047b52173e69a3c5d71e618e4295b38e"
+  },
+  "cases": [
+    {
+      "name": "four-chunks",
+      "input": {
+        "chunkIdKey": "620b3a485edc34d2622c7bc9f870084b640b98f017ea6ba681cb70463907129b",
+        "chunks": [
+          {
+            "dataPattern": {
+              "type": "splitmix64-le",
+              "seed": 20,
+              "length": 1000
+            },
+            "type": 1
+          },
+          {
+            "dataPattern": {
+              "type": "splitmix64-le",
+              "seed": 21,
+              "length": 70000
+            },
+            "type": 1
+          },
+          {
+            "dataPattern": {
+              "type": "splitmix64-le",
+              "seed": 22,
+              "length": 1
+            },
+            "type": 2
+          },
+          {
+            "dataPattern": {
+              "type": "splitmix64-le",
+              "seed": 23,
+              "length": 300000
+            },
+            "type": 1
+          }
+        ],
+        "segmentId": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+        "nonce": "505152535455565758595a5b5c5d5e5f6061626364656667",
+        "dataKey": "27d30bf45fbea98c9ae3ec13cc2f47c9d7b03d7e544a68846c57b3a767edad49"
+      },
+      "expected": {
+        "chunkIds": [
+          "4073c315c4abe682ae63cb6962dcf5f0703ba4bba559a4718cd9aab192f660d7",
+          "3aa8a7a39e428b97341484a64153a57aceb1a53a4b4b340378fd12b463e74ef1",
+          "9080ede5044a7f058ee6f861e5a6bdda4d2ccb4d2b184e96c04d9a30a5d04052",
+          "e93400a92fbf80a90fb0fdb8a739b8925f8b8c7705b38ef90b18bb69b0f87f7e"
+        ],
+        "header": "46535347010000000400000039a905004073c315c4abe682ae63cb6962dcf5f0703ba4bba559a4718cd9aab192f660d701000000e80300003aa8a7a39e428b97341484a64153a57aceb1a53a4b4b340378fd12b463e74ef101000000701101009080ede5044a7f058ee6f861e5a6bdda4d2ccb4d2b184e96c04d9a30a5d040520200000001000000e93400a92fbf80a90fb0fdb8a739b8925f8b8c7705b38ef90b18bb69b0f87f7e01000000e0930400",
+        "plaintextLength": 393216,
+        "plaintextHash": "be0ab475fd6f84d89f95248205d39d8e70b668d52ef8669ec9a2e942c13346cc",
+        "blobLength": 393296,
+        "blobHash": "94d5ac77cc43eb2c81a10f4ac7ed06b5bedd16dffc5ce71aa7aa20e422f50130"
+      }
+    },
+    {
+      "name": "reject-bad-magic",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 0,
+          "bytes": "46535358"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-unknown-version",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 4,
+          "bytes": "02"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-nonzero-reserved",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 5,
+          "bytes": "01"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-zero-count",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 8,
+          "bytes": "00000000"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-unknown-type",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 48,
+          "bytes": "03"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-data-length-mismatch",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 12,
+          "bytes": "02000000"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-nonzero-padding",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 65535,
+          "bytes": "01"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-unaligned-length",
+      "input": {
+        "base": "minimal",
+        "truncate": 65535
+      },
+      "expected": {
+        "error": "format"
+      }
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+// Манифест: снимки, деревья каталогов, индексы. Спецификация —
+// docs/spec/manifest.md. Все байтовые идентификаторы — 32 байта.
+syntax = "proto3";
+
+package fs.v1;
+
+// Объект-снимок. Хранится на координаторе как блоб типа 2
+// (docs/spec/crypto.md, раздел 5), идентификатор блоба = snapshot_id.
+message Snapshot {
+  uint32 format_version = 1;     // 1
+  bytes snapshot_id = 2;         // случайный, совпадает с идентификатором блоба
+  uint64 sequence = 3;           // номер снимка в учётной записи, растёт на 1
+  bytes parent_snapshot_id = 4;  // предыдущий снимок тех же путей или пусто
+  int64 created_at_unix_ms = 5;
+  string hostname = 6;
+  bytes device_id = 7;           // открытый ключ device_sign устройства
+  repeated string paths = 8;     // корни бэкапа в том виде, как их задал пользователь
+  repeated bytes root_tree = 9;  // chunk_id чанков сериализованного корневого Tree
+  repeated string tags = 10;
+  SnapshotStats stats = 11;
+}
+
+message SnapshotStats {
+  uint64 files = 1;
+  uint64 directories = 2;
+  uint64 bytes = 3;              // суммарный размер файлов
+  uint64 new_chunks = 4;         // чанков загружено этим снимком
+  uint64 new_bytes = 5;          // байт открытого текста загружено этим снимком
+  uint64 skipped = 6;            // файлов пропущено из-за ошибок
+}
+
+// Содержимое каталога. Сериализуется, режется FastCDC и хранится как чанки
+// типа 2 в сегментах (docs/spec/data-format.md, раздел 3).
+message Tree {
+  repeated Node nodes = 1;       // по возрастанию name (побайтно), без повторов
+}
+
+enum NodeType {
+  NODE_TYPE_UNSPECIFIED = 0;
+  NODE_TYPE_FILE = 1;
+  NODE_TYPE_DIRECTORY = 2;
+  NODE_TYPE_SYMLINK = 3;
+}
+
+message Node {
+  bytes name = 1;                // имя в байтах ОС; на Windows — UTF-8
+  NodeType type = 2;
+  uint64 size = 3;               // для файла
+  int64 mtime_ns = 4;            // наносекунды от эпохи Unix
+  uint32 mode = 5;               // st_mode & 07777 на Unix; 0 на Windows
+  uint32 uid = 6;
+  uint32 gid = 7;
+  uint32 windows_attributes = 8; // FILE_ATTRIBUTE_* на Windows; 0 на Unix
+  bytes symlink_target = 9;      // для ссылки, байты как в ОС
+  repeated bytes content = 10;   // для файла: chunk_id чанков содержимого по порядку
+  repeated bytes subtree = 11;   // для каталога: chunk_id чанков сериализованного Tree
+}
+
+// Объект-индекс: копии оглавлений сегментов и сведения о фрагментах.
+// Хранится на координаторе как блоб типа 3, идентификатор блоба = index_id.
+message Index {
+  uint32 format_version = 1;     // 1
+  bytes index_id = 2;
+  repeated SegmentRecord segments = 3;
+  repeated bytes supersedes = 4; // index_id индексов, которые заменяет этот
+}
+
+message SegmentRecord {
+  bytes segment_id = 1;
+  uint32 k = 2;
+  uint32 n = 3;
+  uint32 blob_length = 4;
+  uint32 shard_size = 5;
+  repeated bytes fragment_ids = 6; // n штук, по номеру фрагмента
+  repeated ChunkEntry chunks = 7;  // оглавление сегмента
+}
+
+enum ChunkType {
+  CHUNK_TYPE_UNSPECIFIED = 0;
+  CHUNK_TYPE_CONTENT = 1;
+  CHUNK_TYPE_TREE = 2;
+}
+
+message ChunkEntry {
+  bytes chunk_id = 1;
+  ChunkType type = 2;
+  uint32 offset = 3;             // от начала данных сегмента
+  uint32 length = 4;
+}

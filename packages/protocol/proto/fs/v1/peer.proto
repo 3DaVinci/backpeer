@@ -1,0 +1,93 @@
+// Протокол клиент ↔ хранитель и хранитель ↔ хранитель (ремонт).
+// Транспорт — Noise XX (docs/spec/protocol.md, раздел 3).
+syntax = "proto3";
+
+package fs.v1;
+
+import "fs/v1/common.proto";
+
+enum PeerRole {
+  PEER_ROLE_UNSPECIFIED = 0;
+  PEER_ROLE_CLIENT = 1;
+  PEER_ROLE_NODE = 2;
+}
+
+// Полезная нагрузка сообщений рукопожатия Noise 2 (от отвечающего) и 3
+// (от инициатора). certificate — fs.v1.Signed с DeviceCertificate (клиент)
+// или NodeCertificate (узел); его X25519-ключ обязан совпасть со
+// статическим ключом Noise собеседника.
+message Hello {
+  repeated uint32 versions = 1;  // поддерживаемые версии протокола
+  PeerRole role = 2;
+  Signed certificate = 3;
+  string software = 4;           // например "node 0.3.0", для журнала
+}
+
+// Сообщения после рукопожатия. Каждое — в кадре приложения
+// (u32be длина || PeerMessage), см. protocol.md, раздел 3.3.
+message PeerMessage {
+  uint64 request_id = 1;         // ответ несёт request_id запроса
+  oneof body {
+    Error error = 2;
+    PutFragment put_fragment = 3;
+    FragmentData fragment_data = 4;
+    PutFragmentResult put_fragment_result = 5;
+    GetFragment get_fragment = 6;
+    GetFragmentResult get_fragment_result = 7;
+    HasFragments has_fragments = 8;
+    HasFragmentsResult has_fragments_result = 9;
+    DeleteFragment delete_fragment = 10;
+    DeleteFragmentResult delete_fragment_result = 11;
+    Ping ping = 12;
+    Pong pong = 13;
+  }
+}
+
+// Начало загрузки. Затем идут FragmentData с тем же request_id, последний
+// с last = true. Узел проверяет фрагмент (data-format.md, раздел 5) и
+// соответствие талону.
+message PutFragment {
+  Signed ticket = 1;             // FragmentTicket с операцией PUT
+}
+
+message FragmentData {
+  bytes data = 1;                // до 61 440 байт
+  bool last = 2;
+}
+
+message PutFragmentResult {
+  bytes fragment_id = 1;
+}
+
+// Ответ: GetFragmentResult, затем FragmentData с тем же request_id.
+message GetFragment {
+  Signed ticket = 1;             // FragmentTicket с операцией GET
+}
+
+message GetFragmentResult {
+  uint32 fragment_size = 1;
+}
+
+// Есть ли фрагменты (быстрая проверка, без талона). Узел отвечает только
+// про фрагменты, загруженные этим же устройством или учётной записью.
+message HasFragments {
+  repeated bytes fragment_ids = 1;
+}
+
+message HasFragmentsResult {
+  repeated bool present = 1;     // по порядку запроса
+}
+
+message DeleteFragment {
+  Signed ticket = 1;             // FragmentTicket с операцией DELETE
+}
+
+message DeleteFragmentResult {}
+
+message Ping {
+  uint64 nonce = 1;
+}
+
+message Pong {
+  uint64 nonce = 1;
+}

@@ -1,0 +1,84 @@
+{
+  "spec": "crypto/key-hierarchy",
+  "specVersion": 1,
+  "generator": "tool/crypto_vectors.py (Python hashlib, cryptography, libsodium)",
+  "description": "Фраза восстановления → seed → мастер-ключ → производные ключи (crypto.md, раздел 3).",
+  "cases": [
+    {
+      "name": "abandon-00000000",
+      "input": {
+        "entropy": "0000000000000000000000000000000000000000000000000000000000000000",
+        "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+        "segmentId": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "expected": {
+        "seed": "408b285c123836004f4b8842c89324c1f01382450c0d439af345ba7fc49acf705489c6fc77dbd4e3dc1dd8cc6bc9f043db8ada1e243c4a0eafb290d399480840",
+        "masterKey": "2351decc304b71f50ee9c2ff18fa4268f45e6ddea9f3fd4a81613a5c8e1adff1",
+        "manifestKey": "134865cb4b9fa62bee63cf312bd6a4063a4f9dae49deddd21e854d49855488ec",
+        "dataKey": "27d30bf45fbea98c9ae3ec13cc2f47c9d7b03d7e544a68846c57b3a767edad49",
+        "chunkIdKey": "620b3a485edc34d2622c7bc9f870084b640b98f017ea6ba681cb70463907129b",
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "accountSignSeed": "8136f9890e7b0a3912ff1b31a0d86d5908523929a69d1f100abd53a2f8b79d8f",
+        "segmentKey": "e23c3622b0bcceb0e01af915b315c3361ff27648ac6579cb75f1f0c0799f9f11",
+        "accountPublicKey": "f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196"
+      }
+    },
+    {
+      "name": "legal-7f7f7f7f",
+      "input": {
+        "entropy": "7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f7f",
+        "mnemonic": "legal winner thank year wave sausage worth useful legal winner thank year wave sausage worth useful legal winner thank year wave sausage worth title",
+        "segmentId": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "expected": {
+        "seed": "761914478ebf6fe16185749372e91549361af22b386de46322cf8b1ba7e92e80c4af05196f742be1e63aab603899842ddadf4e7248d8e43870a4b6ff9bf16324",
+        "masterKey": "0b784a1e17ada21c59b303fe3ec9f60e07256cc0c5ba070fad386968fa1d5b67",
+        "manifestKey": "6908a7d9fe41fa038cee2c3bb1d1c876dca15cee95900319168beedfd5ef61c8",
+        "dataKey": "312262749d5206899cad1ce2d06a400d32c77fbcff513dee9918d7f8520436e2",
+        "chunkIdKey": "a5404f7e92741bb93ffa98df1ced17d823ecca1e39cc48d19ab1996e8c178509",
+        "gearKey": "8e573938ebe20bf36aa0fb59dceae5ced62d5088c5ee08f25ac29f60135f6601",
+        "accountSignSeed": "4f0999811290173f679eb55a77fcb0ee12cfa92f0ad1e64c547f39b54a8a5c9b",
+        "segmentKey": "ac2122340c09a325e8acf3184f63dc54709b16412c1c47a02c672f9596bbe379",
+        "accountPublicKey": "2afa5f4cee366b25c86d5cc30b7db6cdbccfb28df73a5e3e246271a8bd48a27b"
+      }
+    },
+    {
+      "name": "zoo-ffffffff",
+      "input": {
+        "entropy": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "mnemonic": "zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo zoo vote",
+        "segmentId": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "expected": {
+        "seed": "e28a37058c7f5112ec9e16a3437cf363a2572d70b6ceb3b6965447623d620f14d06bb321a26b33ec15fcd84a3b5ddfd5520e230c924c87aaa0d559749e044fef",
+        "masterKey": "33f045fc39b1056c938b6d155f393ea41f4d0bd48f1d8c36a9eff1e5c83dada7",
+        "manifestKey": "abaa87e38d1f7c9f7fe96e02040e156abbd93375ae0446f180ffbcb5dd0ed800",
+        "dataKey": "f029269db5d55c8d32ac3a9650da139d0dbcffd19c3411c62f158e4fbd0d701e",
+        "chunkIdKey": "ae8a2c510799bb859d2a78925862dff7317868e7abce6f7ed6075f5119b2cdc1",
+        "gearKey": "8e3e8319b88dbbc14c2bcaa9deecf63921a2584eddbeeb529e85e39ba428aa76",
+        "accountSignSeed": "d62be4485ed958e27875db16f40a01305426d7893576ca0679323d25120639d5",
+        "segmentKey": "c8b4e7c94fe79b74f9a132b8dec1abad6f198c6efa7d494c2ff93ac3005bfcaf",
+        "accountPublicKey": "020e3356d27ed76b6ae994a51781e3457125f7d3eaeb8d00a1ff12743e13c8ed"
+      }
+    },
+    {
+      "name": "hamster-68a79eac",
+      "input": {
+        "entropy": "68a79eaca2324873eacc50cb9c6eca8cc68ea5d936f98787c60c7ebc74e6ce7c",
+        "mnemonic": "hamster diagram private dutch cause delay private meat slide toddler razor book happy fancy gospel tennis maple dilemma loan word shrug inflict delay length",
+        "segmentId": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+      },
+      "expected": {
+        "seed": "17e4b5661796eeff8904550f8572289317ece7c1cc1316469f8f4c986c1ffd7b9f4c3aeac3e1713ffc21fa33707d09d57a2ece358d72111ef7c7658e7b33f2d5",
+        "masterKey": "5b15bbfd4c5088741f43fddd25f568c48d02f23c0df144733930f4b63b6f9258",
+        "manifestKey": "cb36914da24e6700c3ab3c270dfc00dee39228610ed019b9e84de90b7b4065fa",
+        "dataKey": "bbadbee79407702e3fe7430b989fb1ac0bfaf41a4d118ce9a04896170b4abb0a",
+        "chunkIdKey": "e5fa0970a67bd436777d6c8033fcc943b425e6aef1383f97a326dcb8e3328333",
+        "gearKey": "cbb92195a1ade0b8fcee10cfd9502ee6c5a22b329b167e25a00964b3c847ad38",
+        "accountSignSeed": "b798853abfc650ee609a1ff249f277134856e8ab8fe409c3bc22b40f5f942756",
+        "segmentKey": "62a82e30bc63bdbc0ae38f9d2da710a1923f2e4ab2a0ad64d3a0c73f5b7897f4",
+        "accountPublicKey": "96d5aea3ac204107c67b4d68f523805c4404311b43a984544e3d76f077b09f66"
+      }
+    }
+  ]
+}

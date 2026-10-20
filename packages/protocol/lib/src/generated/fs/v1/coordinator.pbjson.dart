@@ -1,0 +1,490 @@
+// This is a generated file - do not edit.
+//
+// Generated from fs/v1/coordinator.proto.
+
+// @dart = 3.3
+
+// ignore_for_file: annotate_overrides, camel_case_types, comment_references
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+// ignore_for_file: unused_import
+
+import 'dart:convert' as $convert;
+import 'dart:core' as $core;
+import 'dart:typed_data' as $typed_data;
+
+@$core.Deprecated('Use objectKindDescriptor instead')
+const ObjectKind$json = {
+  '1': 'ObjectKind',
+  '2': [
+    {'1': 'OBJECT_KIND_UNSPECIFIED', '2': 0},
+    {'1': 'OBJECT_KIND_SNAPSHOT', '2': 1},
+    {'1': 'OBJECT_KIND_INDEX', '2': 2},
+  ],
+};
+
+/// Descriptor for `ObjectKind`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List objectKindDescriptor = $convert.base64Decode(
+    'CgpPYmplY3RLaW5kEhsKF09CSkVDVF9LSU5EX1VOU1BFQ0lGSUVEEAASGAoUT0JKRUNUX0tJTk'
+    'RfU05BUFNIT1QQARIVChFPQkpFQ1RfS0lORF9JTkRFWBAC');
+
+@$core.Deprecated('Use registerAccountRequestDescriptor instead')
+const RegisterAccountRequest$json = {
+  '1': 'RegisterAccountRequest',
+  '2': [
+    {
+      '1': 'device_certificate',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'deviceCertificate'
+    },
+    {'1': 'key_bundle', '3': 2, '4': 1, '5': 12, '10': 'keyBundle'},
+    {'1': 'auth_verifier', '3': 3, '4': 1, '5': 12, '10': 'authVerifier'},
+  ],
+};
+
+/// Descriptor for `RegisterAccountRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List registerAccountRequestDescriptor = $convert.base64Decode(
+    'ChZSZWdpc3RlckFjY291bnRSZXF1ZXN0EjwKEmRldmljZV9jZXJ0aWZpY2F0ZRgBIAEoCzINLm'
+    'ZzLnYxLlNpZ25lZFIRZGV2aWNlQ2VydGlmaWNhdGUSHQoKa2V5X2J1bmRsZRgCIAEoDFIJa2V5'
+    'QnVuZGxlEiMKDWF1dGhfdmVyaWZpZXIYAyABKAxSDGF1dGhWZXJpZmllcg==');
+
+@$core.Deprecated('Use registerAccountResponseDescriptor instead')
+const RegisterAccountResponse$json = {
+  '1': 'RegisterAccountResponse',
+};
+
+/// Descriptor for `RegisterAccountResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List registerAccountResponseDescriptor =
+    $convert.base64Decode('ChdSZWdpc3RlckFjY291bnRSZXNwb25zZQ==');
+
+@$core.Deprecated('Use addDeviceRequestDescriptor instead')
+const AddDeviceRequest$json = {
+  '1': 'AddDeviceRequest',
+  '2': [
+    {
+      '1': 'device_certificate',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'deviceCertificate'
+    },
+  ],
+};
+
+/// Descriptor for `AddDeviceRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List addDeviceRequestDescriptor = $convert.base64Decode(
+    'ChBBZGREZXZpY2VSZXF1ZXN0EjwKEmRldmljZV9jZXJ0aWZpY2F0ZRgBIAEoCzINLmZzLnYxLl'
+    'NpZ25lZFIRZGV2aWNlQ2VydGlmaWNhdGU=');
+
+@$core.Deprecated('Use addDeviceResponseDescriptor instead')
+const AddDeviceResponse$json = {
+  '1': 'AddDeviceResponse',
+};
+
+/// Descriptor for `AddDeviceResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List addDeviceResponseDescriptor =
+    $convert.base64Decode('ChFBZGREZXZpY2VSZXNwb25zZQ==');
+
+@$core.Deprecated('Use getKeyBundleRequestDescriptor instead')
+const GetKeyBundleRequest$json = {
+  '1': 'GetKeyBundleRequest',
+  '2': [
+    {'1': 'account_id', '3': 1, '4': 1, '5': 12, '10': 'accountId'},
+    {'1': 'auth_proof', '3': 2, '4': 1, '5': 12, '10': 'authProof'},
+  ],
+};
+
+/// Descriptor for `GetKeyBundleRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getKeyBundleRequestDescriptor = $convert.base64Decode(
+    'ChNHZXRLZXlCdW5kbGVSZXF1ZXN0Eh0KCmFjY291bnRfaWQYASABKAxSCWFjY291bnRJZBIdCg'
+    'phdXRoX3Byb29mGAIgASgMUglhdXRoUHJvb2Y=');
+
+@$core.Deprecated('Use getKeyBundleResponseDescriptor instead')
+const GetKeyBundleResponse$json = {
+  '1': 'GetKeyBundleResponse',
+  '2': [
+    {'1': 'key_bundle', '3': 1, '4': 1, '5': 12, '10': 'keyBundle'},
+  ],
+};
+
+/// Descriptor for `GetKeyBundleResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getKeyBundleResponseDescriptor = $convert.base64Decode(
+    'ChRHZXRLZXlCdW5kbGVSZXNwb25zZRIdCgprZXlfYnVuZGxlGAEgASgMUglrZXlCdW5kbGU=');
+
+@$core.Deprecated('Use putObjectRequestDescriptor instead')
+const PutObjectRequest$json = {
+  '1': 'PutObjectRequest',
+  '2': [
+    {
+      '1': 'kind',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.ObjectKind',
+      '10': 'kind'
+    },
+    {'1': 'object_id', '3': 2, '4': 1, '5': 12, '10': 'objectId'},
+    {'1': 'blob', '3': 3, '4': 1, '5': 12, '10': 'blob'},
+    {'1': 'sequence', '3': 4, '4': 1, '5': 4, '10': 'sequence'},
+  ],
+};
+
+/// Descriptor for `PutObjectRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List putObjectRequestDescriptor = $convert.base64Decode(
+    'ChBQdXRPYmplY3RSZXF1ZXN0EiUKBGtpbmQYASABKA4yES5mcy52MS5PYmplY3RLaW5kUgRraW'
+    '5kEhsKCW9iamVjdF9pZBgCIAEoDFIIb2JqZWN0SWQSEgoEYmxvYhgDIAEoDFIEYmxvYhIaCghz'
+    'ZXF1ZW5jZRgEIAEoBFIIc2VxdWVuY2U=');
+
+@$core.Deprecated('Use putObjectResponseDescriptor instead')
+const PutObjectResponse$json = {
+  '1': 'PutObjectResponse',
+};
+
+/// Descriptor for `PutObjectResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List putObjectResponseDescriptor =
+    $convert.base64Decode('ChFQdXRPYmplY3RSZXNwb25zZQ==');
+
+@$core.Deprecated('Use listObjectsRequestDescriptor instead')
+const ListObjectsRequest$json = {
+  '1': 'ListObjectsRequest',
+  '2': [
+    {
+      '1': 'kind',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.ObjectKind',
+      '10': 'kind'
+    },
+    {'1': 'after_object_id', '3': 2, '4': 1, '5': 12, '10': 'afterObjectId'},
+    {'1': 'limit', '3': 3, '4': 1, '5': 13, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `ListObjectsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listObjectsRequestDescriptor = $convert.base64Decode(
+    'ChJMaXN0T2JqZWN0c1JlcXVlc3QSJQoEa2luZBgBIAEoDjIRLmZzLnYxLk9iamVjdEtpbmRSBG'
+    'tpbmQSJgoPYWZ0ZXJfb2JqZWN0X2lkGAIgASgMUg1hZnRlck9iamVjdElkEhQKBWxpbWl0GAMg'
+    'ASgNUgVsaW1pdA==');
+
+@$core.Deprecated('Use listObjectsResponseDescriptor instead')
+const ListObjectsResponse$json = {
+  '1': 'ListObjectsResponse',
+  '2': [
+    {
+      '1': 'objects',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.ObjectInfo',
+      '10': 'objects'
+    },
+    {'1': 'more', '3': 2, '4': 1, '5': 8, '10': 'more'},
+  ],
+};
+
+/// Descriptor for `ListObjectsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listObjectsResponseDescriptor = $convert.base64Decode(
+    'ChNMaXN0T2JqZWN0c1Jlc3BvbnNlEisKB29iamVjdHMYASADKAsyES5mcy52MS5PYmplY3RJbm'
+    'ZvUgdvYmplY3RzEhIKBG1vcmUYAiABKAhSBG1vcmU=');
+
+@$core.Deprecated('Use objectInfoDescriptor instead')
+const ObjectInfo$json = {
+  '1': 'ObjectInfo',
+  '2': [
+    {'1': 'object_id', '3': 1, '4': 1, '5': 12, '10': 'objectId'},
+    {'1': 'size', '3': 2, '4': 1, '5': 13, '10': 'size'},
+    {'1': 'stored_at_unix_ms', '3': 3, '4': 1, '5': 3, '10': 'storedAtUnixMs'},
+    {'1': 'sequence', '3': 4, '4': 1, '5': 4, '10': 'sequence'},
+  ],
+};
+
+/// Descriptor for `ObjectInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List objectInfoDescriptor = $convert.base64Decode(
+    'CgpPYmplY3RJbmZvEhsKCW9iamVjdF9pZBgBIAEoDFIIb2JqZWN0SWQSEgoEc2l6ZRgCIAEoDV'
+    'IEc2l6ZRIpChFzdG9yZWRfYXRfdW5peF9tcxgDIAEoA1IOc3RvcmVkQXRVbml4TXMSGgoIc2Vx'
+    'dWVuY2UYBCABKARSCHNlcXVlbmNl');
+
+@$core.Deprecated('Use getObjectRequestDescriptor instead')
+const GetObjectRequest$json = {
+  '1': 'GetObjectRequest',
+  '2': [
+    {
+      '1': 'kind',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.ObjectKind',
+      '10': 'kind'
+    },
+    {'1': 'object_id', '3': 2, '4': 1, '5': 12, '10': 'objectId'},
+  ],
+};
+
+/// Descriptor for `GetObjectRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getObjectRequestDescriptor = $convert.base64Decode(
+    'ChBHZXRPYmplY3RSZXF1ZXN0EiUKBGtpbmQYASABKA4yES5mcy52MS5PYmplY3RLaW5kUgRraW'
+    '5kEhsKCW9iamVjdF9pZBgCIAEoDFIIb2JqZWN0SWQ=');
+
+@$core.Deprecated('Use getObjectResponseDescriptor instead')
+const GetObjectResponse$json = {
+  '1': 'GetObjectResponse',
+  '2': [
+    {'1': 'blob', '3': 1, '4': 1, '5': 12, '10': 'blob'},
+  ],
+};
+
+/// Descriptor for `GetObjectResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getObjectResponseDescriptor = $convert
+    .base64Decode('ChFHZXRPYmplY3RSZXNwb25zZRISCgRibG9iGAEgASgMUgRibG9i');
+
+@$core.Deprecated('Use deleteObjectRequestDescriptor instead')
+const DeleteObjectRequest$json = {
+  '1': 'DeleteObjectRequest',
+  '2': [
+    {
+      '1': 'kind',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.ObjectKind',
+      '10': 'kind'
+    },
+    {'1': 'object_id', '3': 2, '4': 1, '5': 12, '10': 'objectId'},
+  ],
+};
+
+/// Descriptor for `DeleteObjectRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteObjectRequestDescriptor = $convert.base64Decode(
+    'ChNEZWxldGVPYmplY3RSZXF1ZXN0EiUKBGtpbmQYASABKA4yES5mcy52MS5PYmplY3RLaW5kUg'
+    'RraW5kEhsKCW9iamVjdF9pZBgCIAEoDFIIb2JqZWN0SWQ=');
+
+@$core.Deprecated('Use deleteObjectResponseDescriptor instead')
+const DeleteObjectResponse$json = {
+  '1': 'DeleteObjectResponse',
+};
+
+/// Descriptor for `DeleteObjectResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteObjectResponseDescriptor =
+    $convert.base64Decode('ChREZWxldGVPYmplY3RSZXNwb25zZQ==');
+
+@$core.Deprecated('Use allocateSegmentRequestDescriptor instead')
+const AllocateSegmentRequest$json = {
+  '1': 'AllocateSegmentRequest',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 12, '10': 'segmentId'},
+    {'1': 'k', '3': 2, '4': 1, '5': 13, '10': 'k'},
+    {'1': 'n', '3': 3, '4': 1, '5': 13, '10': 'n'},
+    {'1': 'fragment_size', '3': 4, '4': 1, '5': 13, '10': 'fragmentSize'},
+    {'1': 'fragment_ids', '3': 5, '4': 3, '5': 12, '10': 'fragmentIds'},
+    {'1': 'body_roots', '3': 6, '4': 3, '5': 12, '10': 'bodyRoots'},
+  ],
+};
+
+/// Descriptor for `AllocateSegmentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List allocateSegmentRequestDescriptor = $convert.base64Decode(
+    'ChZBbGxvY2F0ZVNlZ21lbnRSZXF1ZXN0Eh0KCnNlZ21lbnRfaWQYASABKAxSCXNlZ21lbnRJZB'
+    'IMCgFrGAIgASgNUgFrEgwKAW4YAyABKA1SAW4SIwoNZnJhZ21lbnRfc2l6ZRgEIAEoDVIMZnJh'
+    'Z21lbnRTaXplEiEKDGZyYWdtZW50X2lkcxgFIAMoDFILZnJhZ21lbnRJZHMSHQoKYm9keV9yb2'
+    '90cxgGIAMoDFIJYm9keVJvb3Rz');
+
+@$core.Deprecated('Use allocateSegmentResponseDescriptor instead')
+const AllocateSegmentResponse$json = {
+  '1': 'AllocateSegmentResponse',
+  '2': [
+    {
+      '1': 'placements',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.Placement',
+      '10': 'placements'
+    },
+  ],
+};
+
+/// Descriptor for `AllocateSegmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List allocateSegmentResponseDescriptor =
+    $convert.base64Decode(
+        'ChdBbGxvY2F0ZVNlZ21lbnRSZXNwb25zZRIwCgpwbGFjZW1lbnRzGAEgAygLMhAuZnMudjEuUG'
+        'xhY2VtZW50UgpwbGFjZW1lbnRz');
+
+@$core.Deprecated('Use placementDescriptor instead')
+const Placement$json = {
+  '1': 'Placement',
+  '2': [
+    {'1': 'index', '3': 1, '4': 1, '5': 13, '10': 'index'},
+    {
+      '1': 'node',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.NodeAddress',
+      '10': 'node'
+    },
+    {
+      '1': 'ticket',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'ticket'
+    },
+  ],
+};
+
+/// Descriptor for `Placement`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List placementDescriptor = $convert.base64Decode(
+    'CglQbGFjZW1lbnQSFAoFaW5kZXgYASABKA1SBWluZGV4EiYKBG5vZGUYAiABKAsyEi5mcy52MS'
+    '5Ob2RlQWRkcmVzc1IEbm9kZRIlCgZ0aWNrZXQYAyABKAsyDS5mcy52MS5TaWduZWRSBnRpY2tl'
+    'dA==');
+
+@$core.Deprecated('Use nodeAddressDescriptor instead')
+const NodeAddress$json = {
+  '1': 'NodeAddress',
+  '2': [
+    {'1': 'node_id', '3': 1, '4': 1, '5': 12, '10': 'nodeId'},
+    {'1': 'endpoints', '3': 2, '4': 3, '5': 9, '10': 'endpoints'},
+    {'1': 'needs_relay', '3': 3, '4': 1, '5': 8, '10': 'needsRelay'},
+  ],
+};
+
+/// Descriptor for `NodeAddress`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodeAddressDescriptor = $convert.base64Decode(
+    'CgtOb2RlQWRkcmVzcxIXCgdub2RlX2lkGAEgASgMUgZub2RlSWQSHAoJZW5kcG9pbnRzGAIgAy'
+    'gJUgllbmRwb2ludHMSHwoLbmVlZHNfcmVsYXkYAyABKAhSCm5lZWRzUmVsYXk=');
+
+@$core.Deprecated('Use commitSegmentRequestDescriptor instead')
+const CommitSegmentRequest$json = {
+  '1': 'CommitSegmentRequest',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 12, '10': 'segmentId'},
+    {'1': 'stored_indexes', '3': 2, '4': 3, '5': 13, '10': 'storedIndexes'},
+  ],
+};
+
+/// Descriptor for `CommitSegmentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List commitSegmentRequestDescriptor = $convert.base64Decode(
+    'ChRDb21taXRTZWdtZW50UmVxdWVzdBIdCgpzZWdtZW50X2lkGAEgASgMUglzZWdtZW50SWQSJQ'
+    'oOc3RvcmVkX2luZGV4ZXMYAiADKA1SDXN0b3JlZEluZGV4ZXM=');
+
+@$core.Deprecated('Use commitSegmentResponseDescriptor instead')
+const CommitSegmentResponse$json = {
+  '1': 'CommitSegmentResponse',
+};
+
+/// Descriptor for `CommitSegmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List commitSegmentResponseDescriptor =
+    $convert.base64Decode('ChVDb21taXRTZWdtZW50UmVzcG9uc2U=');
+
+@$core.Deprecated('Use locateSegmentRequestDescriptor instead')
+const LocateSegmentRequest$json = {
+  '1': 'LocateSegmentRequest',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 12, '10': 'segmentId'},
+  ],
+};
+
+/// Descriptor for `LocateSegmentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List locateSegmentRequestDescriptor = $convert.base64Decode(
+    'ChRMb2NhdGVTZWdtZW50UmVxdWVzdBIdCgpzZWdtZW50X2lkGAEgASgMUglzZWdtZW50SWQ=');
+
+@$core.Deprecated('Use locateSegmentResponseDescriptor instead')
+const LocateSegmentResponse$json = {
+  '1': 'LocateSegmentResponse',
+  '2': [
+    {
+      '1': 'placements',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.Placement',
+      '10': 'placements'
+    },
+  ],
+};
+
+/// Descriptor for `LocateSegmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List locateSegmentResponseDescriptor = $convert.base64Decode(
+    'ChVMb2NhdGVTZWdtZW50UmVzcG9uc2USMAoKcGxhY2VtZW50cxgBIAMoCzIQLmZzLnYxLlBsYW'
+    'NlbWVudFIKcGxhY2VtZW50cw==');
+
+@$core.Deprecated('Use registerNodeRequestDescriptor instead')
+const RegisterNodeRequest$json = {
+  '1': 'RegisterNodeRequest',
+  '2': [
+    {
+      '1': 'node_certificate',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'nodeCertificate'
+    },
+    {'1': 'capacity_bytes', '3': 2, '4': 1, '5': 4, '10': 'capacityBytes'},
+    {'1': 'endpoints', '3': 3, '4': 3, '5': 9, '10': 'endpoints'},
+    {'1': 'versions', '3': 4, '4': 3, '5': 13, '10': 'versions'},
+    {'1': 'software', '3': 5, '4': 1, '5': 9, '10': 'software'},
+  ],
+};
+
+/// Descriptor for `RegisterNodeRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List registerNodeRequestDescriptor = $convert.base64Decode(
+    'ChNSZWdpc3Rlck5vZGVSZXF1ZXN0EjgKEG5vZGVfY2VydGlmaWNhdGUYASABKAsyDS5mcy52MS'
+    '5TaWduZWRSD25vZGVDZXJ0aWZpY2F0ZRIlCg5jYXBhY2l0eV9ieXRlcxgCIAEoBFINY2FwYWNp'
+    'dHlCeXRlcxIcCgllbmRwb2ludHMYAyADKAlSCWVuZHBvaW50cxIaCgh2ZXJzaW9ucxgEIAMoDV'
+    'IIdmVyc2lvbnMSGgoIc29mdHdhcmUYBSABKAlSCHNvZnR3YXJl');
+
+@$core.Deprecated('Use registerNodeResponseDescriptor instead')
+const RegisterNodeResponse$json = {
+  '1': 'RegisterNodeResponse',
+  '2': [
+    {'1': 'coordinator_key', '3': 1, '4': 1, '5': 12, '10': 'coordinatorKey'},
+  ],
+};
+
+/// Descriptor for `RegisterNodeResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List registerNodeResponseDescriptor = $convert.base64Decode(
+    'ChRSZWdpc3Rlck5vZGVSZXNwb25zZRInCg9jb29yZGluYXRvcl9rZXkYASABKAxSDmNvb3JkaW'
+    '5hdG9yS2V5');
+
+@$core.Deprecated('Use heartbeatRequestDescriptor instead')
+const HeartbeatRequest$json = {
+  '1': 'HeartbeatRequest',
+  '2': [
+    {'1': 'used_bytes', '3': 1, '4': 1, '5': 4, '10': 'usedBytes'},
+    {'1': 'capacity_bytes', '3': 2, '4': 1, '5': 4, '10': 'capacityBytes'},
+    {'1': 'endpoints', '3': 3, '4': 3, '5': 9, '10': 'endpoints'},
+  ],
+};
+
+/// Descriptor for `HeartbeatRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List heartbeatRequestDescriptor = $convert.base64Decode(
+    'ChBIZWFydGJlYXRSZXF1ZXN0Eh0KCnVzZWRfYnl0ZXMYASABKARSCXVzZWRCeXRlcxIlCg5jYX'
+    'BhY2l0eV9ieXRlcxgCIAEoBFINY2FwYWNpdHlCeXRlcxIcCgllbmRwb2ludHMYAyADKAlSCWVu'
+    'ZHBvaW50cw==');
+
+@$core.Deprecated('Use heartbeatResponseDescriptor instead')
+const HeartbeatResponse$json = {
+  '1': 'HeartbeatResponse',
+  '2': [
+    {
+      '1': 'next_heartbeat_ms',
+      '3': 1,
+      '4': 1,
+      '5': 13,
+      '10': 'nextHeartbeatMs'
+    },
+  ],
+};
+
+/// Descriptor for `HeartbeatResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List heartbeatResponseDescriptor = $convert.base64Decode(
+    'ChFIZWFydGJlYXRSZXNwb25zZRIqChFuZXh0X2hlYXJ0YmVhdF9tcxgBIAEoDVIPbmV4dEhlYX'
+    'J0YmVhdE1z');

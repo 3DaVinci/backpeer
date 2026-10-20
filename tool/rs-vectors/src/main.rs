@@ -1,10 +1,10 @@
-//! Генератор test-vectors/reed-solomon.json (см. docs/spec/test-vectors.md).
+//! Генератор test-vectors/erasure/reed-solomon.json (см. docs/spec/test-vectors.md).
 //!
 //! Эталон — крейт reed-solomon-erasure 6.0.0 (поле GF(2^8), модуль galois_8).
 //! Данные фрагментов детерминированы: генератор splitmix64 с зерном из
 //! номера случая, поэтому повторный запуск даёт тот же файл.
 //!
-//! Запуск: cargo run --release > ../../reed-solomon.json
+//! Запуск из tool/rs-vectors: cargo run --release > ../../test-vectors/erasure/reed-solomon.json
 
 use reed_solomon_erasure::galois_8::ReedSolomon;
 
@@ -41,7 +41,7 @@ fn main() {
     println!("{{");
     println!("  \"spec\": \"reed-solomon\",");
     println!("  \"specVersion\": 1,");
-    println!("  \"generator\": \"test-vectors/generators/reed-solomon (reed-solomon-erasure 6.0.0, galois_8)\",");
+    println!("  \"generator\": \"tool/rs-vectors (reed-solomon-erasure 6.0.0, galois_8)\",");
     println!("  \"cases\": [");
     for (index, &(k, n, len, erased)) in cases.iter().enumerate() {
         let mut rng = SplitMix64(index as u64 + 1);

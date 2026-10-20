@@ -1,0 +1,64 @@
+{
+  "spec": "crypto/chunk-id",
+  "specVersion": 1,
+  "generator": "tool/crypto_vectors.py (Python hashlib, cryptography, libsodium)",
+  "description": "Идентификатор чанка: ключевой BLAKE2b-256 (crypto.md, раздел 6).",
+  "cases": [
+    {
+      "name": "empty",
+      "input": {
+        "chunkIdKey": "620b3a485edc34d2622c7bc9f870084b640b98f017ea6ba681cb70463907129b",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 0,
+          "length": 0
+        }
+      },
+      "expected": {
+        "chunkId": "d66053943887afadb77ab569fd0d0954fd76137129152de37d2cbfd3bc883f1b"
+      }
+    },
+    {
+      "name": "one-byte",
+      "input": {
+        "chunkIdKey": "620b3a485edc34d2622c7bc9f870084b640b98f017ea6ba681cb70463907129b",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 2,
+          "length": 1
+        }
+      },
+      "expected": {
+        "chunkId": "63438a6452ea06de6b92b5fbdbaefdaf2062a6341446f811ce04183a776970d0"
+      }
+    },
+    {
+      "name": "4096",
+      "input": {
+        "chunkIdKey": "620b3a485edc34d2622c7bc9f870084b640b98f017ea6ba681cb70463907129b",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 3,
+          "length": 4096
+        }
+      },
+      "expected": {
+        "chunkId": "1aa47a063f1b6ef656f6be5ff3312f163a5e10c143ed0645ecbacc968e89b365"
+      }
+    },
+    {
+      "name": "1MiB",
+      "input": {
+        "chunkIdKey": "620b3a485edc34d2622c7bc9f870084b640b98f017ea6ba681cb70463907129b",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 4,
+          "length": 1048576
+        }
+      },
+      "expected": {
+        "chunkId": "7a934cbf20d48dcbf225b7f2f07414be7e2290dec074b4805ff4b393fa3e3038"
+      }
+    }
+  ]
+}

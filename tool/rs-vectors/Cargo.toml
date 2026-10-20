@@ -3,6 +3,7 @@ name = "rs-vectors"
 version = "0.1.0"
 edition = "2021"
 publish = false
+default-run = "rs-vectors"
 description = "Генератор тестовых векторов Reed–Solomon из эталонного крейта reed-solomon-erasure"
 
 [dependencies]

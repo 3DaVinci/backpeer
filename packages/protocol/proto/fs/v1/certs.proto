@@ -1,0 +1,39 @@
+// Сертификаты и талоны. Передаются как fs.v1.Signed с body = сообщение ниже.
+syntax = "proto3";
+
+package fs.v1;
+
+// Контекст подписи "device-cert"; подписывает ключ учётной записи.
+message DeviceCertificate {
+  bytes account_id = 1;          // открытый ключ учётной записи
+  bytes device_sign = 2;         // Ed25519 устройства
+  bytes device_dh = 3;           // X25519 устройства (статический ключ Noise)
+  int64 issued_at_unix_ms = 4;
+}
+
+// Контекст подписи "node-cert"; подписывает ключ учётной записи владельца.
+message NodeCertificate {
+  bytes account_id = 1;
+  bytes node_id = 2;             // открытый ключ Ed25519 узла
+  bytes node_dh = 3;             // X25519 узла
+  int64 issued_at_unix_ms = 4;
+}
+
+enum TicketOperation {
+  TICKET_OPERATION_UNSPECIFIED = 0;
+  TICKET_OPERATION_PUT = 1;
+  TICKET_OPERATION_GET = 2;
+  TICKET_OPERATION_DELETE = 3;
+}
+
+// Контекст подписи "ticket"; подписывает ключ координатора. Разрешает
+// устройству одну операцию с одним фрагментом на одном узле.
+message FragmentTicket {
+  TicketOperation operation = 1;
+  bytes node_id = 2;
+  bytes device_sign = 3;         // кому разрешено (ключ из DeviceCertificate)
+  bytes fragment_id = 4;
+  uint32 fragment_size = 5;      // заголовок + тело, байт
+  int64 expires_at_unix_ms = 6;
+  bytes ticket_id = 7;           // 16 случайных байт, для журнала и защиты от повтора
+}

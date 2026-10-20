@@ -1,0 +1,142 @@
+// API координатора. Транспорт — HTTPS, тело запроса и ответа — Protobuf
+// (docs/spec/protocol.md, раздел 4). Каждый RPC — POST /api/v1/<Метод>.
+// В этой версии описаны методы этапов 1–3; аудиты, ремонт и relay
+// зарезервированы и появятся в следующих версиях протокола.
+syntax = "proto3";
+
+package fs.v1;
+
+import "fs/v1/common.proto";
+
+// --- Учётная запись и устройства ---------------------------------------
+
+// Регистрация учётной записи. Запрос подписан ключом учётной записи
+// (контекст "api-request"), а не устройства.
+message RegisterAccountRequest {
+  Signed device_certificate = 1; // первое устройство
+  bytes key_bundle = 2;          // KeyBundle (crypto.md, раздел 4.1) или пусто
+  bytes auth_verifier = 3;       // производное от AUTH, схема — этап 2
+}
+message RegisterAccountResponse {}
+
+message AddDeviceRequest {
+  Signed device_certificate = 1;
+}
+message AddDeviceResponse {}
+
+// Получить копию мастер-ключа для входа на новом устройстве (этап 2).
+message GetKeyBundleRequest {
+  bytes account_id = 1;
+  bytes auth_proof = 2;          // доказательство знания AUTH, схема — этап 2
+}
+message GetKeyBundleResponse {
+  bytes key_bundle = 1;
+}
+
+// --- Снимки и индексы (зашифрованные блобы) -------------------------------
+
+enum ObjectKind {
+  OBJECT_KIND_UNSPECIFIED = 0;
+  OBJECT_KIND_SNAPSHOT = 1;      // блоб типа 2
+  OBJECT_KIND_INDEX = 2;         // блоб типа 3
+}
+
+message PutObjectRequest {
+  ObjectKind kind = 1;
+  bytes object_id = 2;
+  bytes blob = 3;                // блоб целиком, до 8 МиБ
+  uint64 sequence = 4;           // для снимка: Snapshot.sequence (открыто)
+}
+message PutObjectResponse {}
+
+message ListObjectsRequest {
+  ObjectKind kind = 1;
+  bytes after_object_id = 2;     // постраничный вывод
+  uint32 limit = 3;
+}
+message ListObjectsResponse {
+  repeated ObjectInfo objects = 1;
+  bool more = 2;
+}
+message ObjectInfo {
+  bytes object_id = 1;
+  uint32 size = 2;
+  int64 stored_at_unix_ms = 3;
+  uint64 sequence = 4;
+}
+
+message GetObjectRequest {
+  ObjectKind kind = 1;
+  bytes object_id = 2;
+}
+message GetObjectResponse {
+  bytes blob = 1;
+}
+
+message DeleteObjectRequest {
+  ObjectKind kind = 1;
+  bytes object_id = 2;
+}
+message DeleteObjectResponse {}
+
+// --- Размещение фрагментов --------------------------------------------------
+
+// Клиент сообщает параметры нового сегмента и получает узлы и талоны PUT.
+message AllocateSegmentRequest {
+  bytes segment_id = 1;
+  uint32 k = 2;
+  uint32 n = 3;
+  uint32 fragment_size = 4;          // заголовок + тело
+  repeated bytes fragment_ids = 5;   // n штук
+  repeated bytes body_roots = 6;     // n штук, для аудитов
+}
+message AllocateSegmentResponse {
+  repeated Placement placements = 1; // n штук, по номеру фрагмента
+}
+message Placement {
+  uint32 index = 1;
+  NodeAddress node = 2;
+  Signed ticket = 3;                 // FragmentTicket PUT
+}
+message NodeAddress {
+  bytes node_id = 1;
+  repeated string endpoints = 2;     // "host:port" для TCP
+  bool needs_relay = 3;              // прямое соединение невозможно (этап 3)
+}
+
+// Клиент подтверждает, какие фрагменты загружены.
+message CommitSegmentRequest {
+  bytes segment_id = 1;
+  repeated uint32 stored_indexes = 2;
+}
+message CommitSegmentResponse {}
+
+// Где лежат фрагменты сегмента; талоны GET на чтение.
+message LocateSegmentRequest {
+  bytes segment_id = 1;
+}
+message LocateSegmentResponse {
+  repeated Placement placements = 1; // доступные фрагменты, талоны GET
+}
+
+// --- Узел -----------------------------------------------------------------
+
+message RegisterNodeRequest {
+  Signed node_certificate = 1;
+  uint64 capacity_bytes = 2;
+  repeated string endpoints = 3;
+  repeated uint32 versions = 4;
+  string software = 5;
+}
+message RegisterNodeResponse {
+  bytes coordinator_key = 1;         // для проверки талонов (сверяется с вшитым)
+}
+
+message HeartbeatRequest {
+  uint64 used_bytes = 1;
+  uint64 capacity_bytes = 2;
+  repeated string endpoints = 3;
+}
+message HeartbeatResponse {
+  uint32 next_heartbeat_ms = 1;
+}

@@ -1,0 +1,120 @@
+{
+  "spec": "format/fastcdc",
+  "specVersion": 1,
+  "generator": "tool/format_vectors.py (Python, независимая реализация)",
+  "description": "Границы чанков FastCDC (data-format.md, раздел 2). dataPattern — генератор splitmix64-le, dataZeros — столько нулевых байт.",
+  "expectedAverageChunkLength": 1248473,
+  "cases": [
+    {
+      "name": "empty",
+      "input": {
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 10,
+          "length": 0
+        }
+      },
+      "expected": {
+        "chunkLengths": []
+      }
+    },
+    {
+      "name": "below-min",
+      "input": {
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 11,
+          "length": 100000
+        }
+      },
+      "expected": {
+        "chunkLengths": [
+          100000
+        ]
+      }
+    },
+    {
+      "name": "exactly-min",
+      "input": {
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 12,
+          "length": 524288
+        }
+      },
+      "expected": {
+        "chunkLengths": [
+          524288
+        ]
+      }
+    },
+    {
+      "name": "min-plus-one",
+      "input": {
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 13,
+          "length": 524289
+        }
+      },
+      "expected": {
+        "chunkLengths": [
+          524289
+        ]
+      }
+    },
+    {
+      "name": "random-24MiB",
+      "input": {
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "dataPattern": {
+          "type": "splitmix64-le",
+          "seed": 14,
+          "length": 25165824
+        }
+      },
+      "expected": {
+        "chunkLengths": [
+          1089601,
+          1480362,
+          667857,
+          1132525,
+          737963,
+          879063,
+          1584975,
+          2195653,
+          1434523,
+          1661092,
+          1868743,
+          1665906,
+          1441080,
+          1147365,
+          744006,
+          1936597,
+          1397873,
+          740462,
+          1220509,
+          139669
+        ]
+      }
+    },
+    {
+      "name": "zeros-20MiB",
+      "input": {
+        "gearKey": "845baccf25823c2f1c2d04779681f3da280d2c45b816234d7ee1f6e6b8421d70",
+        "dataZeros": 20971520
+      },
+      "expected": {
+        "chunkLengths": [
+          8388608,
+          8388608,
+          4194304
+        ]
+      }
+    }
+  ]
+}

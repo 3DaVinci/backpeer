@@ -1,0 +1,1864 @@
+// This is a generated file - do not edit.
+//
+// Generated from fs/v1/coordinator.proto.
+
+// @dart = 3.3
+
+// ignore_for_file: annotate_overrides, camel_case_types, comment_references
+// ignore_for_file: constant_identifier_names
+// ignore_for_file: curly_braces_in_flow_control_structures
+// ignore_for_file: deprecated_member_use_from_same_package, library_prefixes
+// ignore_for_file: non_constant_identifier_names, prefer_relative_imports
+
+import 'dart:core' as $core;
+
+import 'package:fixnum/fixnum.dart' as $fixnum;
+import 'package:protobuf/protobuf.dart' as $pb;
+
+import 'common.pb.dart' as $0;
+import 'coordinator.pbenum.dart';
+
+export 'package:protobuf/protobuf.dart' show GeneratedMessageGenericExtensions;
+
+export 'coordinator.pbenum.dart';
+
+/// Регистрация учётной записи. Запрос подписан ключом учётной записи
+/// (контекст "api-request"), а не устройства.
+class RegisterAccountRequest extends $pb.GeneratedMessage {
+  factory RegisterAccountRequest({
+    $0.Signed? deviceCertificate,
+    $core.List<$core.int>? keyBundle,
+    $core.List<$core.int>? authVerifier,
+  }) {
+    final result = RegisterAccountRequest._();
+    if (deviceCertificate != null) result.deviceCertificate = deviceCertificate;
+    if (keyBundle != null) result.keyBundle = keyBundle;
+    if (authVerifier != null) result.authVerifier = authVerifier;
+    return result;
+  }
+
+  RegisterAccountRequest._();
+
+  factory RegisterAccountRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterAccountRequest()..mergeFromBuffer(data, registry);
+  factory RegisterAccountRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterAccountRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegisterAccountRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RegisterAccountRequest.$_createMessage)
+    ..aOM<$0.Signed>(1, _omitFieldNames ? '' : 'deviceCertificate',
+        subBuilder: $0.Signed.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'keyBundle', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        3, _omitFieldNames ? '' : 'authVerifier', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterAccountRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterAccountRequest copyWith(
+          void Function(RegisterAccountRequest) updates) =>
+      super.copyWith((message) => updates(message as RegisterAccountRequest))
+          as RegisterAccountRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RegisterAccountRequest() / RegisterAccountRequest.new instead')
+  static RegisterAccountRequest create() => RegisterAccountRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RegisterAccountRequest._();
+  @$core.override
+  RegisterAccountRequest createEmptyInstance() => RegisterAccountRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RegisterAccountRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegisterAccountRequest>(
+          RegisterAccountRequest.$_createMessage);
+  static RegisterAccountRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Signed get deviceCertificate => $_getN(0);
+  @$pb.TagNumber(1)
+  set deviceCertificate($0.Signed value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeviceCertificate() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeviceCertificate() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Signed ensureDeviceCertificate() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get keyBundle => $_getN(1);
+  @$pb.TagNumber(2)
+  set keyBundle($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKeyBundle() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKeyBundle() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.List<$core.int> get authVerifier => $_getN(2);
+  @$pb.TagNumber(3)
+  set authVerifier($core.List<$core.int> value) => $_setBytes(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAuthVerifier() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAuthVerifier() => $_clearField(3);
+}
+
+class RegisterAccountResponse extends $pb.GeneratedMessage {
+  factory RegisterAccountResponse() => RegisterAccountResponse._();
+
+  RegisterAccountResponse._();
+
+  factory RegisterAccountResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterAccountResponse()..mergeFromBuffer(data, registry);
+  factory RegisterAccountResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterAccountResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegisterAccountResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RegisterAccountResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterAccountResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterAccountResponse copyWith(
+          void Function(RegisterAccountResponse) updates) =>
+      super.copyWith((message) => updates(message as RegisterAccountResponse))
+          as RegisterAccountResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RegisterAccountResponse() / RegisterAccountResponse.new instead')
+  static RegisterAccountResponse create() => RegisterAccountResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RegisterAccountResponse._();
+  @$core.override
+  RegisterAccountResponse createEmptyInstance() => RegisterAccountResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RegisterAccountResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegisterAccountResponse>(
+          RegisterAccountResponse.$_createMessage);
+  static RegisterAccountResponse? _defaultInstance;
+}
+
+class AddDeviceRequest extends $pb.GeneratedMessage {
+  factory AddDeviceRequest({
+    $0.Signed? deviceCertificate,
+  }) {
+    final result = AddDeviceRequest._();
+    if (deviceCertificate != null) result.deviceCertificate = deviceCertificate;
+    return result;
+  }
+
+  AddDeviceRequest._();
+
+  factory AddDeviceRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AddDeviceRequest()..mergeFromBuffer(data, registry);
+  factory AddDeviceRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AddDeviceRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AddDeviceRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: AddDeviceRequest.$_createMessage)
+    ..aOM<$0.Signed>(1, _omitFieldNames ? '' : 'deviceCertificate',
+        subBuilder: $0.Signed.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddDeviceRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddDeviceRequest copyWith(void Function(AddDeviceRequest) updates) =>
+      super.copyWith((message) => updates(message as AddDeviceRequest))
+          as AddDeviceRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AddDeviceRequest() / AddDeviceRequest.new instead')
+  static AddDeviceRequest create() => AddDeviceRequest._();
+  static $pb.GeneratedMessage $_createMessage() => AddDeviceRequest._();
+  @$core.override
+  AddDeviceRequest createEmptyInstance() => AddDeviceRequest._();
+  @$core.pragma('dart2js:noInline')
+  static AddDeviceRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AddDeviceRequest>(
+          AddDeviceRequest.$_createMessage);
+  static AddDeviceRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Signed get deviceCertificate => $_getN(0);
+  @$pb.TagNumber(1)
+  set deviceCertificate($0.Signed value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDeviceCertificate() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDeviceCertificate() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Signed ensureDeviceCertificate() => $_ensure(0);
+}
+
+class AddDeviceResponse extends $pb.GeneratedMessage {
+  factory AddDeviceResponse() => AddDeviceResponse._();
+
+  AddDeviceResponse._();
+
+  factory AddDeviceResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AddDeviceResponse()..mergeFromBuffer(data, registry);
+  factory AddDeviceResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AddDeviceResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AddDeviceResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: AddDeviceResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddDeviceResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AddDeviceResponse copyWith(void Function(AddDeviceResponse) updates) =>
+      super.copyWith((message) => updates(message as AddDeviceResponse))
+          as AddDeviceResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AddDeviceResponse() / AddDeviceResponse.new instead')
+  static AddDeviceResponse create() => AddDeviceResponse._();
+  static $pb.GeneratedMessage $_createMessage() => AddDeviceResponse._();
+  @$core.override
+  AddDeviceResponse createEmptyInstance() => AddDeviceResponse._();
+  @$core.pragma('dart2js:noInline')
+  static AddDeviceResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AddDeviceResponse>(
+          AddDeviceResponse.$_createMessage);
+  static AddDeviceResponse? _defaultInstance;
+}
+
+/// Получить копию мастер-ключа для входа на новом устройстве (этап 2).
+class GetKeyBundleRequest extends $pb.GeneratedMessage {
+  factory GetKeyBundleRequest({
+    $core.List<$core.int>? accountId,
+    $core.List<$core.int>? authProof,
+  }) {
+    final result = GetKeyBundleRequest._();
+    if (accountId != null) result.accountId = accountId;
+    if (authProof != null) result.authProof = authProof;
+    return result;
+  }
+
+  GetKeyBundleRequest._();
+
+  factory GetKeyBundleRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetKeyBundleRequest()..mergeFromBuffer(data, registry);
+  factory GetKeyBundleRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetKeyBundleRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetKeyBundleRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetKeyBundleRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'accountId', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'authProof', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetKeyBundleRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetKeyBundleRequest copyWith(void Function(GetKeyBundleRequest) updates) =>
+      super.copyWith((message) => updates(message as GetKeyBundleRequest))
+          as GetKeyBundleRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use GetKeyBundleRequest() / GetKeyBundleRequest.new instead')
+  static GetKeyBundleRequest create() => GetKeyBundleRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetKeyBundleRequest._();
+  @$core.override
+  GetKeyBundleRequest createEmptyInstance() => GetKeyBundleRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetKeyBundleRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetKeyBundleRequest>(
+          GetKeyBundleRequest.$_createMessage);
+  static GetKeyBundleRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get accountId => $_getN(0);
+  @$pb.TagNumber(1)
+  set accountId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccountId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccountId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get authProof => $_getN(1);
+  @$pb.TagNumber(2)
+  set authProof($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAuthProof() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAuthProof() => $_clearField(2);
+}
+
+class GetKeyBundleResponse extends $pb.GeneratedMessage {
+  factory GetKeyBundleResponse({
+    $core.List<$core.int>? keyBundle,
+  }) {
+    final result = GetKeyBundleResponse._();
+    if (keyBundle != null) result.keyBundle = keyBundle;
+    return result;
+  }
+
+  GetKeyBundleResponse._();
+
+  factory GetKeyBundleResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetKeyBundleResponse()..mergeFromBuffer(data, registry);
+  factory GetKeyBundleResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetKeyBundleResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetKeyBundleResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetKeyBundleResponse.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'keyBundle', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetKeyBundleResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetKeyBundleResponse copyWith(void Function(GetKeyBundleResponse) updates) =>
+      super.copyWith((message) => updates(message as GetKeyBundleResponse))
+          as GetKeyBundleResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetKeyBundleResponse() / GetKeyBundleResponse.new instead')
+  static GetKeyBundleResponse create() => GetKeyBundleResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetKeyBundleResponse._();
+  @$core.override
+  GetKeyBundleResponse createEmptyInstance() => GetKeyBundleResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetKeyBundleResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetKeyBundleResponse>(
+          GetKeyBundleResponse.$_createMessage);
+  static GetKeyBundleResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get keyBundle => $_getN(0);
+  @$pb.TagNumber(1)
+  set keyBundle($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKeyBundle() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKeyBundle() => $_clearField(1);
+}
+
+class PutObjectRequest extends $pb.GeneratedMessage {
+  factory PutObjectRequest({
+    ObjectKind? kind,
+    $core.List<$core.int>? objectId,
+    $core.List<$core.int>? blob,
+    $fixnum.Int64? sequence,
+  }) {
+    final result = PutObjectRequest._();
+    if (kind != null) result.kind = kind;
+    if (objectId != null) result.objectId = objectId;
+    if (blob != null) result.blob = blob;
+    if (sequence != null) result.sequence = sequence;
+    return result;
+  }
+
+  PutObjectRequest._();
+
+  factory PutObjectRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PutObjectRequest()..mergeFromBuffer(data, registry);
+  factory PutObjectRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PutObjectRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PutObjectRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: PutObjectRequest.$_createMessage)
+    ..aE<ObjectKind>(1, _omitFieldNames ? '' : 'kind',
+        enumValues: ObjectKind.values)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'objectId', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        3, _omitFieldNames ? '' : 'blob', $pb.PbFieldType.OY)
+    ..a<$fixnum.Int64>(
+        4, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PutObjectRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PutObjectRequest copyWith(void Function(PutObjectRequest) updates) =>
+      super.copyWith((message) => updates(message as PutObjectRequest))
+          as PutObjectRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PutObjectRequest() / PutObjectRequest.new instead')
+  static PutObjectRequest create() => PutObjectRequest._();
+  static $pb.GeneratedMessage $_createMessage() => PutObjectRequest._();
+  @$core.override
+  PutObjectRequest createEmptyInstance() => PutObjectRequest._();
+  @$core.pragma('dart2js:noInline')
+  static PutObjectRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PutObjectRequest>(
+          PutObjectRequest.$_createMessage);
+  static PutObjectRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ObjectKind get kind => $_getN(0);
+  @$pb.TagNumber(1)
+  set kind(ObjectKind value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get objectId => $_getN(1);
+  @$pb.TagNumber(2)
+  set objectId($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasObjectId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearObjectId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.List<$core.int> get blob => $_getN(2);
+  @$pb.TagNumber(3)
+  set blob($core.List<$core.int> value) => $_setBytes(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBlob() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBlob() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get sequence => $_getI64(3);
+  @$pb.TagNumber(4)
+  set sequence($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSequence() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSequence() => $_clearField(4);
+}
+
+class PutObjectResponse extends $pb.GeneratedMessage {
+  factory PutObjectResponse() => PutObjectResponse._();
+
+  PutObjectResponse._();
+
+  factory PutObjectResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PutObjectResponse()..mergeFromBuffer(data, registry);
+  factory PutObjectResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PutObjectResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PutObjectResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: PutObjectResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PutObjectResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PutObjectResponse copyWith(void Function(PutObjectResponse) updates) =>
+      super.copyWith((message) => updates(message as PutObjectResponse))
+          as PutObjectResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PutObjectResponse() / PutObjectResponse.new instead')
+  static PutObjectResponse create() => PutObjectResponse._();
+  static $pb.GeneratedMessage $_createMessage() => PutObjectResponse._();
+  @$core.override
+  PutObjectResponse createEmptyInstance() => PutObjectResponse._();
+  @$core.pragma('dart2js:noInline')
+  static PutObjectResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PutObjectResponse>(
+          PutObjectResponse.$_createMessage);
+  static PutObjectResponse? _defaultInstance;
+}
+
+class ListObjectsRequest extends $pb.GeneratedMessage {
+  factory ListObjectsRequest({
+    ObjectKind? kind,
+    $core.List<$core.int>? afterObjectId,
+    $core.int? limit,
+  }) {
+    final result = ListObjectsRequest._();
+    if (kind != null) result.kind = kind;
+    if (afterObjectId != null) result.afterObjectId = afterObjectId;
+    if (limit != null) result.limit = limit;
+    return result;
+  }
+
+  ListObjectsRequest._();
+
+  factory ListObjectsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListObjectsRequest()..mergeFromBuffer(data, registry);
+  factory ListObjectsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListObjectsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListObjectsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ListObjectsRequest.$_createMessage)
+    ..aE<ObjectKind>(1, _omitFieldNames ? '' : 'kind',
+        enumValues: ObjectKind.values)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'afterObjectId', $pb.PbFieldType.OY)
+    ..aI(3, _omitFieldNames ? '' : 'limit', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListObjectsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListObjectsRequest copyWith(void Function(ListObjectsRequest) updates) =>
+      super.copyWith((message) => updates(message as ListObjectsRequest))
+          as ListObjectsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ListObjectsRequest() / ListObjectsRequest.new instead')
+  static ListObjectsRequest create() => ListObjectsRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ListObjectsRequest._();
+  @$core.override
+  ListObjectsRequest createEmptyInstance() => ListObjectsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ListObjectsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListObjectsRequest>(
+          ListObjectsRequest.$_createMessage);
+  static ListObjectsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ObjectKind get kind => $_getN(0);
+  @$pb.TagNumber(1)
+  set kind(ObjectKind value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get afterObjectId => $_getN(1);
+  @$pb.TagNumber(2)
+  set afterObjectId($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAfterObjectId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAfterObjectId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get limit => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set limit($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasLimit() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearLimit() => $_clearField(3);
+}
+
+class ListObjectsResponse extends $pb.GeneratedMessage {
+  factory ListObjectsResponse({
+    $core.Iterable<ObjectInfo>? objects,
+    $core.bool? more,
+  }) {
+    final result = ListObjectsResponse._();
+    if (objects != null) result.objects.addAll(objects);
+    if (more != null) result.more = more;
+    return result;
+  }
+
+  ListObjectsResponse._();
+
+  factory ListObjectsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListObjectsResponse()..mergeFromBuffer(data, registry);
+  factory ListObjectsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ListObjectsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ListObjectsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ListObjectsResponse.$_createMessage)
+    ..pPM<ObjectInfo>(1, _omitFieldNames ? '' : 'objects',
+        subBuilder: ObjectInfo.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'more')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListObjectsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ListObjectsResponse copyWith(void Function(ListObjectsResponse) updates) =>
+      super.copyWith((message) => updates(message as ListObjectsResponse))
+          as ListObjectsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use ListObjectsResponse() / ListObjectsResponse.new instead')
+  static ListObjectsResponse create() => ListObjectsResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ListObjectsResponse._();
+  @$core.override
+  ListObjectsResponse createEmptyInstance() => ListObjectsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ListObjectsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ListObjectsResponse>(
+          ListObjectsResponse.$_createMessage);
+  static ListObjectsResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<ObjectInfo> get objects => $_getList(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get more => $_getBF(1);
+  @$pb.TagNumber(2)
+  set more($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasMore() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearMore() => $_clearField(2);
+}
+
+class ObjectInfo extends $pb.GeneratedMessage {
+  factory ObjectInfo({
+    $core.List<$core.int>? objectId,
+    $core.int? size,
+    $fixnum.Int64? storedAtUnixMs,
+    $fixnum.Int64? sequence,
+  }) {
+    final result = ObjectInfo._();
+    if (objectId != null) result.objectId = objectId;
+    if (size != null) result.size = size;
+    if (storedAtUnixMs != null) result.storedAtUnixMs = storedAtUnixMs;
+    if (sequence != null) result.sequence = sequence;
+    return result;
+  }
+
+  ObjectInfo._();
+
+  factory ObjectInfo.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ObjectInfo()..mergeFromBuffer(data, registry);
+  factory ObjectInfo.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ObjectInfo()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ObjectInfo',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ObjectInfo.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'objectId', $pb.PbFieldType.OY)
+    ..aI(2, _omitFieldNames ? '' : 'size', fieldType: $pb.PbFieldType.OU3)
+    ..aInt64(3, _omitFieldNames ? '' : 'storedAtUnixMs')
+    ..a<$fixnum.Int64>(
+        4, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ObjectInfo clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ObjectInfo copyWith(void Function(ObjectInfo) updates) =>
+      super.copyWith((message) => updates(message as ObjectInfo)) as ObjectInfo;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ObjectInfo() / ObjectInfo.new instead')
+  static ObjectInfo create() => ObjectInfo._();
+  static $pb.GeneratedMessage $_createMessage() => ObjectInfo._();
+  @$core.override
+  ObjectInfo createEmptyInstance() => ObjectInfo._();
+  @$core.pragma('dart2js:noInline')
+  static ObjectInfo getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ObjectInfo>(ObjectInfo.$_createMessage);
+  static ObjectInfo? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get objectId => $_getN(0);
+  @$pb.TagNumber(1)
+  set objectId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasObjectId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearObjectId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get size => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set size($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSize() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSize() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get storedAtUnixMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set storedAtUnixMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasStoredAtUnixMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearStoredAtUnixMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get sequence => $_getI64(3);
+  @$pb.TagNumber(4)
+  set sequence($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSequence() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSequence() => $_clearField(4);
+}
+
+class GetObjectRequest extends $pb.GeneratedMessage {
+  factory GetObjectRequest({
+    ObjectKind? kind,
+    $core.List<$core.int>? objectId,
+  }) {
+    final result = GetObjectRequest._();
+    if (kind != null) result.kind = kind;
+    if (objectId != null) result.objectId = objectId;
+    return result;
+  }
+
+  GetObjectRequest._();
+
+  factory GetObjectRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetObjectRequest()..mergeFromBuffer(data, registry);
+  factory GetObjectRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetObjectRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetObjectRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetObjectRequest.$_createMessage)
+    ..aE<ObjectKind>(1, _omitFieldNames ? '' : 'kind',
+        enumValues: ObjectKind.values)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'objectId', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetObjectRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetObjectRequest copyWith(void Function(GetObjectRequest) updates) =>
+      super.copyWith((message) => updates(message as GetObjectRequest))
+          as GetObjectRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GetObjectRequest() / GetObjectRequest.new instead')
+  static GetObjectRequest create() => GetObjectRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetObjectRequest._();
+  @$core.override
+  GetObjectRequest createEmptyInstance() => GetObjectRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetObjectRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetObjectRequest>(
+          GetObjectRequest.$_createMessage);
+  static GetObjectRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ObjectKind get kind => $_getN(0);
+  @$pb.TagNumber(1)
+  set kind(ObjectKind value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get objectId => $_getN(1);
+  @$pb.TagNumber(2)
+  set objectId($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasObjectId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearObjectId() => $_clearField(2);
+}
+
+class GetObjectResponse extends $pb.GeneratedMessage {
+  factory GetObjectResponse({
+    $core.List<$core.int>? blob,
+  }) {
+    final result = GetObjectResponse._();
+    if (blob != null) result.blob = blob;
+    return result;
+  }
+
+  GetObjectResponse._();
+
+  factory GetObjectResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetObjectResponse()..mergeFromBuffer(data, registry);
+  factory GetObjectResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetObjectResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetObjectResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetObjectResponse.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'blob', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetObjectResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetObjectResponse copyWith(void Function(GetObjectResponse) updates) =>
+      super.copyWith((message) => updates(message as GetObjectResponse))
+          as GetObjectResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GetObjectResponse() / GetObjectResponse.new instead')
+  static GetObjectResponse create() => GetObjectResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetObjectResponse._();
+  @$core.override
+  GetObjectResponse createEmptyInstance() => GetObjectResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetObjectResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetObjectResponse>(
+          GetObjectResponse.$_createMessage);
+  static GetObjectResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get blob => $_getN(0);
+  @$pb.TagNumber(1)
+  set blob($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBlob() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBlob() => $_clearField(1);
+}
+
+class DeleteObjectRequest extends $pb.GeneratedMessage {
+  factory DeleteObjectRequest({
+    ObjectKind? kind,
+    $core.List<$core.int>? objectId,
+  }) {
+    final result = DeleteObjectRequest._();
+    if (kind != null) result.kind = kind;
+    if (objectId != null) result.objectId = objectId;
+    return result;
+  }
+
+  DeleteObjectRequest._();
+
+  factory DeleteObjectRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteObjectRequest()..mergeFromBuffer(data, registry);
+  factory DeleteObjectRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteObjectRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteObjectRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: DeleteObjectRequest.$_createMessage)
+    ..aE<ObjectKind>(1, _omitFieldNames ? '' : 'kind',
+        enumValues: ObjectKind.values)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'objectId', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteObjectRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteObjectRequest copyWith(void Function(DeleteObjectRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteObjectRequest))
+          as DeleteObjectRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use DeleteObjectRequest() / DeleteObjectRequest.new instead')
+  static DeleteObjectRequest create() => DeleteObjectRequest._();
+  static $pb.GeneratedMessage $_createMessage() => DeleteObjectRequest._();
+  @$core.override
+  DeleteObjectRequest createEmptyInstance() => DeleteObjectRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DeleteObjectRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteObjectRequest>(
+          DeleteObjectRequest.$_createMessage);
+  static DeleteObjectRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ObjectKind get kind => $_getN(0);
+  @$pb.TagNumber(1)
+  set kind(ObjectKind value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKind() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKind() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get objectId => $_getN(1);
+  @$pb.TagNumber(2)
+  set objectId($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasObjectId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearObjectId() => $_clearField(2);
+}
+
+class DeleteObjectResponse extends $pb.GeneratedMessage {
+  factory DeleteObjectResponse() => DeleteObjectResponse._();
+
+  DeleteObjectResponse._();
+
+  factory DeleteObjectResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteObjectResponse()..mergeFromBuffer(data, registry);
+  factory DeleteObjectResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteObjectResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteObjectResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: DeleteObjectResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteObjectResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteObjectResponse copyWith(void Function(DeleteObjectResponse) updates) =>
+      super.copyWith((message) => updates(message as DeleteObjectResponse))
+          as DeleteObjectResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DeleteObjectResponse() / DeleteObjectResponse.new instead')
+  static DeleteObjectResponse create() => DeleteObjectResponse._();
+  static $pb.GeneratedMessage $_createMessage() => DeleteObjectResponse._();
+  @$core.override
+  DeleteObjectResponse createEmptyInstance() => DeleteObjectResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DeleteObjectResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteObjectResponse>(
+          DeleteObjectResponse.$_createMessage);
+  static DeleteObjectResponse? _defaultInstance;
+}
+
+/// Клиент сообщает параметры нового сегмента и получает узлы и талоны PUT.
+class AllocateSegmentRequest extends $pb.GeneratedMessage {
+  factory AllocateSegmentRequest({
+    $core.List<$core.int>? segmentId,
+    $core.int? k,
+    $core.int? n,
+    $core.int? fragmentSize,
+    $core.Iterable<$core.List<$core.int>>? fragmentIds,
+    $core.Iterable<$core.List<$core.int>>? bodyRoots,
+  }) {
+    final result = AllocateSegmentRequest._();
+    if (segmentId != null) result.segmentId = segmentId;
+    if (k != null) result.k = k;
+    if (n != null) result.n = n;
+    if (fragmentSize != null) result.fragmentSize = fragmentSize;
+    if (fragmentIds != null) result.fragmentIds.addAll(fragmentIds);
+    if (bodyRoots != null) result.bodyRoots.addAll(bodyRoots);
+    return result;
+  }
+
+  AllocateSegmentRequest._();
+
+  factory AllocateSegmentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AllocateSegmentRequest()..mergeFromBuffer(data, registry);
+  factory AllocateSegmentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AllocateSegmentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AllocateSegmentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: AllocateSegmentRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'segmentId', $pb.PbFieldType.OY)
+    ..aI(2, _omitFieldNames ? '' : 'k', fieldType: $pb.PbFieldType.OU3)
+    ..aI(3, _omitFieldNames ? '' : 'n', fieldType: $pb.PbFieldType.OU3)
+    ..aI(4, _omitFieldNames ? '' : 'fragmentSize',
+        fieldType: $pb.PbFieldType.OU3)
+    ..p<$core.List<$core.int>>(
+        5, _omitFieldNames ? '' : 'fragmentIds', $pb.PbFieldType.PY)
+    ..p<$core.List<$core.int>>(
+        6, _omitFieldNames ? '' : 'bodyRoots', $pb.PbFieldType.PY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AllocateSegmentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AllocateSegmentRequest copyWith(
+          void Function(AllocateSegmentRequest) updates) =>
+      super.copyWith((message) => updates(message as AllocateSegmentRequest))
+          as AllocateSegmentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AllocateSegmentRequest() / AllocateSegmentRequest.new instead')
+  static AllocateSegmentRequest create() => AllocateSegmentRequest._();
+  static $pb.GeneratedMessage $_createMessage() => AllocateSegmentRequest._();
+  @$core.override
+  AllocateSegmentRequest createEmptyInstance() => AllocateSegmentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static AllocateSegmentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AllocateSegmentRequest>(
+          AllocateSegmentRequest.$_createMessage);
+  static AllocateSegmentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get segmentId => $_getN(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get k => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set k($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasK() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearK() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get n => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set n($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasN() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearN() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get fragmentSize => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set fragmentSize($core.int value) => $_setUnsignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFragmentSize() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFragmentSize() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $pb.PbList<$core.List<$core.int>> get fragmentIds => $_getList(4);
+
+  @$pb.TagNumber(6)
+  $pb.PbList<$core.List<$core.int>> get bodyRoots => $_getList(5);
+}
+
+class AllocateSegmentResponse extends $pb.GeneratedMessage {
+  factory AllocateSegmentResponse({
+    $core.Iterable<Placement>? placements,
+  }) {
+    final result = AllocateSegmentResponse._();
+    if (placements != null) result.placements.addAll(placements);
+    return result;
+  }
+
+  AllocateSegmentResponse._();
+
+  factory AllocateSegmentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AllocateSegmentResponse()..mergeFromBuffer(data, registry);
+  factory AllocateSegmentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AllocateSegmentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AllocateSegmentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: AllocateSegmentResponse.$_createMessage)
+    ..pPM<Placement>(1, _omitFieldNames ? '' : 'placements',
+        subBuilder: Placement.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AllocateSegmentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AllocateSegmentResponse copyWith(
+          void Function(AllocateSegmentResponse) updates) =>
+      super.copyWith((message) => updates(message as AllocateSegmentResponse))
+          as AllocateSegmentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use AllocateSegmentResponse() / AllocateSegmentResponse.new instead')
+  static AllocateSegmentResponse create() => AllocateSegmentResponse._();
+  static $pb.GeneratedMessage $_createMessage() => AllocateSegmentResponse._();
+  @$core.override
+  AllocateSegmentResponse createEmptyInstance() => AllocateSegmentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static AllocateSegmentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AllocateSegmentResponse>(
+          AllocateSegmentResponse.$_createMessage);
+  static AllocateSegmentResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Placement> get placements => $_getList(0);
+}
+
+class Placement extends $pb.GeneratedMessage {
+  factory Placement({
+    $core.int? index,
+    NodeAddress? node,
+    $0.Signed? ticket,
+  }) {
+    final result = Placement._();
+    if (index != null) result.index = index;
+    if (node != null) result.node = node;
+    if (ticket != null) result.ticket = ticket;
+    return result;
+  }
+
+  Placement._();
+
+  factory Placement.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Placement()..mergeFromBuffer(data, registry);
+  factory Placement.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Placement()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Placement',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: Placement.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'index', fieldType: $pb.PbFieldType.OU3)
+    ..aOM<NodeAddress>(2, _omitFieldNames ? '' : 'node',
+        subBuilder: NodeAddress.$_createMessage)
+    ..aOM<$0.Signed>(3, _omitFieldNames ? '' : 'ticket',
+        subBuilder: $0.Signed.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Placement clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Placement copyWith(void Function(Placement) updates) =>
+      super.copyWith((message) => updates(message as Placement)) as Placement;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Placement() / Placement.new instead')
+  static Placement create() => Placement._();
+  static $pb.GeneratedMessage $_createMessage() => Placement._();
+  @$core.override
+  Placement createEmptyInstance() => Placement._();
+  @$core.pragma('dart2js:noInline')
+  static Placement getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Placement>(Placement.$_createMessage);
+  static Placement? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get index => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set index($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasIndex() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearIndex() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  NodeAddress get node => $_getN(1);
+  @$pb.TagNumber(2)
+  set node(NodeAddress value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNode() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNode() => $_clearField(2);
+  @$pb.TagNumber(2)
+  NodeAddress ensureNode() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $0.Signed get ticket => $_getN(2);
+  @$pb.TagNumber(3)
+  set ticket($0.Signed value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasTicket() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearTicket() => $_clearField(3);
+  @$pb.TagNumber(3)
+  $0.Signed ensureTicket() => $_ensure(2);
+}
+
+class NodeAddress extends $pb.GeneratedMessage {
+  factory NodeAddress({
+    $core.List<$core.int>? nodeId,
+    $core.Iterable<$core.String>? endpoints,
+    $core.bool? needsRelay,
+  }) {
+    final result = NodeAddress._();
+    if (nodeId != null) result.nodeId = nodeId;
+    if (endpoints != null) result.endpoints.addAll(endpoints);
+    if (needsRelay != null) result.needsRelay = needsRelay;
+    return result;
+  }
+
+  NodeAddress._();
+
+  factory NodeAddress.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodeAddress()..mergeFromBuffer(data, registry);
+  factory NodeAddress.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodeAddress()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodeAddress',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodeAddress.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'nodeId', $pb.PbFieldType.OY)
+    ..pPS(2, _omitFieldNames ? '' : 'endpoints')
+    ..aOB(3, _omitFieldNames ? '' : 'needsRelay')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodeAddress clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodeAddress copyWith(void Function(NodeAddress) updates) =>
+      super.copyWith((message) => updates(message as NodeAddress))
+          as NodeAddress;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NodeAddress() / NodeAddress.new instead')
+  static NodeAddress create() => NodeAddress._();
+  static $pb.GeneratedMessage $_createMessage() => NodeAddress._();
+  @$core.override
+  NodeAddress createEmptyInstance() => NodeAddress._();
+  @$core.pragma('dart2js:noInline')
+  static NodeAddress getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NodeAddress>(
+          NodeAddress.$_createMessage);
+  static NodeAddress? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get nodeId => $_getN(0);
+  @$pb.TagNumber(1)
+  set nodeId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.String> get endpoints => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.bool get needsRelay => $_getBF(2);
+  @$pb.TagNumber(3)
+  set needsRelay($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNeedsRelay() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNeedsRelay() => $_clearField(3);
+}
+
+/// Клиент подтверждает, какие фрагменты загружены.
+class CommitSegmentRequest extends $pb.GeneratedMessage {
+  factory CommitSegmentRequest({
+    $core.List<$core.int>? segmentId,
+    $core.Iterable<$core.int>? storedIndexes,
+  }) {
+    final result = CommitSegmentRequest._();
+    if (segmentId != null) result.segmentId = segmentId;
+    if (storedIndexes != null) result.storedIndexes.addAll(storedIndexes);
+    return result;
+  }
+
+  CommitSegmentRequest._();
+
+  factory CommitSegmentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommitSegmentRequest()..mergeFromBuffer(data, registry);
+  factory CommitSegmentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommitSegmentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CommitSegmentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: CommitSegmentRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'segmentId', $pb.PbFieldType.OY)
+    ..p<$core.int>(
+        2, _omitFieldNames ? '' : 'storedIndexes', $pb.PbFieldType.KU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommitSegmentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommitSegmentRequest copyWith(void Function(CommitSegmentRequest) updates) =>
+      super.copyWith((message) => updates(message as CommitSegmentRequest))
+          as CommitSegmentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CommitSegmentRequest() / CommitSegmentRequest.new instead')
+  static CommitSegmentRequest create() => CommitSegmentRequest._();
+  static $pb.GeneratedMessage $_createMessage() => CommitSegmentRequest._();
+  @$core.override
+  CommitSegmentRequest createEmptyInstance() => CommitSegmentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static CommitSegmentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CommitSegmentRequest>(
+          CommitSegmentRequest.$_createMessage);
+  static CommitSegmentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get segmentId => $_getN(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.int> get storedIndexes => $_getList(1);
+}
+
+class CommitSegmentResponse extends $pb.GeneratedMessage {
+  factory CommitSegmentResponse() => CommitSegmentResponse._();
+
+  CommitSegmentResponse._();
+
+  factory CommitSegmentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommitSegmentResponse()..mergeFromBuffer(data, registry);
+  factory CommitSegmentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommitSegmentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CommitSegmentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: CommitSegmentResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommitSegmentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommitSegmentResponse copyWith(
+          void Function(CommitSegmentResponse) updates) =>
+      super.copyWith((message) => updates(message as CommitSegmentResponse))
+          as CommitSegmentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CommitSegmentResponse() / CommitSegmentResponse.new instead')
+  static CommitSegmentResponse create() => CommitSegmentResponse._();
+  static $pb.GeneratedMessage $_createMessage() => CommitSegmentResponse._();
+  @$core.override
+  CommitSegmentResponse createEmptyInstance() => CommitSegmentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static CommitSegmentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CommitSegmentResponse>(
+          CommitSegmentResponse.$_createMessage);
+  static CommitSegmentResponse? _defaultInstance;
+}
+
+/// Где лежат фрагменты сегмента; талоны GET на чтение.
+class LocateSegmentRequest extends $pb.GeneratedMessage {
+  factory LocateSegmentRequest({
+    $core.List<$core.int>? segmentId,
+  }) {
+    final result = LocateSegmentRequest._();
+    if (segmentId != null) result.segmentId = segmentId;
+    return result;
+  }
+
+  LocateSegmentRequest._();
+
+  factory LocateSegmentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LocateSegmentRequest()..mergeFromBuffer(data, registry);
+  factory LocateSegmentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LocateSegmentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LocateSegmentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: LocateSegmentRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'segmentId', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LocateSegmentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LocateSegmentRequest copyWith(void Function(LocateSegmentRequest) updates) =>
+      super.copyWith((message) => updates(message as LocateSegmentRequest))
+          as LocateSegmentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LocateSegmentRequest() / LocateSegmentRequest.new instead')
+  static LocateSegmentRequest create() => LocateSegmentRequest._();
+  static $pb.GeneratedMessage $_createMessage() => LocateSegmentRequest._();
+  @$core.override
+  LocateSegmentRequest createEmptyInstance() => LocateSegmentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static LocateSegmentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LocateSegmentRequest>(
+          LocateSegmentRequest.$_createMessage);
+  static LocateSegmentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get segmentId => $_getN(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+}
+
+class LocateSegmentResponse extends $pb.GeneratedMessage {
+  factory LocateSegmentResponse({
+    $core.Iterable<Placement>? placements,
+  }) {
+    final result = LocateSegmentResponse._();
+    if (placements != null) result.placements.addAll(placements);
+    return result;
+  }
+
+  LocateSegmentResponse._();
+
+  factory LocateSegmentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LocateSegmentResponse()..mergeFromBuffer(data, registry);
+  factory LocateSegmentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      LocateSegmentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'LocateSegmentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: LocateSegmentResponse.$_createMessage)
+    ..pPM<Placement>(1, _omitFieldNames ? '' : 'placements',
+        subBuilder: Placement.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LocateSegmentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  LocateSegmentResponse copyWith(
+          void Function(LocateSegmentResponse) updates) =>
+      super.copyWith((message) => updates(message as LocateSegmentResponse))
+          as LocateSegmentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use LocateSegmentResponse() / LocateSegmentResponse.new instead')
+  static LocateSegmentResponse create() => LocateSegmentResponse._();
+  static $pb.GeneratedMessage $_createMessage() => LocateSegmentResponse._();
+  @$core.override
+  LocateSegmentResponse createEmptyInstance() => LocateSegmentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static LocateSegmentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<LocateSegmentResponse>(
+          LocateSegmentResponse.$_createMessage);
+  static LocateSegmentResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Placement> get placements => $_getList(0);
+}
+
+class RegisterNodeRequest extends $pb.GeneratedMessage {
+  factory RegisterNodeRequest({
+    $0.Signed? nodeCertificate,
+    $fixnum.Int64? capacityBytes,
+    $core.Iterable<$core.String>? endpoints,
+    $core.Iterable<$core.int>? versions,
+    $core.String? software,
+  }) {
+    final result = RegisterNodeRequest._();
+    if (nodeCertificate != null) result.nodeCertificate = nodeCertificate;
+    if (capacityBytes != null) result.capacityBytes = capacityBytes;
+    if (endpoints != null) result.endpoints.addAll(endpoints);
+    if (versions != null) result.versions.addAll(versions);
+    if (software != null) result.software = software;
+    return result;
+  }
+
+  RegisterNodeRequest._();
+
+  factory RegisterNodeRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterNodeRequest()..mergeFromBuffer(data, registry);
+  factory RegisterNodeRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterNodeRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegisterNodeRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RegisterNodeRequest.$_createMessage)
+    ..aOM<$0.Signed>(1, _omitFieldNames ? '' : 'nodeCertificate',
+        subBuilder: $0.Signed.$_createMessage)
+    ..a<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'capacityBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..pPS(3, _omitFieldNames ? '' : 'endpoints')
+    ..p<$core.int>(4, _omitFieldNames ? '' : 'versions', $pb.PbFieldType.KU3)
+    ..aOS(5, _omitFieldNames ? '' : 'software')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterNodeRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterNodeRequest copyWith(void Function(RegisterNodeRequest) updates) =>
+      super.copyWith((message) => updates(message as RegisterNodeRequest))
+          as RegisterNodeRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use RegisterNodeRequest() / RegisterNodeRequest.new instead')
+  static RegisterNodeRequest create() => RegisterNodeRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RegisterNodeRequest._();
+  @$core.override
+  RegisterNodeRequest createEmptyInstance() => RegisterNodeRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RegisterNodeRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegisterNodeRequest>(
+          RegisterNodeRequest.$_createMessage);
+  static RegisterNodeRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Signed get nodeCertificate => $_getN(0);
+  @$pb.TagNumber(1)
+  set nodeCertificate($0.Signed value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeCertificate() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeCertificate() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Signed ensureNodeCertificate() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get capacityBytes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set capacityBytes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCapacityBytes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCapacityBytes() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get endpoints => $_getList(2);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.int> get versions => $_getList(3);
+
+  @$pb.TagNumber(5)
+  $core.String get software => $_getSZ(4);
+  @$pb.TagNumber(5)
+  set software($core.String value) => $_setString(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSoftware() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSoftware() => $_clearField(5);
+}
+
+class RegisterNodeResponse extends $pb.GeneratedMessage {
+  factory RegisterNodeResponse({
+    $core.List<$core.int>? coordinatorKey,
+  }) {
+    final result = RegisterNodeResponse._();
+    if (coordinatorKey != null) result.coordinatorKey = coordinatorKey;
+    return result;
+  }
+
+  RegisterNodeResponse._();
+
+  factory RegisterNodeResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterNodeResponse()..mergeFromBuffer(data, registry);
+  factory RegisterNodeResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RegisterNodeResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RegisterNodeResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RegisterNodeResponse.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'coordinatorKey', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterNodeResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RegisterNodeResponse copyWith(void Function(RegisterNodeResponse) updates) =>
+      super.copyWith((message) => updates(message as RegisterNodeResponse))
+          as RegisterNodeResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RegisterNodeResponse() / RegisterNodeResponse.new instead')
+  static RegisterNodeResponse create() => RegisterNodeResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RegisterNodeResponse._();
+  @$core.override
+  RegisterNodeResponse createEmptyInstance() => RegisterNodeResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RegisterNodeResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RegisterNodeResponse>(
+          RegisterNodeResponse.$_createMessage);
+  static RegisterNodeResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get coordinatorKey => $_getN(0);
+  @$pb.TagNumber(1)
+  set coordinatorKey($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCoordinatorKey() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCoordinatorKey() => $_clearField(1);
+}
+
+class HeartbeatRequest extends $pb.GeneratedMessage {
+  factory HeartbeatRequest({
+    $fixnum.Int64? usedBytes,
+    $fixnum.Int64? capacityBytes,
+    $core.Iterable<$core.String>? endpoints,
+  }) {
+    final result = HeartbeatRequest._();
+    if (usedBytes != null) result.usedBytes = usedBytes;
+    if (capacityBytes != null) result.capacityBytes = capacityBytes;
+    if (endpoints != null) result.endpoints.addAll(endpoints);
+    return result;
+  }
+
+  HeartbeatRequest._();
+
+  factory HeartbeatRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HeartbeatRequest()..mergeFromBuffer(data, registry);
+  factory HeartbeatRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HeartbeatRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HeartbeatRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: HeartbeatRequest.$_createMessage)
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'usedBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'capacityBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..pPS(3, _omitFieldNames ? '' : 'endpoints')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HeartbeatRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HeartbeatRequest copyWith(void Function(HeartbeatRequest) updates) =>
+      super.copyWith((message) => updates(message as HeartbeatRequest))
+          as HeartbeatRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HeartbeatRequest() / HeartbeatRequest.new instead')
+  static HeartbeatRequest create() => HeartbeatRequest._();
+  static $pb.GeneratedMessage $_createMessage() => HeartbeatRequest._();
+  @$core.override
+  HeartbeatRequest createEmptyInstance() => HeartbeatRequest._();
+  @$core.pragma('dart2js:noInline')
+  static HeartbeatRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HeartbeatRequest>(
+          HeartbeatRequest.$_createMessage);
+  static HeartbeatRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get usedBytes => $_getI64(0);
+  @$pb.TagNumber(1)
+  set usedBytes($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasUsedBytes() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearUsedBytes() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get capacityBytes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set capacityBytes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCapacityBytes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCapacityBytes() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $pb.PbList<$core.String> get endpoints => $_getList(2);
+}
+
+class HeartbeatResponse extends $pb.GeneratedMessage {
+  factory HeartbeatResponse({
+    $core.int? nextHeartbeatMs,
+  }) {
+    final result = HeartbeatResponse._();
+    if (nextHeartbeatMs != null) result.nextHeartbeatMs = nextHeartbeatMs;
+    return result;
+  }
+
+  HeartbeatResponse._();
+
+  factory HeartbeatResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HeartbeatResponse()..mergeFromBuffer(data, registry);
+  factory HeartbeatResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      HeartbeatResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'HeartbeatResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: HeartbeatResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'nextHeartbeatMs',
+        fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HeartbeatResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  HeartbeatResponse copyWith(void Function(HeartbeatResponse) updates) =>
+      super.copyWith((message) => updates(message as HeartbeatResponse))
+          as HeartbeatResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use HeartbeatResponse() / HeartbeatResponse.new instead')
+  static HeartbeatResponse create() => HeartbeatResponse._();
+  static $pb.GeneratedMessage $_createMessage() => HeartbeatResponse._();
+  @$core.override
+  HeartbeatResponse createEmptyInstance() => HeartbeatResponse._();
+  @$core.pragma('dart2js:noInline')
+  static HeartbeatResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<HeartbeatResponse>(
+          HeartbeatResponse.$_createMessage);
+  static HeartbeatResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get nextHeartbeatMs => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set nextHeartbeatMs($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNextHeartbeatMs() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNextHeartbeatMs() => $_clearField(1);
+}
+
+const $core.bool _omitFieldNames =
+    $core.bool.fromEnvironment('protobuf.omit_field_names');
+const $core.bool _omitMessageNames =
+    $core.bool.fromEnvironment('protobuf.omit_message_names');

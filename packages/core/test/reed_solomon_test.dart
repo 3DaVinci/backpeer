@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 import 'support/vectors.dart';
 
 void main() {
-  final vectors = loadVectors('reed-solomon.json');
+  final vectors = loadVectors('erasure/reed-solomon.json');
 
   group('ReedSolomon совпадает с reed-solomon-erasure', () {
     for (final testCase in vectorCases(vectors)) {

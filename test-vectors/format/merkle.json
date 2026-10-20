@@ -1,0 +1,86 @@
+{
+  "spec": "format/merkle",
+  "specVersion": 1,
+  "generator": "tool/format_vectors.py (Python, независимая реализация)",
+  "description": "Корень дерева Меркла тела фрагмента (data-format.md, раздел 5).",
+  "cases": [
+    {
+      "name": "one-block-64",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 30,
+          "length": 64
+        }
+      },
+      "expected": {
+        "root": "e0337e0c41aa4716063c59d82f1dd3526ac8016432e252cbc763570fcc6d1c2c"
+      }
+    },
+    {
+      "name": "exactly-one-block",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 31,
+          "length": 65536
+        }
+      },
+      "expected": {
+        "root": "e6734a0f813e012f1fdba9fdce3d2f1b1125511495325fab91627ac299be78ef"
+      }
+    },
+    {
+      "name": "two-blocks-short-tail",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 32,
+          "length": 65537
+        }
+      },
+      "expected": {
+        "root": "a6971792665f58b0d0571ccb81dd37de2ad94f3107104fcdeff9d798267af0b2"
+      }
+    },
+    {
+      "name": "three-blocks",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 33,
+          "length": 196608
+        }
+      },
+      "expected": {
+        "root": "44e4d8f7b8f23cee6ead17d7e3d20dc274137e840783caa304c9683196ccd936"
+      }
+    },
+    {
+      "name": "five-blocks",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 34,
+          "length": 262272
+        }
+      },
+      "expected": {
+        "root": "038164f442f2b0eb5aff1b6263d952ce998437ff6317315c65a65cb4288d7cae"
+      }
+    },
+    {
+      "name": "1MiB",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 35,
+          "length": 1048576
+        }
+      },
+      "expected": {
+        "root": "b8c0d982cbbfd33b0354e327bd81f87269ed99b8e7a3b8af32846a0fc00fb28f"
+      }
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+// Общие типы протокола. Спецификация — docs/spec/protocol.md.
+syntax = "proto3";
+
+package fs.v1;
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_VERSION_UNSUPPORTED = 1; // нет общей версии протокола
+  ERROR_CODE_BAD_REQUEST = 2;         // сообщение не разбирается или поля неверны
+  ERROR_CODE_UNAUTHENTICATED = 3;     // подпись или сертификат не прошли проверку
+  ERROR_CODE_PERMISSION_DENIED = 4;   // талон не разрешает операцию
+  ERROR_CODE_NOT_FOUND = 5;
+  ERROR_CODE_ALREADY_EXISTS = 6;
+  ERROR_CODE_QUOTA_EXCEEDED = 7;
+  ERROR_CODE_INTEGRITY_FAILED = 8;    // хэш или корень Меркла не совпали
+  ERROR_CODE_TICKET_EXPIRED = 9;
+  ERROR_CODE_RATE_LIMITED = 10;
+  ERROR_CODE_UNAVAILABLE = 11;        // временно, можно повторить
+  ERROR_CODE_INTERNAL = 12;
+}
+
+message Error {
+  ErrorCode code = 1;
+  string message = 2;                 // для журнала, не для пользователя
+  uint32 retry_after_ms = 3;          // для RATE_LIMITED и UNAVAILABLE
+}
+
+// Подписанное сообщение. signature — Ed25519 над
+// "fs/v1/sign/<context>" || 0x00 || body (docs/spec/crypto.md, раздел 3.5).
+message Signed {
+  bytes body = 1;                     // сериализованное сообщение
+  bytes signer = 2;                   // открытый ключ Ed25519 подписавшего
+  bytes signature = 3;
+}

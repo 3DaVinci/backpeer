@@ -1,0 +1,366 @@
+#!/usr/bin/env python3
+"""Генератор тестовых векторов для docs/spec/data-format.md.
+
+Эталонная реализация спецификации на Python, независимая от кода на Dart.
+Reed–Solomon реализован здесь же и перед генерацией сверяется с векторами
+крейта reed-solomon-erasure (test-vectors/erasure/reed-solomon.json).
+
+Запуск из корня репозитория (после tool/crypto_vectors.py):
+
+    python3 -I tool/format_vectors.py
+"""
+
+import hashlib
+import importlib.util
+import json
+import os
+import struct
+
+_spec = importlib.util.spec_from_file_location(
+    "crypto_vectors", os.path.join("tool", "crypto_vectors.py"))
+cv = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(cv)
+
+OUT_DIR = os.path.join("test-vectors", "format")
+GENERATOR = "tool/format_vectors.py (Python, независимая реализация)"
+
+MIN, NORMAL, MAX = 512 * 1024, 1024 * 1024, 8 * 1024 * 1024
+MASK_S = 0xFFFFFC0000000000
+MASK_L = 0xFFFFC00000000000
+U64 = 0xFFFFFFFFFFFFFFFF
+SEGMENT_MAX = 16 * 1024 * 1024
+SEGMENT_ALIGN = 65536
+BLOCK = 65536
+
+
+def H(data: bytes) -> bytes:
+    return hashlib.blake2b(data, digest_size=32).digest()
+
+
+# --- FastCDC -----------------------------------------------------------------
+
+def gear_table(gear_key: bytes) -> list:
+    return [struct.unpack("<Q", cv.blake2b_keyed(gear_key, b"fs/v1/gear" + bytes([i]))[:8])[0]
+            for i in range(256)]
+
+
+def cut(data: bytes, start: int, gear: list) -> int:
+    length = len(data) - start
+    if length <= MIN:
+        return length
+    n = min(length, MAX)
+    normal = min(NORMAL, n)
+    fp = 0
+    i = MIN
+    while i < normal:
+        fp = ((fp << 1) + gear[data[start + i]]) & U64
+        if fp & MASK_S == 0:
+            return i + 1
+        i += 1
+    while i < n:
+        fp = ((fp << 1) + gear[data[start + i]]) & U64
+        if fp & MASK_L == 0:
+            return i + 1
+        i += 1
+    return n
+
+
+def chunk_lengths(data: bytes, gear: list) -> list:
+    out, pos = [], 0
+    while pos < len(data):
+        size = cut(data, pos, gear)
+        out.append(size)
+        pos += size
+    return out
+
+
+def expected_average() -> float:
+    """Ожидаемая длина чанка на случайных данных (аналитически)."""
+    p1, p2 = 2.0 ** -22, 2.0 ** -18
+    m1, m2 = NORMAL - MIN, MAX - NORMAL
+    no_cut_1 = (1 - p1) ** m1
+    e1 = (1 - no_cut_1) / p1
+    e2 = (1 - (1 - p2) ** m2) / p2
+    return MIN + e1 + no_cut_1 * e2
+
+
+# --- Сегмент -------------------------------------------------------------------
+
+def segment_plaintext(chunks: list) -> bytes:
+    """chunks: список (chunk_id, тип, данные)."""
+    data_length = sum(len(c[2]) for c in chunks)
+    out = bytearray(b"FSSG" + bytes([1, 0, 0, 0]) + struct.pack("<II", len(chunks), data_length))
+    for chunk_id, kind, data in chunks:
+        out += chunk_id + bytes([kind, 0, 0, 0]) + struct.pack("<I", len(data))
+    for _, _, data in chunks:
+        out += data
+    out += bytes((-len(out)) % SEGMENT_ALIGN)
+    assert len(out) <= SEGMENT_MAX
+    return bytes(out)
+
+
+# --- Reed–Solomon (как в reed-solomon-erasure, galois_8) ------------------------
+
+EXP = [0] * 510
+LOG = [0] * 256
+_x = 1
+for _i in range(255):
+    EXP[_i] = EXP[_i + 255] = _x
+    LOG[_x] = _i
+    _x <<= 1
+    if _x & 0x100:
+        _x ^= 0x11D
+
+
+def gmul(a: int, b: int) -> int:
+    return 0 if a == 0 or b == 0 else EXP[LOG[a] + LOG[b]]
+
+
+def gdiv(a: int, b: int) -> int:
+    return 0 if a == 0 else EXP[(LOG[a] - LOG[b]) % 255]
+
+
+def gpow(a: int, n: int) -> int:
+    if n == 0:
+        return 1
+    return 0 if a == 0 else EXP[(LOG[a] * n) % 255]
+
+
+def mat_mul(a, b):
+    return [[_dot(row, [b[i][c] for i in range(len(b))]) for c in range(len(b[0]))] for row in a]
+
+
+def _dot(x, y):
+    acc = 0
+    for p, q in zip(x, y):
+        acc ^= gmul(p, q)
+    return acc
+
+
+def mat_inv(m):
+    n = len(m)
+    w = [row[:] + [1 if i == j else 0 for j in range(n)] for i, row in enumerate(m)]
+    for r in range(n):
+        if w[r][r] == 0:
+            swap = next(i for i in range(r + 1, n) if w[i][r] != 0)
+            w[r], w[swap] = w[swap], w[r]
+        pivot = w[r][r]
+        w[r] = [gdiv(v, pivot) for v in w[r]]
+        for o in range(n):
+            if o != r and w[o][r]:
+                f = w[o][r]
+                w[o] = [v ^ gmul(f, pv) for v, pv in zip(w[o], w[r])]
+    return [row[n:] for row in w]
+
+
+def encoding_matrix(k: int, n: int):
+    v = [[gpow(r, c) for c in range(k)] for r in range(n)]
+    return mat_mul(v, mat_inv(v[:k]))
+
+
+def rs_encode(data_shards: list, n: int) -> list:
+    k = len(data_shards)
+    m = encoding_matrix(k, n)
+    size = len(data_shards[0])
+    parity = []
+    for r in range(k, n):
+        out = bytearray(size)
+        for c in range(k):
+            coef = m[r][c]
+            if coef == 0:
+                continue
+            table = bytes(gmul(coef, b) for b in range(256))
+            src = data_shards[c]
+            out = bytearray(x ^ y for x, y in zip(out, src.translate(table)))
+        parity.append(bytes(out))
+    return list(data_shards) + parity
+
+
+def check_rs_against_crate() -> None:
+    with open(os.path.join("test-vectors", "erasure", "reed-solomon.json"), encoding="utf-8") as f:
+        vectors = json.load(f)
+    for case in vectors["cases"]:
+        k, n = case["input"]["dataShards"], case["input"]["totalShards"]
+        if n > 64:
+            continue  # без больших случаев: чистый Python медленный
+        data = [bytes.fromhex(h) for h in case["input"]["data"]]
+        shards = rs_encode(data, n)
+        assert [s.hex() for s in shards[k:]] == case["expected"]["parity"], case["name"]
+
+
+# --- Фрагменты и дерево Меркла --------------------------------------------------
+
+def merkle_root(body: bytes) -> bytes:
+    leaves = [H(b"\x00" + body[i:i + BLOCK]) for i in range(0, len(body), BLOCK)]
+
+    def mth(nodes):
+        if len(nodes) == 1:
+            return nodes[0]
+        j = 1
+        while j * 2 < len(nodes):
+            j *= 2
+        return H(b"\x01" + mth(nodes[:j]) + mth(nodes[j:]))
+
+    return mth(leaves)
+
+
+def shard_size_for(blob_length: int, k: int) -> int:
+    per = -(-blob_length // k)
+    return -(-per // 64) * 64
+
+
+def fragments(blob: bytes, segment_id: bytes, k: int, n: int) -> list:
+    size = shard_size_for(len(blob), k)
+    padded = blob + bytes(k * size - len(blob))
+    shards = rs_encode([padded[i * size:(i + 1) * size] for i in range(k)], n)
+    out = []
+    for index, body in enumerate(shards):
+        root = merkle_root(body)
+        header = (b"FSFR" + bytes([1, 1, k, n, index, 16, 0, 0])
+                  + struct.pack("<II", len(blob), size) + segment_id + root + bytes(12))
+        assert len(header) == 96
+        out.append((header, body))
+    return out
+
+
+# --- Запись ------------------------------------------------------------------
+
+def write(name: str, spec: str, description: str, cases: list, extra: dict = None) -> None:
+    os.makedirs(OUT_DIR, exist_ok=True)
+    doc = {"spec": spec, "specVersion": 1, "generator": GENERATOR, "description": description}
+    if extra:
+        doc.update(extra)
+    doc["cases"] = cv.hexify(cases)
+    with open(os.path.join(OUT_DIR, name), "w", encoding="utf-8") as f:
+        json.dump(doc, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+
+def main() -> None:
+    check_rs_against_crate()
+    root_keys = cv.derive_all(cv.bip39_seed(cv.load_trezor_24()[0][1]), bytes(range(32)))
+    gear_key = root_keys["gearKey"]
+    chunk_key = root_keys["chunkIdKey"]
+    gear = gear_table(gear_key)
+
+    write("gear.json", "format/gear", "Таблица gear FastCDC по ключу K_gear (data-format.md, раздел 2).",
+          [{"name": "key-hierarchy-abandon", "input": {"gearKey": gear_key},
+            "expected": {"gear": [f"{g:016x}" for g in gear]}}])
+
+    # FastCDC
+    cases = []
+    inputs = [
+        ("empty", cv.pattern(10, 0)),
+        ("below-min", cv.pattern(11, 100_000)),
+        ("exactly-min", cv.pattern(12, MIN)),
+        ("min-plus-one", cv.pattern(13, MIN + 1)),
+        ("random-24MiB", cv.pattern(14, 24 * 1024 * 1024)),
+    ]
+    for name, pat in inputs:
+        data = cv.splitmix64_bytes(pat["seed"], pat["length"])
+        lengths = chunk_lengths(data, gear)
+        cases.append({"name": name, "input": {"gearKey": gear_key, "dataPattern": pat},
+                      "expected": {"chunkLengths": lengths}})
+    zeros = bytes(20 * 1024 * 1024)
+    cases.append({"name": "zeros-20MiB",
+                  "input": {"gearKey": gear_key, "dataZeros": len(zeros)},
+                  "expected": {"chunkLengths": chunk_lengths(zeros, gear)}})
+    write("fastcdc.json", "format/fastcdc",
+          "Границы чанков FastCDC (data-format.md, раздел 2). dataPattern — генератор splitmix64-le, "
+          "dataZeros — столько нулевых байт.", cases,
+          {"expectedAverageChunkLength": round(expected_average())})
+
+    # Сегмент
+    chunk_specs = [(20, 1000, 1), (21, 70000, 1), (22, 1, 2), (23, 300000, 1)]
+    chunks = []
+    for seed, length, kind in chunk_specs:
+        data = cv.splitmix64_bytes(seed, length)
+        chunks.append((cv.blake2b_keyed(chunk_key, data), kind, data))
+    plain = segment_plaintext(chunks)
+    segment_id = bytes(range(0x80, 0xA0))
+    nonce = bytes(range(0x50, 0x68))
+    seg_key = cv.hkdf(root_keys["dataKey"], b"", b"fs/v1/segment" + segment_id)
+    blob = cv.blob(1, segment_id, nonce, seg_key, plain)
+    seg_case = {
+        "name": "four-chunks",
+        "input": {
+            "chunkIdKey": chunk_key,
+            "chunks": [{"dataPattern": cv.pattern(s, l), "type": t} for s, l, t in chunk_specs],
+            "segmentId": segment_id, "nonce": nonce, "dataKey": root_keys["dataKey"],
+        },
+        "expected": {
+            "chunkIds": [c[0] for c in chunks],
+            "header": plain[:16 + 40 * len(chunks)],
+            "plaintextLength": len(plain), "plaintextHash": H(plain),
+            "blobLength": len(blob), "blobHash": H(blob),
+        },
+    }
+    rejects = []
+    small = segment_plaintext([(bytes(32), 1, b"x")])
+
+    def reject(name, patch=None, truncate=None):
+        data = small
+        change = {}
+        if patch is not None:
+            offset, replacement = patch
+            data = data[:offset] + replacement + data[offset + len(replacement):]
+            change["patch"] = {"offset": offset, "bytes": replacement}
+        if truncate is not None:
+            data = data[:truncate]
+            change["truncate"] = truncate
+        rejects.append({"name": "reject-" + name, "input": {"base": "minimal", **change},
+                        "expected": {"error": "format"}})
+
+    reject("bad-magic", patch=(0, b"FSSX"))
+    reject("unknown-version", patch=(4, b"\x02"))
+    reject("nonzero-reserved", patch=(5, b"\x01"))
+    reject("zero-count", patch=(8, struct.pack("<I", 0)))
+    reject("unknown-type", patch=(16 + 32, b"\x03"))
+    reject("data-length-mismatch", patch=(12, struct.pack("<I", 2)))
+    reject("nonzero-padding", patch=(len(small) - 1, b"\x01"))
+    reject("unaligned-length", truncate=len(small) - 1)
+    write("segment.json", "format/segment",
+          "Открытый текст сегмента и блоб (data-format.md, раздел 3). Большие результаты заданы "
+          "длиной и хэшем BLAKE2b-256. Отклоняемые сегменты строятся из минимального "
+          "(base = minimal: один чанк типа 1 с chunk_id из 32 нулей и содержимым \"x\") "
+          "правкой patch (заменить байты с offset) или обрезкой truncate (оставить столько байт).",
+          [seg_case] + rejects, {"minimalSegment": {"length": len(small), "hash": H(small).hex()}})
+
+    # Дерево Меркла
+    cases = []
+    for name, seed, length in [("one-block-64", 30, 64), ("exactly-one-block", 31, BLOCK),
+                               ("two-blocks-short-tail", 32, BLOCK + 1),
+                               ("three-blocks", 33, 3 * BLOCK),
+                               ("five-blocks", 34, 4 * BLOCK + 128),
+                               ("1MiB", 35, 16 * BLOCK)]:
+        body = cv.splitmix64_bytes(seed, length)
+        cases.append({"name": name, "input": {"bodyPattern": cv.pattern(seed, length)},
+                      "expected": {"root": merkle_root(body)}})
+    write("merkle.json", "format/merkle", "Корень дерева Меркла тела фрагмента (data-format.md, раздел 5).",
+          cases)
+
+    # Фрагменты: тот же сегмент, k=4, n=6 и k=10, n=16
+    cases = []
+    for k, n in [(4, 6), (10, 16)]:
+        frs = fragments(blob, segment_id, k, n)
+        cases.append({
+            "name": f"four-chunks-k{k}-n{n}",
+            "input": {"segmentCase": "four-chunks", "k": k, "n": n},
+            "expected": {
+                "shardSize": shard_size_for(len(blob), k),
+                "fragments": [{"header": h, "bodyRoot": merkle_root(b), "bodyHash": H(b),
+                               "fragmentId": H(h)} for h, b in frs],
+            },
+        })
+    write("fragment.json", "format/fragment",
+          "Блоб сегмента из segment.json (случай four-chunks) → n фрагментов (data-format.md, "
+          "разделы 4–5). Тела заданы хэшем BLAKE2b-256.", cases)
+
+    print(f"Средняя длина чанка (расчёт): {expected_average():.0f} байт")
+    lengths = next(c for c in json.load(open(os.path.join(OUT_DIR, "fastcdc.json")))["cases"]
+                   if c["name"] == "random-24MiB")["expected"]["chunkLengths"]
+    print(f"random-24MiB: {len(lengths)} чанков, средняя длина {sum(lengths) / len(lengths):.0f}")
+
+
+if __name__ == "__main__":
+    main()

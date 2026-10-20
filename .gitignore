@@ -24,4 +24,7 @@ Thumbs.db
 .gitlab-ci-local/
 
 # Rust: сборка генераторов тестовых векторов
-test-vectors/generators/*/target/
+tool/rs-vectors/target/
+
+# Python: кеш байт-кода генераторов векторов
+__pycache__/

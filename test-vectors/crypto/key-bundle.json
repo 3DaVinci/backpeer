@@ -1,0 +1,68 @@
+{
+  "spec": "crypto/key-bundle",
+  "specVersion": 1,
+  "generator": "tool/crypto_vectors.py (Python hashlib, cryptography, libsodium)",
+  "description": "Пароль → PK (Argon2id) → KEK, AUTH; KeyBundle с копией мастер-ключа (crypto.md, раздел 4). Случаи *-fast-params используют малые параметры только для скорости тестов.",
+  "cases": [
+    {
+      "name": "ascii-fast-params",
+      "input": {
+        "password": "correct horse battery staple",
+        "salt": "101112131415161718191a1b1c1d1e1f",
+        "m": 1024,
+        "t": 1,
+        "p": 1,
+        "masterKey": "2351decc304b71f50ee9c2ff18fa4268f45e6ddea9f3fd4a81613a5c8e1adff1",
+        "accountPublicKey": "f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196",
+        "nonce": "303132333435363738393a3b3c3d3e3f4041424344454647"
+      },
+      "expected": {
+        "passwordNfkcUtf8": "636f727265637420686f727365206261747465727920737461706c65",
+        "pk": "556f761d813beb4827e0d3b280d48a0ccd46c03b38de3861aa6740bbff0ecd43",
+        "kek": "af21cb84915b934cf18acb9ddf4acd956affaf06dffaedcbe443e459ef1dae33",
+        "auth": "ac1497f3a59d978ad0855bbadc1cf578d70d1cccf416d0399ff73d319a4761fe",
+        "keyBundle": "46534b4201010000000400000100000001000000101112131415161718191a1b1c1d1e1f4653454201040000f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196303132333435363738393a3b3c3d3e3f4041424344454647e97e3af945094e361a773afdf7e70c44bb0c073525fa0a8f62de02eb978b8e5e611a43ac237df3847026284d35b2d3c4"
+      }
+    },
+    {
+      "name": "nfkc-fast-params",
+      "input": {
+        "password": "Ｐａｓｓ ﬁ ½",
+        "salt": "101112131415161718191a1b1c1d1e1f",
+        "m": 1024,
+        "t": 1,
+        "p": 1,
+        "masterKey": "2351decc304b71f50ee9c2ff18fa4268f45e6ddea9f3fd4a81613a5c8e1adff1",
+        "accountPublicKey": "f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196",
+        "nonce": "303132333435363738393a3b3c3d3e3f4041424344454647"
+      },
+      "expected": {
+        "passwordNfkcUtf8": "506173732066692031e2818432",
+        "pk": "f4b3511eb4ab17dce436320558c47c22e53e2ff99914ccc3ac5eac667d1c362f",
+        "kek": "f5c822619902708c360f09307a606bb90a20edeeb492775da16ca270181efbde",
+        "auth": "adde9e9d5f7019c3b2593c3611e27f362c2808ccd54f640d8d6e049a191262e5",
+        "keyBundle": "46534b4201010000000400000100000001000000101112131415161718191a1b1c1d1e1f4653454201040000f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196303132333435363738393a3b3c3d3e3f404142434445464706f9115f3f4a926350d46896854c9da9bb07fc2178894ff8c9d65209d6ae8d217dc440a856de264755866d40e555bc79"
+      }
+    },
+    {
+      "name": "default-params",
+      "input": {
+        "password": "correct horse battery staple",
+        "salt": "101112131415161718191a1b1c1d1e1f",
+        "m": 262144,
+        "t": 3,
+        "p": 1,
+        "masterKey": "2351decc304b71f50ee9c2ff18fa4268f45e6ddea9f3fd4a81613a5c8e1adff1",
+        "accountPublicKey": "f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196",
+        "nonce": "303132333435363738393a3b3c3d3e3f4041424344454647"
+      },
+      "expected": {
+        "passwordNfkcUtf8": "636f727265637420686f727365206261747465727920737461706c65",
+        "pk": "459814c43bd911150b4d67f60eba62359c9d8e667543647f17158bb7e0fefe88",
+        "kek": "18a8bb4eefdcf87daf1d6c85fce763de03186118806bad9f79f6c2334a397d44",
+        "auth": "f12d4f7c38cd3652344eb2e323421f9e0f7cd62f9c65afdbd6b7dc34dfefcd3a",
+        "keyBundle": "46534b4201010000000004000300000001000000101112131415161718191a1b1c1d1e1f4653454201040000f2e2a69f0af7ca46d69b018aa970e552ede73fa63af5907965d8a8b190228196303132333435363738393a3b3c3d3e3f4041424344454647fb36dac3be667b3431a4d5560c9753cf6871546ce3b242602c8f00f09fa34df82fdf7d1f21f99d060a679da4c215425f"
+      }
+    }
+  ]
+}

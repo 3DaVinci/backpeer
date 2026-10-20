@@ -1,7 +1,7 @@
 {
   "spec": "reed-solomon",
   "specVersion": 1,
-  "generator": "test-vectors/generators/reed-solomon (reed-solomon-erasure 6.0.0, galois_8)",
+  "generator": "tool/rs-vectors (reed-solomon-erasure 6.0.0, galois_8)",
   "cases": [
     {
       "name": "k1_n2_len16",

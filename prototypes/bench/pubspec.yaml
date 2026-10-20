@@ -1,0 +1,16 @@
+name: bench
+description: Прототипы и замеры рисков чистого Dart (задачи 0.5.1–0.5.5). В продукт не входит.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  core: any
+  crypto: ^3.0.7
+  cryptography: ^2.9.0
+  hashlib: ^2.4.2
+  sodium: ^4.1.2
+  sqlite3: ^3.7.1

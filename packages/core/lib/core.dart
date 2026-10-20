@@ -2,3 +2,5 @@
 library;
 
 export 'src/build_info.dart';
+export 'src/erasure/erasure_coder.dart';
+export 'src/erasure/reed_solomon.dart';

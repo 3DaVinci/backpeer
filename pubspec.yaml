@@ -12,6 +12,7 @@ workspace:
   - packages/node
   - packages/coordinator
   - apps/app
+  - prototypes/bench
 
 dev_dependencies:
   melos: ^8.9.0

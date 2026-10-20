@@ -1,9 +1,10 @@
-/// Версия продукта. Подставляется при сборке:
-/// `dart compile exe -DAPP_VERSION=0.1.0 ...` (см. `tool/build_exe.dart`).
-const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
+import 'package:core/src/build_info_values.dart';
+
+/// Версия продукта. Подставляется при сборке (см. `tool/build_exe.dart`).
+const String appVersion = buildAppVersion;
 
 /// Короткий хэш коммита, из которого собран бинарник.
-const gitCommit = String.fromEnvironment('GIT_COMMIT', defaultValue: 'unknown');
+const String gitCommit = buildGitCommit;
 
 /// Строка для `--version`, например `cli 0.1.0 (abc1234)`.
 String versionLine(String program) => '$program $appVersion ($gitCommit)';

@@ -1,0 +1,9 @@
+[package]
+name = "rs-vectors"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Генератор тестовых векторов Reed–Solomon из эталонного крейта reed-solomon-erasure"
+
+[dependencies]
+reed-solomon-erasure = "=6.0.0"

@@ -36,10 +36,45 @@ melos:
       description: Проверить, что пакеты ядра не зависят от Flutter.
       run: dart run tool/check_no_flutter.dart
 
+    lint:
+      description: Форматирование, анализатор и правило зависимостей.
+      steps:
+        - format --output none --set-exit-if-changed
+        - dart format --output none --set-exit-if-changed tool
+        - dart analyze --fatal-infos
+        - check-deps
+
     check:
       description: Все локальные проверки (как в pre-commit хуке) и тесты.
       steps:
-        - format --output none --set-exit-if-changed
-        - dart analyze --fatal-infos
-        - check-deps
+        - lint
         - dart run melos:melos test
+
+    coverage-dart:
+      description: Тесты Dart-пакетов с покрытием (coverage/lcov.info).
+      exec:
+        command: dart test --coverage-path=coverage/lcov.info
+        concurrency: 1
+      packageFilters:
+        flutter: false
+        dirExists: test
+
+    coverage-flutter:
+      description: Тесты Flutter-пакетов с покрытием (coverage/lcov.info).
+      exec:
+        command: flutter test --coverage
+        concurrency: 1
+      packageFilters:
+        flutter: true
+        dirExists: test
+
+    coverage:
+      description: Тесты с покрытием и сводный отчёт в coverage/ (lcov и Cobertura).
+      steps:
+        - coverage-dart
+        - coverage-flutter
+        - dart run tool/coverage_report.dart
+
+    build-exe:
+      description: Собрать cli и node под текущую платформу в build/bin/.
+      run: dart run tool/build_exe.dart

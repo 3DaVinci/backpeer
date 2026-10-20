@@ -19,3 +19,6 @@ Thumbs.db
 
 # FVM Version Cache
 .fvm/
+
+# gitlab-ci-local: локальный прогон CI
+.gitlab-ci-local/

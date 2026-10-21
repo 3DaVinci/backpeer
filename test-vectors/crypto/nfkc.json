@@ -1,0 +1,178 @@
+{
+  "spec": "crypto/nfkc",
+  "specVersion": 1,
+  "generator": "tool/crypto_vectors.py (Python hashlib, cryptography, libsodium)",
+  "description": "NFKC пароля (crypto.md, раздел 4): строки из символов, назначенных во всех версиях Unicode, и их нормальная форма; эталон — unicodedata в Python. Тексты в JSON как есть.",
+  "cases": [
+    {
+      "name": "ascii",
+      "input": {
+        "text": "correct horse battery staple"
+      },
+      "expected": {
+        "nfkc": "correct horse battery staple",
+        "nfkcUtf8": "636f727265637420686f727365206261747465727920737461706c65"
+      }
+    },
+    {
+      "name": "fullwidth",
+      "input": {
+        "text": "Ｐａｓｓｗｏｒｄ１２３"
+      },
+      "expected": {
+        "nfkc": "Password123",
+        "nfkcUtf8": "50617373776f7264313233"
+      }
+    },
+    {
+      "name": "ligatures",
+      "input": {
+        "text": "ﬁﬂﬀ Ĳ"
+      },
+      "expected": {
+        "nfkc": "fiflff IJ",
+        "nfkcUtf8": "6669666c666620494a"
+      }
+    },
+    {
+      "name": "latin-decomposed",
+      "input": {
+        "text": "Café naïve"
+      },
+      "expected": {
+        "nfkc": "Café naïve",
+        "nfkcUtf8": "436166c3a9206e61c3af7665"
+      }
+    },
+    {
+      "name": "latin-composed",
+      "input": {
+        "text": "Café naïve"
+      },
+      "expected": {
+        "nfkc": "Café naïve",
+        "nfkcUtf8": "436166c3a9206e61c3af7665"
+      }
+    },
+    {
+      "name": "cyrillic-decomposed",
+      "input": {
+        "text": "йод ёж"
+      },
+      "expected": {
+        "nfkc": "йод ёж",
+        "nfkcUtf8": "d0b9d0bed0b420d191d0b6"
+      }
+    },
+    {
+      "name": "cyrillic-composed",
+      "input": {
+        "text": "йод ёж"
+      },
+      "expected": {
+        "nfkc": "йод ёж",
+        "nfkcUtf8": "d0b9d0bed0b420d191d0b6"
+      }
+    },
+    {
+      "name": "superscript-fraction",
+      "input": {
+        "text": "x² ½ ① Ⅳ"
+      },
+      "expected": {
+        "nfkc": "x2 1⁄2 1 IV",
+        "nfkcUtf8": "78322031e28184322031204956"
+      }
+    },
+    {
+      "name": "hangul-jamo",
+      "input": {
+        "text": "한글"
+      },
+      "expected": {
+        "nfkc": "한글",
+        "nfkcUtf8": "ed959ceab880"
+      }
+    },
+    {
+      "name": "hangul-syllables",
+      "input": {
+        "text": "한글"
+      },
+      "expected": {
+        "nfkc": "한글",
+        "nfkcUtf8": "ed959ceab880"
+      }
+    },
+    {
+      "name": "halfwidth-katakana",
+      "input": {
+        "text": "ﾊﾟｽﾜｰﾄﾞ"
+      },
+      "expected": {
+        "nfkc": "パスワード",
+        "nfkcUtf8": "e38391e382b9e383afe383bce38389"
+      }
+    },
+    {
+      "name": "greek-tonos",
+      "input": {
+        "text": "ΐ ι ϓ"
+      },
+      "expected": {
+        "nfkc": "ΐ ι Ύ",
+        "nfkcUtf8": "ce9020ceb920ce8e"
+      }
+    },
+    {
+      "name": "arabic-presentation",
+      "input": {
+        "text": "ﻻ ﷺ"
+      },
+      "expected": {
+        "nfkc": "لا صلى الله عليه وسلم",
+        "nfkcUtf8": "d984d8a720d8b5d984d98920d8a7d984d984d98720d8b9d984d98ad98720d988d8b3d984d985"
+      }
+    },
+    {
+      "name": "nbsp-and-ideographic-space",
+      "input": {
+        "text": "a b　c"
+      },
+      "expected": {
+        "nfkc": "a b c",
+        "nfkcUtf8": "6120622063"
+      }
+    },
+    {
+      "name": "angstrom-ohm-kelvin",
+      "input": {
+        "text": "Å Ω K"
+      },
+      "expected": {
+        "nfkc": "Å Ω K",
+        "nfkcUtf8": "c38520cea9204b"
+      }
+    },
+    {
+      "name": "combining-order",
+      "input": {
+        "text": "ạ̇ ạ̇"
+      },
+      "expected": {
+        "nfkc": "ạ̇ ạ̇",
+        "nfkcUtf8": "e1baa1cc8720e1baa1cc87"
+      }
+    },
+    {
+      "name": "empty",
+      "input": {
+        "text": ""
+      },
+      "expected": {
+        "nfkc": "",
+        "nfkcUtf8": ""
+      }
+    }
+  ]
+}

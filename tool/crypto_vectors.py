@@ -286,6 +286,48 @@ def bip39_mnemonic_cases() -> list:
     return cases
 
 
+# --- NFKC для паролей -----------------------------------------------------
+
+# Строки, которые встречаются в паролях: полноширинные и лигатуры,
+# составные и разложенные буквы, надстрочные цифры, хангыль, японская
+# полуширинная катакана, формы арабского письма. Только символы, назначенные
+# уже в Unicode 3.2: их NFKC одинакова во всех реализациях (политика
+# стабильности нормализации), даже если версии Unicode у них разные.
+NFKC_SAMPLES = [
+    ("ascii", "correct horse battery staple"),
+    ("fullwidth", "\uff30\uff41\uff53\uff53\uff57\uff4f\uff52\uff44\uff11\uff12\uff13"),
+    ("ligatures", "\ufb01\ufb02\ufb00 \u0132"),
+    ("latin-decomposed", "Cafe\u0301 nai\u0308ve"),
+    ("latin-composed", "Caf\u00e9 na\u00efve"),
+    ("cyrillic-decomposed", "\u0438\u0306\u043e\u0434 \u0435\u0308\u0436"),
+    ("cyrillic-composed", "\u0439\u043e\u0434 \u0451\u0436"),
+    ("superscript-fraction", "x\u00b2 \u00bd \u2460 \u2163"),
+    ("hangul-jamo", "\u1112\u1161\u11ab\u1100\u1173\u11af"),
+    ("hangul-syllables", "\ud55c\uae00"),
+    ("halfwidth-katakana", "\uff8a\uff9f\uff7d\uff9c\uff70\uff84\uff9e"),
+    ("greek-tonos", "\u0390 \u1fbe \u03d2\u0301"),
+    ("arabic-presentation", "\ufefb \ufdfa"),
+    ("nbsp-and-ideographic-space", "a\u00a0b\u3000c"),
+    ("angstrom-ohm-kelvin", "\u212b \u2126 \u212a"),
+    ("combining-order", "a\u0323\u0307 a\u0307\u0323"),
+    ("empty", ""),
+]
+
+
+def nfkc_cases() -> list:
+    cases = []
+    for name, text in NFKC_SAMPLES:
+        assert all(unicodedata.ucd_3_2_0.category(ch) != "Cn" for ch in text), name
+        normalized = unicodedata.normalize("NFKC", text)
+        assert unicodedata.ucd_3_2_0.normalize("NFKC", text) == normalized, name
+        cases.append({
+            "name": name,
+            "input": {"text": text},
+            "expected": {"nfkc": normalized, "nfkcUtf8": normalized.encode("utf-8")},
+        })
+    return cases
+
+
 # --- примитивы: векторы из RFC ---------------------------------------------
 # Значения перенесены из текстов RFC; каждое сверяется с независимой
 # реализацией (cryptography, hashlib, libsodium). Если перенос с ошибкой,
@@ -574,6 +616,11 @@ def main() -> None:
           "24 слова; неизвестное слово или их число — format, контрольная сумма — integrity. "
           "Словарь — tool/bip39-english.txt.",
           bip39_mnemonic_cases())
+
+    write("nfkc.json", "crypto/nfkc",
+          "NFKC пароля (crypto.md, раздел 4): строки из символов, назначенных во всех версиях "
+          "Unicode, и их нормальная форма; эталон — unicodedata в Python. Тексты в JSON как есть.",
+          nfkc_cases())
 
     write("primitives.json", "crypto/primitives",
           "Примитивы crypto.md, раздел 2, на векторах из RFC: XChaCha20-Poly1305 "

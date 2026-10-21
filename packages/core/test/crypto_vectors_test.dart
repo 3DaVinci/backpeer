@@ -129,8 +129,8 @@ void main() {
       test(c['name'], () async {
         final input = c['input']! as Map<String, Object?>;
         final expected = c['expected']! as Map<String, Object?>;
-        // Нормализация NFKC проверяется по ожидаемому значению: в Dart нет
-        // встроенной нормализации Unicode, её добавит этап 1 (1.2.5).
+        // Нормализация NFKC проверяется по ожидаемому значению; рабочая
+        // нормализация — в key_store_test.dart.
         final password = hexToBytes(expected['passwordNfkcUtf8']! as String);
         if (input['password'] == 'correct horse battery staple') {
           expect(password, utf8.encode(input['password']! as String));

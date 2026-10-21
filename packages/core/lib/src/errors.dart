@@ -71,6 +71,7 @@ enum IntegrityCheck {
   hash('хэш'),
   merkleRoot('корень Меркла'),
   fragmentId('идентификатор фрагмента'),
+  checksum('контрольная сумма'),
   signature('подпись');
 
   new(this.description);

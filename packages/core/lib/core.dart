@@ -13,6 +13,7 @@
 library;
 
 export 'src/build_info.dart';
+export 'src/chunking/fastcdc.dart';
 export 'src/crypto/account_keys.dart';
 export 'src/crypto/crypto_provider.dart';
 export 'src/crypto/dart_crypto_provider.dart';

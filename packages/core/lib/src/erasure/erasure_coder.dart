@@ -5,8 +5,8 @@ import 'dart:typed_data';
 /// test-vectors/erasure/reed-solomon.json).
 ///
 /// Неверное число буферов или буферы разной длины — [ArgumentError]
-/// (ошибка программы). Нехватка фрагментов при [reconstruct] — ошибка
-/// данных; её тип задаёт иерархия ошибок `core`.
+/// (ошибка программы). Нехватка фрагментов при [reconstruct] —
+/// `InsufficientShardsException`.
 abstract interface class ErasureCoder {
   /// Число фрагментов данных, k.
   int get dataShards;

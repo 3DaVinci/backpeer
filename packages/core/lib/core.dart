@@ -17,4 +17,5 @@ export 'src/crypto/crypto_provider.dart';
 export 'src/crypto/secret_bytes.dart';
 export 'src/erasure/erasure_coder.dart';
 export 'src/erasure/reed_solomon.dart';
+export 'src/errors.dart';
 export 'src/util/bytes.dart';

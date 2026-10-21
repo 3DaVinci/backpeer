@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:core/src/erasure/erasure_coder.dart';
 import 'package:core/src/erasure/galois8.dart';
+import 'package:core/src/errors.dart';
 
 /// Reed–Solomon на GF(2^8), побайтно совместимый с reed-solomon-erasure 6.x.
 ///
@@ -68,8 +69,9 @@ final class ReedSolomon implements ErasureCoder {
     }
     if (present.length == totalShards) return;
     if (present.length < dataShards || length == null) {
-      throw StateError(
-        'Недостаточно фрагментов: ${present.length} из нужных $dataShards',
+      throw InsufficientShardsException(
+        available: present.length,
+        required: dataShards,
       );
     }
 

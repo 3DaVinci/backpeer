@@ -50,6 +50,9 @@ void main() {
 
   test('слишком мало фрагментов — ошибка', () {
     final rs = ReedSolomon(2, 1);
-    expect(() => rs.reconstruct([Uint8List(4), null, null]), throwsStateError);
+    expect(
+      () => rs.reconstruct([Uint8List(4), null, null]),
+      throwsA(isA<InsufficientShardsException>()),
+    );
   });
 }

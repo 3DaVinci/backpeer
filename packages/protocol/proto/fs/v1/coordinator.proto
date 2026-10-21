@@ -24,6 +24,15 @@ message AddDeviceRequest {
 }
 message AddDeviceResponse {}
 
+// Отзыв устройства (потеряно или украдено). Запрос подписан ключом учётной
+// записи; revocation — fs.v1.Signed с DeviceRevocation (контекст
+// "device-revoke"). После отзыва координатор не принимает запросы и не
+// выдаёт талоны этому устройству.
+message RevokeDeviceRequest {
+  Signed revocation = 1;
+}
+message RevokeDeviceResponse {}
+
 // Получить копию мастер-ключа для входа на новом устройстве (этап 2).
 message GetKeyBundleRequest {
   bytes account_id = 1;

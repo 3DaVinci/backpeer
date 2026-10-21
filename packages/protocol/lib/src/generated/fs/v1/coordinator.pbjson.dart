@@ -91,6 +91,35 @@ const AddDeviceResponse$json = {
 final $typed_data.Uint8List addDeviceResponseDescriptor =
     $convert.base64Decode('ChFBZGREZXZpY2VSZXNwb25zZQ==');
 
+@$core.Deprecated('Use revokeDeviceRequestDescriptor instead')
+const RevokeDeviceRequest$json = {
+  '1': 'RevokeDeviceRequest',
+  '2': [
+    {
+      '1': 'revocation',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'revocation'
+    },
+  ],
+};
+
+/// Descriptor for `RevokeDeviceRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List revokeDeviceRequestDescriptor = $convert.base64Decode(
+    'ChNSZXZva2VEZXZpY2VSZXF1ZXN0Ei0KCnJldm9jYXRpb24YASABKAsyDS5mcy52MS5TaWduZW'
+    'RSCnJldm9jYXRpb24=');
+
+@$core.Deprecated('Use revokeDeviceResponseDescriptor instead')
+const RevokeDeviceResponse$json = {
+  '1': 'RevokeDeviceResponse',
+};
+
+/// Descriptor for `RevokeDeviceResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List revokeDeviceResponseDescriptor =
+    $convert.base64Decode('ChRSZXZva2VEZXZpY2VSZXNwb25zZQ==');
+
 @$core.Deprecated('Use getKeyBundleRequestDescriptor instead')
 const GetKeyBundleRequest$json = {
   '1': 'GetKeyBundleRequest',

@@ -49,6 +49,28 @@ final $typed_data.Uint8List deviceCertificateDescriptor = $convert.base64Decode(
     'V2aWNlX3NpZ24YAiABKAxSCmRldmljZVNpZ24SGwoJZGV2aWNlX2RoGAMgASgMUghkZXZpY2VE'
     'aBIpChFpc3N1ZWRfYXRfdW5peF9tcxgEIAEoA1IOaXNzdWVkQXRVbml4TXM=');
 
+@$core.Deprecated('Use deviceRevocationDescriptor instead')
+const DeviceRevocation$json = {
+  '1': 'DeviceRevocation',
+  '2': [
+    {'1': 'account_id', '3': 1, '4': 1, '5': 12, '10': 'accountId'},
+    {'1': 'device_sign', '3': 2, '4': 1, '5': 12, '10': 'deviceSign'},
+    {
+      '1': 'revoked_at_unix_ms',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'revokedAtUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `DeviceRevocation`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deviceRevocationDescriptor = $convert.base64Decode(
+    'ChBEZXZpY2VSZXZvY2F0aW9uEh0KCmFjY291bnRfaWQYASABKAxSCWFjY291bnRJZBIfCgtkZX'
+    'ZpY2Vfc2lnbhgCIAEoDFIKZGV2aWNlU2lnbhIrChJyZXZva2VkX2F0X3VuaXhfbXMYAyABKANS'
+    'D3Jldm9rZWRBdFVuaXhNcw==');
+
 @$core.Deprecated('Use nodeCertificateDescriptor instead')
 const NodeCertificate$json = {
   '1': 'NodeCertificate',

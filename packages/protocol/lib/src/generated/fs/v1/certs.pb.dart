@@ -118,6 +118,90 @@ class DeviceCertificate extends $pb.GeneratedMessage {
   void clearIssuedAtUnixMs() => $_clearField(4);
 }
 
+/// Контекст подписи "device-revoke"; подписывает ключ учётной записи.
+class DeviceRevocation extends $pb.GeneratedMessage {
+  factory DeviceRevocation({
+    $core.List<$core.int>? accountId,
+    $core.List<$core.int>? deviceSign,
+    $fixnum.Int64? revokedAtUnixMs,
+  }) {
+    final result = DeviceRevocation._();
+    if (accountId != null) result.accountId = accountId;
+    if (deviceSign != null) result.deviceSign = deviceSign;
+    if (revokedAtUnixMs != null) result.revokedAtUnixMs = revokedAtUnixMs;
+    return result;
+  }
+
+  DeviceRevocation._();
+
+  factory DeviceRevocation.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceRevocation()..mergeFromBuffer(data, registry);
+  factory DeviceRevocation.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeviceRevocation()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeviceRevocation',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: DeviceRevocation.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'accountId', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'deviceSign', $pb.PbFieldType.OY)
+    ..aInt64(3, _omitFieldNames ? '' : 'revokedAtUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceRevocation clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeviceRevocation copyWith(void Function(DeviceRevocation) updates) =>
+      super.copyWith((message) => updates(message as DeviceRevocation))
+          as DeviceRevocation;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use DeviceRevocation() / DeviceRevocation.new instead')
+  static DeviceRevocation create() => DeviceRevocation._();
+  static $pb.GeneratedMessage $_createMessage() => DeviceRevocation._();
+  @$core.override
+  DeviceRevocation createEmptyInstance() => DeviceRevocation._();
+  @$core.pragma('dart2js:noInline')
+  static DeviceRevocation getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<DeviceRevocation>(
+          DeviceRevocation.$_createMessage);
+  static DeviceRevocation? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get accountId => $_getN(0);
+  @$pb.TagNumber(1)
+  set accountId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccountId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccountId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get deviceSign => $_getN(1);
+  @$pb.TagNumber(2)
+  set deviceSign($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasDeviceSign() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearDeviceSign() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get revokedAtUnixMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set revokedAtUnixMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasRevokedAtUnixMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearRevokedAtUnixMs() => $_clearField(3);
+}
+
 /// Контекст подписи "node-cert"; подписывает ключ учётной записи владельца.
 class NodeCertificate extends $pb.GeneratedMessage {
   factory NodeCertificate({

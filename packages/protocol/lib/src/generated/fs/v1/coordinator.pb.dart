@@ -256,6 +256,113 @@ class AddDeviceResponse extends $pb.GeneratedMessage {
   static AddDeviceResponse? _defaultInstance;
 }
 
+/// Отзыв устройства (потеряно или украдено). Запрос подписан ключом учётной
+/// записи; revocation — fs.v1.Signed с DeviceRevocation (контекст
+/// "device-revoke"). После отзыва координатор не принимает запросы и не
+/// выдаёт талоны этому устройству.
+class RevokeDeviceRequest extends $pb.GeneratedMessage {
+  factory RevokeDeviceRequest({
+    $0.Signed? revocation,
+  }) {
+    final result = RevokeDeviceRequest._();
+    if (revocation != null) result.revocation = revocation;
+    return result;
+  }
+
+  RevokeDeviceRequest._();
+
+  factory RevokeDeviceRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RevokeDeviceRequest()..mergeFromBuffer(data, registry);
+  factory RevokeDeviceRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RevokeDeviceRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RevokeDeviceRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RevokeDeviceRequest.$_createMessage)
+    ..aOM<$0.Signed>(1, _omitFieldNames ? '' : 'revocation',
+        subBuilder: $0.Signed.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RevokeDeviceRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RevokeDeviceRequest copyWith(void Function(RevokeDeviceRequest) updates) =>
+      super.copyWith((message) => updates(message as RevokeDeviceRequest))
+          as RevokeDeviceRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use RevokeDeviceRequest() / RevokeDeviceRequest.new instead')
+  static RevokeDeviceRequest create() => RevokeDeviceRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RevokeDeviceRequest._();
+  @$core.override
+  RevokeDeviceRequest createEmptyInstance() => RevokeDeviceRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RevokeDeviceRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RevokeDeviceRequest>(
+          RevokeDeviceRequest.$_createMessage);
+  static RevokeDeviceRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $0.Signed get revocation => $_getN(0);
+  @$pb.TagNumber(1)
+  set revocation($0.Signed value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRevocation() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRevocation() => $_clearField(1);
+  @$pb.TagNumber(1)
+  $0.Signed ensureRevocation() => $_ensure(0);
+}
+
+class RevokeDeviceResponse extends $pb.GeneratedMessage {
+  factory RevokeDeviceResponse() => RevokeDeviceResponse._();
+
+  RevokeDeviceResponse._();
+
+  factory RevokeDeviceResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RevokeDeviceResponse()..mergeFromBuffer(data, registry);
+  factory RevokeDeviceResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RevokeDeviceResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RevokeDeviceResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RevokeDeviceResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RevokeDeviceResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RevokeDeviceResponse copyWith(void Function(RevokeDeviceResponse) updates) =>
+      super.copyWith((message) => updates(message as RevokeDeviceResponse))
+          as RevokeDeviceResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use RevokeDeviceResponse() / RevokeDeviceResponse.new instead')
+  static RevokeDeviceResponse create() => RevokeDeviceResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RevokeDeviceResponse._();
+  @$core.override
+  RevokeDeviceResponse createEmptyInstance() => RevokeDeviceResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RevokeDeviceResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RevokeDeviceResponse>(
+          RevokeDeviceResponse.$_createMessage);
+  static RevokeDeviceResponse? _defaultInstance;
+}
+
 /// Получить копию мастер-ключа для входа на новом устройстве (этап 2).
 class GetKeyBundleRequest extends $pb.GeneratedMessage {
   factory GetKeyBundleRequest({

@@ -11,6 +11,13 @@ message DeviceCertificate {
   int64 issued_at_unix_ms = 4;
 }
 
+// Контекст подписи "device-revoke"; подписывает ключ учётной записи.
+message DeviceRevocation {
+  bytes account_id = 1;
+  bytes device_sign = 2;         // отзываемое устройство
+  int64 revoked_at_unix_ms = 3;
+}
+
 // Контекст подписи "node-cert"; подписывает ключ учётной записи владельца.
 message NodeCertificate {
   bytes account_id = 1;

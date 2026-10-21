@@ -7,10 +7,13 @@ resolution: workspace
 environment:
   sdk: ^3.13.0
 
-dev_dependencies:
-  # Только для проверки векторов спецификаций независимой реализацией;
-  # рабочая реализация CryptoProvider — этап 1 (задача 1.2.1).
+dependencies:
+  # Запасной CryptoProvider на чистом Dart; hashlib ещё и HKDF, PBKDF2.
   cryptography: ^2.9.0
   hashlib: ^2.4.2
+  # Основной CryptoProvider: libsodium через FFI (решение 0.5.1).
+  sodium: ^4.1.2
+
+dev_dependencies:
   test: ^1.31.1
   test_vectors: any

@@ -14,7 +14,9 @@ library;
 
 export 'src/build_info.dart';
 export 'src/crypto/crypto_provider.dart';
+export 'src/crypto/dart_crypto_provider.dart';
 export 'src/crypto/secret_bytes.dart';
+export 'src/crypto/sodium_crypto_provider.dart';
 export 'src/erasure/erasure_coder.dart';
 export 'src/erasure/reed_solomon.dart';
 export 'src/errors.dart';

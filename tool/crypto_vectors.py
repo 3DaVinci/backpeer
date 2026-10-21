@@ -23,6 +23,7 @@ import unicodedata
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
@@ -60,6 +61,24 @@ def argon2id(password: bytes, salt: bytes, m_kib: int, t: int, length: int = 32)
     )
     assert rc == 0
     return out.raw
+
+
+def xchacha_decrypt_ok(key: bytes, nonce: bytes, ciphertext: bytes, aad: bytes) -> bool:
+    out = ctypes.create_string_buffer(max(len(ciphertext) - 16, 1))
+    out_len = ctypes.c_ulonglong()
+    rc = _sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+        out, ctypes.byref(out_len), None,
+        ciphertext, ctypes.c_ulonglong(len(ciphertext)),
+        aad, ctypes.c_ulonglong(len(aad)),
+        nonce, key,
+    )
+    return rc == 0
+
+
+def sodium_x25519(scalar: bytes, point: bytes):
+    out = ctypes.create_string_buffer(32)
+    rc = _sodium.crypto_scalarmult(out, scalar, point)
+    return out.raw if rc == 0 else None
 
 
 def sodium_ed25519_public(seed: bytes) -> bytes:
@@ -181,6 +200,150 @@ def load_trezor_24() -> list:
          "hamster diagram private dutch cause delay private meat slide toddler razor book happy fancy gospel tennis maple dilemma loan word shrug inflict delay length",
          "64c87cde7e12ecf6704ab95bb1408bef047c22db4cc7491c4271d170a1b213d20b385bc1588d9c7b38f1b39d415665b8a9030c9ec653d75e65f847d8fc1fc440"),
     ]
+
+
+# --- примитивы: векторы из RFC ---------------------------------------------
+# Значения перенесены из текстов RFC; каждое сверяется с независимой
+# реализацией (cryptography, hashlib, libsodium). Если перенос с ошибкой,
+# генератор падает.
+
+def h(text: str) -> bytes:
+    return bytes.fromhex("".join(text.split()))
+
+
+def primitives_cases() -> list:
+    cases = []
+
+    # XChaCha20-Poly1305: draft-irtf-cfrg-xchacha-03, приложение A.3.1.
+    key = h("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f")
+    nonce = h("404142434445464748494a4b4c4d4e4f5051525354555657")
+    aad = h("50515253c0c1c2c3c4c5c6c7")
+    plaintext = (b"Ladies and Gentlemen of the class of '99: If I could offer you "
+                 b"only one tip for the future, sunscreen would be it.")
+    ciphertext = h("""
+        bd6d179d3e83d43b9576579493c0e939572a1700252bfaccbed2902c21396cbb
+        731c7f1b0b4aa6440bf3a82f4eda7e39ae64c6708c54c216cb96b72e1213b452
+        2f8c9ba40db5d945b11b69b982c1bb9e3f3fac2bc369488f76b2383565d3fff9
+        21f9664c97637da9768812f615c68b13b52e""") + h("c0875924c1c7987947deafd8780acf49")
+    assert xchacha_encrypt(key, nonce, plaintext, aad) == ciphertext
+    aead_input = {"primitive": "xchacha20poly1305", "key": key, "nonce": nonce, "aad": aad}
+    cases.append({"name": "xchacha-draft03-a3-1",
+                  "input": {**aead_input, "plaintext": plaintext},
+                  "expected": {"ciphertext": ciphertext}})
+    tampered = ciphertext[:-1] + bytes([ciphertext[-1] ^ 1])
+    assert not xchacha_decrypt_ok(key, nonce, tampered, aad)
+    cases.append({"name": "xchacha-draft03-a3-1-bad-tag",
+                  "input": {**aead_input, "ciphertext": tampered},
+                  "expected": {"error": "integrity"}})
+    wrong_aad = aad[:-1] + bytes([aad[-1] ^ 1])
+    assert not xchacha_decrypt_ok(key, nonce, ciphertext, wrong_aad)
+    cases.append({"name": "xchacha-draft03-a3-1-bad-aad",
+                  "input": {**aead_input, "aad": wrong_aad, "ciphertext": ciphertext},
+                  "expected": {"error": "integrity"}})
+
+    # BLAKE2b-256. В RFC 7693 только BLAKE2b-512("abc"); для 32-байтного
+    # выхода — эталон BLAKE2 из hashlib, сверенный с известными значениями.
+    assert hashlib.blake2b(b"abc").digest() == h("""
+        ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d1
+        7d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923""")  # RFC 7693, A
+    for name, data, key, digest in [
+        ("blake2b256-empty", b"", None,
+         "0e5751c026e543b2e8ab2eb06099daa1d1e5df47778f7787faab45cdf12fe3a8"),
+        ("blake2b256-abc", b"abc", None,
+         "bddd813c634239723171ef3fee98579b94964e3bb1cb3e427262c8c068d52319"),
+        ("blake2b256-keyed", bytes(range(64)), bytes(range(32)), None),
+        ("blake2b256-keyed-empty", b"", bytes(range(32)), None),
+    ]:
+        actual = hashlib.blake2b(data, digest_size=32, key=key or b"").digest()
+        if digest is not None:
+            assert actual == h(digest), name
+        entry = {"primitive": "blake2b256", "data": data}
+        if key is not None:
+            entry["key"] = key
+        cases.append({"name": name, "input": entry, "expected": {"digest": actual}})
+
+    # HKDF-SHA256: RFC 5869, приложение A.1–A.3.
+    for name, ikm, salt, info, okm in [
+        ("hkdf-rfc5869-a1", h("0b" * 22), h("000102030405060708090a0b0c"),
+         h("f0f1f2f3f4f5f6f7f8f9"),
+         "3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf34007208d5b887185865"),
+        ("hkdf-rfc5869-a2", bytes(range(0x00, 0x50)), bytes(range(0x60, 0xb0)),
+         bytes(range(0xb0, 0x100)),
+         "b11e398dc80327a1c8e7f78c596a49344f012eda2d4efad8a050cc4c19afa97c"
+         "59045a99cac7827271cb41c65e590e09da3275600c2f09b8367793a9aca3db71"
+         "cc30c58179ec3e87c14c01d5c1f3434f1d87"),
+        ("hkdf-rfc5869-a3", h("0b" * 22), b"", b"",
+         "8da4e775a563c18f715f802a063c5a31b8a11f5c5ee1879ec3454e5f3c738d2d9d201395faa4b61a96c8"),
+    ]:
+        assert hkdf(ikm, salt, info, len(h(okm))) == h(okm), name
+        cases.append({"name": name,
+                      "input": {"primitive": "hkdf-sha256", "ikm": ikm, "salt": salt,
+                                "info": info, "length": len(h(okm))},
+                      "expected": {"okm": h(okm)}})
+
+    # Ed25519: RFC 8032, раздел 7.1, TEST 1–3.
+    for name, seed, public, message, signature in [
+        ("ed25519-rfc8032-test1",
+         "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
+         "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a", "",
+         "e5564300c360ac729086e2cc806e828a84877f1eb8e5d974d873e06522490155"
+         "5fb8821590a33bacc61e39701cf9b46bd25bf5f0595bbe24655141438e7a100b"),
+        ("ed25519-rfc8032-test2",
+         "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb",
+         "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c", "72",
+         "92a009a9f0d4cab8720e820b5f642540a2b27b5416503f8fb3762223ebdb69da"
+         "085ac1e43e15996e458f3613d0f11d8c387b2eaeb4302aeeb00d291612bb0c00"),
+        ("ed25519-rfc8032-test3",
+         "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7",
+         "fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025", "af82",
+         "6291d657deec24024827e69c3abe01a30ce548a284743a445e3680d7db5ac3ac"
+         "18ff9b538d16f290ae67f760984dc6594a7c15e9716ed28dc027beceea1ec40a"),
+    ]:
+        private = Ed25519PrivateKey.from_private_bytes(h(seed))
+        assert ed25519_public(h(seed)) == h(public), name
+        assert private.sign(h(message)) == h(signature), name
+        cases.append({"name": name,
+                      "input": {"primitive": "ed25519", "seed": h(seed), "message": h(message)},
+                      "expected": {"publicKey": h(public), "signature": h(signature)}})
+
+    # X25519: RFC 7748, разделы 5.2 и 6.1.
+    for name, scalar, point, out in [
+        ("x25519-rfc7748-5.2-1",
+         "a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4",
+         "e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c",
+         "c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552"),
+        ("x25519-rfc7748-5.2-2",
+         "4b66e9d4d1b4673c5ad22691957d6af5c11b6421e0ea01d42ca4169e7918ba0d",
+         "e5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a493",
+         "95cbde9476e8907d7aade45cb4b873f88b595a68799fa152e6f8f7647aac7957"),
+    ]:
+        assert sodium_x25519(h(scalar), h(point)) == h(out), name
+        assert X25519PrivateKey.from_private_bytes(h(scalar)).exchange(
+            X25519PublicKey.from_public_bytes(h(point))) == h(out), name
+        cases.append({"name": name,
+                      "input": {"primitive": "x25519", "secretKey": h(scalar), "publicKey": h(point)},
+                      "expected": {"sharedSecret": h(out)}})
+    alice = h("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a")
+    alice_public = h("8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a")
+    bob = h("5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb")
+    bob_public = h("de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f")
+    shared = h("4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742")
+    for priv, pub in [(alice, alice_public), (bob, bob_public)]:
+        assert X25519PrivateKey.from_private_bytes(priv).public_key().public_bytes(
+            Encoding.Raw, PublicFormat.Raw) == pub
+    assert sodium_x25519(alice, bob_public) == shared == sodium_x25519(bob, alice_public)
+    cases.append({"name": "x25519-rfc7748-6.1",
+                  "input": {"primitive": "x25519-exchange", "aliceSecretKey": alice,
+                            "bobSecretKey": bob},
+                  "expected": {"alicePublicKey": alice_public, "bobPublicKey": bob_public,
+                               "sharedSecret": shared}})
+    # Точка малого порядка (u = 0): общий секрет нулевой, открытый ключ
+    # собеседника отклоняется как недопустимые данные.
+    assert sodium_x25519(alice, bytes(32)) is None
+    cases.append({"name": "x25519-low-order-point",
+                  "input": {"primitive": "x25519", "secretKey": alice, "publicKey": bytes(32)},
+                  "expected": {"error": "format"}})
+    return cases
 
 
 def main() -> None:
@@ -319,6 +482,15 @@ def main() -> None:
           "Пароль → PK (Argon2id) → KEK, AUTH; KeyBundle с копией мастер-ключа (crypto.md, раздел 4). "
           "Случаи *-fast-params используют малые параметры только для скорости тестов.",
           cases)
+
+    write("primitives.json", "crypto/primitives",
+          "Примитивы crypto.md, раздел 2, на векторах из RFC: XChaCha20-Poly1305 "
+          "(draft-irtf-cfrg-xchacha-03), HKDF-SHA256 (RFC 5869), Ed25519 (RFC 8032), "
+          "X25519 (RFC 7748); BLAKE2b-256 — эталон BLAKE2 (в RFC 7693 только 512-битный вектор). "
+          "Поле input.primitive задаёт примитив. Argon2id проверяется векторами key-bundle.json: "
+          "вектор RFC 9106 требует p = 4, secret и associated data, которых нет в libsodium "
+          "и в crypto.md. PBKDF2-HMAC-SHA512 проверяется векторами bip39-seed.json.",
+          primitives_cases())
 
 
 if __name__ == "__main__":

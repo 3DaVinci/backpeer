@@ -129,8 +129,9 @@ abstract interface class CryptoProvider {
   /// Пара X25519 из 32 байтов закрытого ключа.
   Future<X25519KeyPair> x25519FromSecret(SecretBytes secretKey);
 
-  /// Общий секрет X25519. Слабый открытый ключ (нулевой результат) —
-  /// [ArgumentError].
+  /// Общий секрет X25519. Открытый ключ малого порядка (нулевой общий
+  /// секрет) — `DataFormatException`: ключ пришёл от собеседника, это
+  /// ошибка данных.
   Future<SecretBytes> x25519({
     required SecretBytes secretKey,
     required Uint8List publicKey,

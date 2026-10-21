@@ -223,6 +223,28 @@ def fragments(blob: bytes, segment_id: bytes, k: int, n: int) -> list:
     return out
 
 
+def check_fragment(data: bytes, expected_id) -> str:
+    """Эталонная проверка фрагмента (раздел 5): None, 'format' или 'integrity'."""
+    if len(data) < 96:
+        return "format"
+    h = data[:96]
+    if h[0:4] != b"FSFR" or h[4] != 1 or h[5] != 1 or h[9] != 16:
+        return "format"
+    if h[10:12] != bytes(2) or h[84:96] != bytes(12):
+        return "format"
+    k, n, index = h[6], h[7], h[8]
+    if not (1 <= k < n <= 255) or index >= n:
+        return "format"
+    blob_length, size = struct.unpack("<II", h[12:20])
+    if size != shard_size_for(blob_length, k) or len(data) - 96 != size:
+        return "format"
+    if merkle_root(data[96:]) != h[52:84]:
+        return "integrity"
+    if expected_id is not None and H(h) != expected_id:
+        return "integrity"
+    return None
+
+
 # --- Запись ------------------------------------------------------------------
 
 def write(name: str, spec: str, description: str, cases: list, extra: dict = None) -> None:
@@ -352,9 +374,56 @@ def main() -> None:
                                "fragmentId": H(h)} for h, b in frs],
             },
         })
+    # Проверка фрагмента (раздел 5): минимальный фрагмент и его порча.
+    small_blob = cv.splitmix64_bytes(40, 200)
+    small_id = bytes(range(0xC0, 0xE0))
+    small = fragments(small_blob, small_id, 2, 3)
+    minimal = small[0][0] + small[0][1]
+    other_id = H(small[1][0])
+
+    def frag_case(name, error, patch=None, truncate=None, expected_id=None):
+        data = bytearray(minimal)
+        if patch is not None:
+            offset, value = patch
+            data[offset:offset + len(value)] = value
+        if truncate is not None:
+            data = data[:truncate]
+        case = {"base": "minimal"}
+        if patch is not None:
+            case["patch"] = {"offset": patch[0], "bytes": patch[1]}
+        if truncate is not None:
+            case["truncate"] = truncate
+        if expected_id is not None:
+            case["expectedFragmentId"] = expected_id
+        assert check_fragment(bytes(data), expected_id) == error, name
+        cases.append({"name": name, "input": case,
+                      "expected": {"error": error} if error else {"ok": True}})
+
+    frag_case("verify-minimal", None, expected_id=H(small[0][0]))
+    frag_case("reject-bad-magic", "format", patch=(0, b"FSFX"))
+    frag_case("reject-unknown-version", "format", patch=(4, b"\x02"))
+    frag_case("reject-unknown-scheme", "format", patch=(5, b"\x02"))
+    frag_case("reject-k-not-below-n", "format", patch=(6, b"\x03"))
+    frag_case("reject-zero-k", "format", patch=(6, b"\x00"))
+    frag_case("reject-index-out-of-range", "format", patch=(8, b"\x03"))
+    frag_case("reject-block-log2", "format", patch=(9, b"\x0f"))
+    frag_case("reject-nonzero-reserved", "format", patch=(10, b"\x01"))
+    frag_case("reject-nonzero-reserved-tail", "format", patch=(95, b"\x01"))
+    frag_case("reject-shard-size-mismatch", "format", patch=(16, struct.pack("<I", 192)))
+    frag_case("reject-blob-length-mismatch", "format", patch=(12, struct.pack("<I", 400)))
+    frag_case("reject-truncated-body", "format", truncate=len(minimal) - 1)
+    frag_case("reject-truncated-header", "format", truncate=95)
+    frag_case("reject-flipped-body", "integrity", patch=(96 + 5, bytes([minimal[101] ^ 1])))
+    frag_case("reject-flipped-root", "integrity", patch=(52, bytes([minimal[52] ^ 1])))
+    frag_case("reject-foreign-fragment", "integrity", expected_id=other_id)
+
     write("fragment.json", "format/fragment",
           "Блоб сегмента из segment.json (случай four-chunks) → n фрагментов (data-format.md, "
-          "разделы 4–5). Тела заданы хэшем BLAKE2b-256.", cases)
+          "разделы 4–5). Тела заданы хэшем BLAKE2b-256. Случаи verify-* и reject-* — проверка "
+          "фрагмента: base = minimal (фрагмент 0 из k = 2, n = 3 блоба 200 байт, поле "
+          "minimalFragment), правка patch или обрезка truncate; expectedFragmentId — ожидаемый "
+          "идентификатор (по индексу или талону), если задан.", cases,
+          extra={"minimalFragment": {"bytes": minimal.hex(), "fragmentId": H(small[0][0]).hex()}})
 
     print(f"Средняя длина чанка (расчёт): {expected_average():.0f} байт")
     lengths = next(c for c in json.load(open(os.path.join(OUT_DIR, "fastcdc.json")))["cases"]

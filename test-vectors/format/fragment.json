@@ -2,7 +2,11 @@
   "spec": "format/fragment",
   "specVersion": 1,
   "generator": "tool/format_vectors.py (Python, независимая реализация)",
-  "description": "Блоб сегмента из segment.json (случай four-chunks) → n фрагментов (data-format.md, разделы 4–5). Тела заданы хэшем BLAKE2b-256.",
+  "description": "Блоб сегмента из segment.json (случай four-chunks) → n фрагментов (data-format.md, разделы 4–5). Тела заданы хэшем BLAKE2b-256. Случаи verify-* и reject-* — проверка фрагмента: base = minimal (фрагмент 0 из k = 2, n = 3 блоба 200 байт, поле minimalFragment), правка patch или обрезка truncate; expectedFragmentId — ожидаемый идентификатор (по индексу или талону), если задан.",
+  "minimalFragment": {
+    "bytes": "465346520101020300100000c800000080000000c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf59fc912d06b3c26823d3128e81ec1250367a0ba0c0a118a250d75c7a0dd46bdb0000000000000000000000001291a10c0bae9e361ba73500ea8aeff8bcdf32585243afa7244305436caa1a092accd39e65b6339a5f28334ab6e08168aac4d1d08ce71e751203a3e4e38ea0a9dc22fabe1ccfbcb5386108d7d7b9ca92c1b2a12faf41a2a25e97b9eb8546465f16863ff30a48a204e97caf2b9f9a9b38cf4ed34a9177e6ba624a47be5949ad33",
+    "fragmentId": "fcb5a33472b8bf1212a2983bedb830ddc177623f3c882823febd3fae19839a1e"
+  },
   "cases": [
     {
       "name": "four-chunks-k4-n6",
@@ -160,6 +164,215 @@
             "fragmentId": "ec037dfc8b055db23ad816fe1aded22a486a3824570b16b26116b2be47ddb1ca"
           }
         ]
+      }
+    },
+    {
+      "name": "verify-minimal",
+      "input": {
+        "base": "minimal",
+        "expectedFragmentId": "fcb5a33472b8bf1212a2983bedb830ddc177623f3c882823febd3fae19839a1e"
+      },
+      "expected": {
+        "ok": true
+      }
+    },
+    {
+      "name": "reject-bad-magic",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 0,
+          "bytes": "46534658"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-unknown-version",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 4,
+          "bytes": "02"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-unknown-scheme",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 5,
+          "bytes": "02"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-k-not-below-n",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 6,
+          "bytes": "03"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-zero-k",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 6,
+          "bytes": "00"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-index-out-of-range",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 8,
+          "bytes": "03"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-block-log2",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 9,
+          "bytes": "0f"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-nonzero-reserved",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 10,
+          "bytes": "01"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-nonzero-reserved-tail",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 95,
+          "bytes": "01"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-shard-size-mismatch",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 16,
+          "bytes": "c0000000"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-blob-length-mismatch",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 12,
+          "bytes": "90010000"
+        }
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-truncated-body",
+      "input": {
+        "base": "minimal",
+        "truncate": 223
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-truncated-header",
+      "input": {
+        "base": "minimal",
+        "truncate": 95
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reject-flipped-body",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 101,
+          "bytes": "af"
+        }
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-flipped-root",
+      "input": {
+        "base": "minimal",
+        "patch": {
+          "offset": 52,
+          "bytes": "58"
+        }
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-foreign-fragment",
+      "input": {
+        "base": "minimal",
+        "expectedFragmentId": "013c5bc717bd9f86a0882e1aa511f629614a63f6fc52868f6d4f8481fa6fdb5e"
+      },
+      "expected": {
+        "error": "integrity"
       }
     }
   ]

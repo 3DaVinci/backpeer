@@ -139,6 +139,8 @@ void main() {
 
   group('fragment', () {
     for (final c in vectorCases(loadVectors('format/fragment.json'))) {
+      // Случаи verify-* и reject-* проверяет рабочий код (format_test.dart).
+      if (!(c['input']! as Map<String, Object?>).containsKey('k')) continue;
       test(c['name'], () async {
         final segmentBlob = await segmentBlobOnce();
         final input = c['input']! as Map<String, Object?>;

@@ -1,3 +1,7 @@
+/// Загрузчик тестовых векторов (docs/spec/test-vectors.md) и генератор
+/// детерминированных данных для тестов всех пакетов.
+library;
+
 // Тесты работают только в Dart VM (64-битный int), JavaScript не нужен.
 // ignore_for_file: avoid_js_rounded_ints
 
@@ -23,6 +27,20 @@ Map<String, Object?> loadVectors(String fileName) {
 /// Случаи (`cases`) из файла векторов.
 List<Map<String, Object?>> vectorCases(Map<String, Object?> vectors) =>
     (vectors['cases']! as List<Object?>).cast<Map<String, Object?>>();
+
+/// Байты из шестнадцатеричной строки вектора. Для пакетов без зависимости
+/// от `core`; в тестах `core` — `hexToBytes` из `core`.
+Uint8List fromHex(String hex) {
+  final bytes = Uint8List(hex.length ~/ 2);
+  for (var i = 0; i < bytes.length; i++) {
+    bytes[i] = int.parse(hex.substring(2 * i, 2 * i + 2), radix: 16);
+  }
+  return bytes;
+}
+
+/// Байты в шестнадцатеричную строку, как в векторах.
+String toHex(List<int> bytes) =>
+    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
 /// Детерминированные данные из docs/spec/test-vectors.md: little-endian
 /// байты последовательных выходов splitmix64. Арифметика `int` на нативной

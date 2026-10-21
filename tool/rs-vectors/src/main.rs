@@ -39,7 +39,7 @@ fn main() {
     ];
 
     println!("{{");
-    println!("  \"spec\": \"reed-solomon\",");
+    println!("  \"spec\": \"erasure/reed-solomon\",");
     println!("  \"specVersion\": 1,");
     println!("  \"generator\": \"tool/rs-vectors (reed-solomon-erasure 6.0.0, galois_8)\",");
     println!("  \"cases\": [");

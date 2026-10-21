@@ -1,0 +1,11 @@
+name: test_vectors
+description: Загрузчик тестовых векторов docs/spec/ для тестов пакетов. Только dev_dependency, в продукт не входит.
+version: 0.0.1
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+
+dev_dependencies:
+  test: ^1.31.1

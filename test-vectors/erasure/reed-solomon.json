@@ -1,5 +1,5 @@
 {
-  "spec": "reed-solomon",
+  "spec": "erasure/reed-solomon",
   "specVersion": 1,
   "generator": "tool/rs-vectors (reed-solomon-erasure 6.0.0, galois_8)",
   "cases": [

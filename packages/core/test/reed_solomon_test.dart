@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:core/core.dart';
 import 'package:test/test.dart';
 
-import 'support/vectors.dart';
+import 'package:test_vectors/test_vectors.dart';
 
 void main() {
   final vectors = loadVectors('erasure/reed-solomon.json');

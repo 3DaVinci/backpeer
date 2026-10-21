@@ -13,7 +13,14 @@ import 'dart:convert';
 import 'dart:io';
 
 /// Пакеты, которым запрещено зависеть от Flutter.
-const restrictedPackages = ['core', 'protocol', 'cli', 'node', 'coordinator'];
+const restrictedPackages = [
+  'core',
+  'protocol',
+  'cli',
+  'node',
+  'coordinator',
+  'test_vectors',
+];
 
 /// Пакеты из Flutter SDK.
 const flutterPackages = {

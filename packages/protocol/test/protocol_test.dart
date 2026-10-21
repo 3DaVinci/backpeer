@@ -2,7 +2,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:protocol/protocol.dart';
 import 'package:test/test.dart';
 
-import 'support/vectors.dart';
+import 'package:test_vectors/test_vectors.dart';
 
 void main() {
   // Векторы test-vectors/manifest/encoding.json закодированы protoc.
@@ -11,7 +11,7 @@ void main() {
   group('каноническая сериализация совпадает с protoc', () {
     for (final c in vectorCases(loadVectors('manifest/encoding.json'))) {
       final type = (c['input']! as Map<String, Object?>)['messageType'];
-      final bytes = hexToBytes(
+      final bytes = fromHex(
         (c['expected']! as Map<String, Object?>)['bytes']! as String,
       );
       test(c['name'], () {
@@ -22,7 +22,7 @@ void main() {
           _ => throw StateError('Неизвестный тип $type'),
         };
         expect(message.unknownFields.isEmpty, isTrue);
-        expect(bytesToHex(message.writeToBuffer()), bytesToHex(bytes));
+        expect(toHex(message.writeToBuffer()), toHex(bytes));
       });
     }
   });
@@ -60,7 +60,7 @@ void main() {
       ],
     );
     expect(
-      bytesToHex(tree.writeToBuffer()),
+      toHex(tree.writeToBuffer()),
       (expected['expected']! as Map<String, Object?>)['bytes'],
     );
   });

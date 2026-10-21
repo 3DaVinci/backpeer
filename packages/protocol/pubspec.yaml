@@ -13,3 +13,4 @@ dependencies:
 
 dev_dependencies:
   test: ^1.31.1
+  test_vectors: any

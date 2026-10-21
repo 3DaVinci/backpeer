@@ -8,9 +8,9 @@ import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:test/test.dart';
+import 'package:test_vectors/test_vectors.dart';
 
 import 'support/reference.dart';
-import 'support/vectors.dart';
 
 const int _min = 512 * 1024;
 const int _normal = 1024 * 1024;

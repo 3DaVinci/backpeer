@@ -11,6 +11,7 @@ workspace:
   - packages/cli
   - packages/node
   - packages/coordinator
+  - packages/test_vectors
   - apps/app
   - prototypes/bench
 

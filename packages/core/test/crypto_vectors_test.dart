@@ -12,9 +12,9 @@ import 'package:cryptography/cryptography.dart';
 import 'package:cryptography/dart.dart';
 import 'package:hashlib/hashlib.dart' as hashlib;
 import 'package:test/test.dart';
+import 'package:test_vectors/test_vectors.dart';
 
 import 'support/reference.dart';
-import 'support/vectors.dart';
 
 void main() {
   group('bip39-seed', () {

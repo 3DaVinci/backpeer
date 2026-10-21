@@ -306,6 +306,44 @@ final class LocalIndex {
   void removeFile(Uint8List path) =>
       _db.execute('DELETE FROM files WHERE path = ?', [path]);
 
+  // --- состояние снимков (защита от отката, manifest.md, раздел 6) -------
+
+  /// Наибольший `sequence`, известный устройству; 0 — снимков не было.
+  int get maxSequence =>
+      (_db
+              .select("SELECT value FROM state WHERE key = 'max_sequence'")
+              .firstOrNull?['value']
+          as int?) ??
+      0;
+
+  /// Последний снимок, сделанный этим устройством.
+  Uint8List? get lastOwnSnapshot =>
+      _db
+              .select("SELECT value FROM state WHERE key = 'last_own_snapshot'")
+              .firstOrNull?['value']
+          as Uint8List?;
+
+  /// Запоминает снимок этого устройства; `max_sequence` только растёт.
+  void recordOwnSnapshot(Uint8List snapshotId, int sequence) {
+    transaction(() {
+      observeSequence(sequence);
+      _db.execute(
+        'INSERT OR REPLACE INTO state (key, value) '
+        "VALUES ('last_own_snapshot', ?)",
+        [snapshotId],
+      );
+    });
+  }
+
+  /// Учитывает `sequence`, увиденный в списке снимков.
+  void observeSequence(int sequence) {
+    if (sequence <= maxSequence) return;
+    _db.execute(
+      "INSERT OR REPLACE INTO state (key, value) VALUES ('max_sequence', ?)",
+      [sequence],
+    );
+  }
+
   // --- служебное ----------------------------------------------------------
 
   void _migrate() {
@@ -387,6 +425,13 @@ const _migrations = [
     ctime_ns INTEGER NOT NULL,
     inode INTEGER NOT NULL,
     chunks BLOB NOT NULL
+  ) WITHOUT ROWID;
+  ''',
+  // 2: состояние снимков устройства для защиты от отката.
+  '''
+  CREATE TABLE state (
+    key TEXT PRIMARY KEY,
+    value NOT NULL
   ) WITHOUT ROWID;
   ''',
 ];

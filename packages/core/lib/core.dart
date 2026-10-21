@@ -34,6 +34,7 @@ export 'src/format/segment.dart';
 export 'src/snapshot/chunk_sink.dart';
 export 'src/snapshot/exclude_rules.dart';
 export 'src/snapshot/fs_entry.dart';
+export 'src/snapshot/manifest_objects.dart';
 export 'src/snapshot/tree_builder.dart';
 export 'src/snapshot/walker.dart';
 export 'src/storage/device_key_store.dart';

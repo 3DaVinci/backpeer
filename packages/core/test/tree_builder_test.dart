@@ -101,7 +101,7 @@ void main() {
 
     expect(b.stats.files, 4);
     expect(b.stats.directories, 3);
-    expect(b.stats.filesRead, 4);
+    expect(b.stats.filesRead, 3, reason: 'пустой файл не открывается');
     expect(b.stats.bytes, (3 << 20) + 12);
   });
 

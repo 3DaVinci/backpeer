@@ -146,6 +146,9 @@ final class TreeBuilder {
     Uint8List path,
     FsEntry entry,
   ) async {
+    // Пустой файл открывать незачем; если он вырос после обхода, следующий
+    // бэкап увидит другой штамп.
+    if (entry.size == 0) return (chunks: const <ChunkId>[], size: 0);
     final stamp = FileStamp.fromEntry(entry);
     final cached = index.cachedFile(path, stamp);
     if (cached != null && cached.every(sink.contains)) {

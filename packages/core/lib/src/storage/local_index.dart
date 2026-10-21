@@ -335,6 +335,31 @@ final class LocalIndex {
     });
   }
 
+  /// Заменяет последний снимок устройства (после удаления снимка);
+  /// `null` — снимков устройства не осталось.
+  void setLastOwnSnapshot(Uint8List? snapshotId) {
+    if (snapshotId == null) {
+      _db.execute("DELETE FROM state WHERE key = 'last_own_snapshot'");
+    } else {
+      _db.execute(
+        'INSERT OR REPLACE INTO state (key, value) '
+        "VALUES ('last_own_snapshot', ?)",
+        [snapshotId],
+      );
+    }
+  }
+
+  /// Опускает известный максимум после удаления устройством собственного
+  /// снимка с наибольшим номером: иначе следующий список выглядел бы как
+  /// откат.
+  void lowerMaxSequence(int sequence) {
+    if (sequence >= maxSequence) return;
+    _db.execute(
+      "INSERT OR REPLACE INTO state (key, value) VALUES ('max_sequence', ?)",
+      [sequence],
+    );
+  }
+
   /// Учитывает `sequence`, увиденный в списке снимков.
   void observeSequence(int sequence) {
     if (sequence <= maxSequence) return;

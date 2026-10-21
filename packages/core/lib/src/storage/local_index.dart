@@ -3,30 +3,42 @@ import 'dart:typed_data';
 
 import 'package:core/src/chunking/chunk_id.dart';
 import 'package:core/src/errors.dart';
+import 'package:core/src/snapshot/fs_entry.dart';
 import 'package:sqlite3/sqlite3.dart';
 
-/// Время и размер файла для кеша файлов: если совпадают с записанными,
-/// файл не читается повторно.
+/// Размер, время и inode файла для кеша файлов: если совпадают с
+/// записанными, файл не читается повторно.
 ///
-/// inode не входит: `FileStat` в Dart его не даёт. `ctime` меняется при
-/// любой смене метаданных и содержимого, поэтому подмену файла с тем же
-/// размером и mtime он тоже замечает.
+/// `ctime` меняется при любой смене содержимого и метаданных, inode — при
+/// замене файла другим (например, переименованием поверх).
 final class FileStamp {
   const new({
     required this.size,
-    required this.modifiedUs,
-    required this.changedUs,
+    required this.mtimeNs,
+    required this.ctimeNs,
+    this.inode = 0,
   });
 
+  factory fromEntry(FsEntry entry) => FileStamp(
+    size: entry.size,
+    mtimeNs: entry.mtimeNs,
+    ctimeNs: entry.ctimeNs,
+    inode: entry.inode,
+  );
+
+  /// Из `dart:io`: без inode, время с точностью до микросекунд.
   factory fromStat(FileStat stat) => FileStamp(
     size: stat.size,
-    modifiedUs: stat.modified.microsecondsSinceEpoch,
-    changedUs: stat.changed.microsecondsSinceEpoch,
+    mtimeNs: stat.modified.microsecondsSinceEpoch * 1000,
+    ctimeNs: stat.changed.microsecondsSinceEpoch * 1000,
   );
 
   final int size;
-  final int modifiedUs;
-  final int changedUs;
+  final int mtimeNs;
+  final int ctimeNs;
+
+  /// 0 — неизвестен (Windows).
+  final int inode;
 }
 
 /// Чанк в оглавлении сегмента.
@@ -268,8 +280,8 @@ final class LocalIndex {
   List<ChunkId>? cachedFile(Uint8List path, FileStamp stamp) {
     final rows = _db.select(
       'SELECT chunks FROM files WHERE path = ? AND size = ? '
-      'AND modified_us = ? AND changed_us = ?',
-      [path, stamp.size, stamp.modifiedUs, stamp.changedUs],
+      'AND mtime_ns = ? AND ctime_ns = ? AND inode = ?',
+      [path, stamp.size, stamp.mtimeNs, stamp.ctimeNs, stamp.inode],
     );
     if (rows.isEmpty) return null;
     final packed = rows.single['chunks'] as Uint8List;
@@ -285,9 +297,9 @@ final class LocalIndex {
       packed.setAll(i * ChunkId.length, chunks[i].bytes);
     }
     _db.execute(
-      'INSERT OR REPLACE INTO files (path, size, modified_us, changed_us, '
-      'chunks) VALUES (?, ?, ?, ?, ?)',
-      [path, stamp.size, stamp.modifiedUs, stamp.changedUs, packed],
+      'INSERT OR REPLACE INTO files (path, size, mtime_ns, ctime_ns, inode, '
+      'chunks) VALUES (?, ?, ?, ?, ?, ?)',
+      [path, stamp.size, stamp.mtimeNs, stamp.ctimeNs, stamp.inode, packed],
     );
   }
 
@@ -371,8 +383,9 @@ const _migrations = [
   CREATE TABLE files (
     path BLOB PRIMARY KEY,
     size INTEGER NOT NULL,
-    modified_us INTEGER NOT NULL,
-    changed_us INTEGER NOT NULL,
+    mtime_ns INTEGER NOT NULL,
+    ctime_ns INTEGER NOT NULL,
+    inode INTEGER NOT NULL,
     chunks BLOB NOT NULL
   ) WITHOUT ROWID;
   ''',

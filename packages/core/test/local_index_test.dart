@@ -107,14 +107,15 @@ void main() {
   test('кеш файлов', () {
     final index = LocalIndex.inMemory();
     final path = Uint8List.fromList([0x2F, 0x61, 0xFF]); // не UTF-8
-    const stamp = FileStamp(size: 10, modifiedUs: 5, changedUs: 6);
+    const stamp = FileStamp(size: 10, mtimeNs: 5, ctimeNs: 6, inode: 9);
     expect(index.cachedFile(path, stamp), isNull);
     index.putFile(path, stamp, [_id(1), _id(2)]);
     expect(index.cachedFile(path, stamp), [_id(1), _id(2)]);
     for (final changed in const [
-      FileStamp(size: 11, modifiedUs: 5, changedUs: 6),
-      FileStamp(size: 10, modifiedUs: 7, changedUs: 6),
-      FileStamp(size: 10, modifiedUs: 5, changedUs: 8),
+      FileStamp(size: 11, mtimeNs: 5, ctimeNs: 6, inode: 9),
+      FileStamp(size: 10, mtimeNs: 7, ctimeNs: 6, inode: 9),
+      FileStamp(size: 10, mtimeNs: 5, ctimeNs: 8, inode: 9),
+      FileStamp(size: 10, mtimeNs: 5, ctimeNs: 6, inode: 10),
     ]) {
       expect(index.cachedFile(path, changed), isNull);
     }
@@ -132,9 +133,9 @@ void main() {
     final after = FileStamp.fromStat(file.statSync());
     expect(after.size, before.size);
     expect((
-      after.modifiedUs,
-      after.changedUs,
-    ), isNot((before.modifiedUs, before.changedUs)));
+      after.mtimeNs,
+      after.ctimeNs,
+    ), isNot((before.mtimeNs, before.ctimeNs)));
   });
 
   test(

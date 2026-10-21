@@ -2,7 +2,11 @@ import 'dart:typed_data';
 
 /// Erasure coding k из n (ADR-003). Реализации обязаны давать те же байты,
 /// что и Rust-крейт reed-solomon-erasure (проверяется векторами
-/// test-vectors/reed-solomon.json).
+/// test-vectors/erasure/reed-solomon.json).
+///
+/// Неверное число буферов или буферы разной длины — [ArgumentError]
+/// (ошибка программы). Нехватка фрагментов при [reconstruct] — ошибка
+/// данных; её тип задаёт иерархия ошибок `core`.
 abstract interface class ErasureCoder {
   /// Число фрагментов данных, k.
   int get dataShards;

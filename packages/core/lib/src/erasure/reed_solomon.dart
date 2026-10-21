@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:core/src/erasure/erasure_coder.dart';
 import 'package:core/src/erasure/galois8.dart';
 import 'package:core/src/errors.dart';
+import 'package:meta/meta.dart';
 
 /// Reed–Solomon на GF(2^8), побайтно совместимый с reed-solomon-erasure 6.x.
 ///
@@ -40,6 +41,12 @@ final class ReedSolomon implements ErasureCoder {
 
   late final _Matrix _matrix;
 
+  /// Размер кеша обратных матриц, как у reed-solomon-erasure.
+  static const int decodeCacheCapacity = 254;
+
+  // LinkedHashMap хранит порядок вставки: первый ключ — давно не нужный.
+  final Map<String, _Matrix> _decodeCache = {};
+
   @override
   void encode(List<Uint8List> shards) {
     _checkShards(shards);
@@ -75,24 +82,17 @@ final class ReedSolomon implements ErasureCoder {
       );
     }
 
-    // Как в эталоне: берём первые k имеющихся фрагментов по порядку
-    // номеров, обращаем соответствующие строки матрицы кодирования
-    // и получаем недостающие фрагменты данных.
-    final used = present.sublist(0, dataShards);
-    final sub = _Matrix(dataShards, dataShards);
-    for (var r = 0; r < dataShards; r++) {
-      for (var c = 0; c < dataShards; c++) {
-        sub.set(r, c, _matrix.get(used[r], c));
-      }
-    }
-    final decode = sub.inverse();
-    final inputs = [for (final i in used) shards[i]!];
-
     final missingData = [
       for (var i = 0; i < dataShards; i++)
         if (shards[i] == null) i,
     ];
     if (missingData.isNotEmpty) {
+      // Как в эталоне: берём первые k имеющихся фрагментов по порядку
+      // номеров, обращаем соответствующие строки матрицы кодирования
+      // и получаем недостающие фрагменты данных.
+      final used = present.sublist(0, dataShards);
+      final decode = _decodeMatrix(used);
+      final inputs = [for (final i in used) shards[i]!];
       final outputs = [for (final _ in missingData) Uint8List(length)];
       _codeSomeShards(
         [for (final i in missingData) decode.row(i)],
@@ -122,6 +122,34 @@ final class ReedSolomon implements ErasureCoder {
         shards[missingParity[j]] = outputs[j];
       }
     }
+  }
+
+  /// Сколько обратных матриц сейчас в кеше.
+  @visibleForTesting
+  int get cachedDecodeMatrices => _decodeCache.length;
+
+  /// Обратная матрица для набора [used] из k номеров. Кеш LRU: у сегмента
+  /// при восстановлении и ремонте обычно повторяется один и тот же набор
+  /// недоступных узлов, а обращение k × k стоит O(k³).
+  _Matrix _decodeMatrix(List<int> used) {
+    final key = String.fromCharCodes(used);
+    final cached = _decodeCache.remove(key);
+    if (cached != null) {
+      _decodeCache[key] = cached;
+      return cached;
+    }
+    final sub = _Matrix(dataShards, dataShards);
+    for (var r = 0; r < dataShards; r++) {
+      for (var c = 0; c < dataShards; c++) {
+        sub.set(r, c, _matrix.get(used[r], c));
+      }
+    }
+    final decode = sub.inverse();
+    _decodeCache[key] = decode;
+    if (_decodeCache.length > decodeCacheCapacity) {
+      _decodeCache.remove(_decodeCache.keys.first);
+    }
+    return decode;
   }
 
   void _checkShards(List<Uint8List> shards) {

@@ -24,17 +24,6 @@ Map<String, Object?> loadVectors(String fileName) {
 List<Map<String, Object?>> vectorCases(Map<String, Object?> vectors) =>
     (vectors['cases']! as List<Object?>).cast<Map<String, Object?>>();
 
-Uint8List hexToBytes(String hex) {
-  final bytes = Uint8List(hex.length ~/ 2);
-  for (var i = 0; i < bytes.length; i++) {
-    bytes[i] = int.parse(hex.substring(2 * i, 2 * i + 2), radix: 16);
-  }
-  return bytes;
-}
-
-String bytesToHex(List<int> bytes) =>
-    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-
 /// Детерминированные данные из docs/spec/test-vectors.md: little-endian
 /// байты последовательных выходов splitmix64. Арифметика `int` на нативной
 /// платформе — 64-битная с переполнением, что и нужно алгоритму.

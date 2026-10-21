@@ -156,5 +156,18 @@ final class StorageException extends CoreException {
   }
 }
 
+/// Исходный файл менялся во время чтения, и повторные попытки не дали
+/// согласованного снимка.
+final class SourceChangedException extends CoreException {
+  const new({required this.path, required this.attempts});
+
+  final String path;
+  final int attempts;
+
+  @override
+  String get message =>
+      '$path: файл менялся во время чтения ($attempts попыток)';
+}
+
 String _shortId(Uint8List id) =>
     bytesToHex(id.length > 8 ? Uint8List.sublistView(id, 0, 8) : id);

@@ -28,4 +28,5 @@ export 'src/erasure/erasure_coder.dart';
 export 'src/erasure/reed_solomon.dart';
 export 'src/errors.dart';
 export 'src/storage/device_key_store.dart';
+export 'src/storage/local_index.dart';
 export 'src/util/bytes.dart';

@@ -164,58 +164,95 @@ final class ReedSolomon implements ErasureCoder {
     }
   }
 
-  /// `outputs[j] = Σ rows[j][c] · inputs[c]` над GF(2^8), побайтно.
+  /// `outputs[j] = Σ rows[j][c] · inputs[c]` над GF(2^8).
   ///
-  /// Для каждого коэффициента берётся своя строка таблицы умножения
-  /// (256 байт), цикл развёрнут на 8 байт.
+  /// Основной путь — словами u64 (замер 1.4.4, docs/benchmarks.md): вход
+  /// читается по 8 байт, каждый байт умножается по строке таблицы
+  /// (256 байт на коэффициент), результат собирается в слово и пишется в
+  /// выход одной операцией. Нужны буферы, выровненные по 8 байт; хвост
+  /// короче 8 байт и невыровненные представления — побайтно.
   static void _codeSomeShards(
     List<Uint8List> rows,
     List<Uint8List> inputs,
     List<Uint8List> outputs,
     int length,
   ) {
+    final aligned =
+        inputs.every((b) => b.offsetInBytes % 8 == 0) &&
+        outputs.every((b) => b.offsetInBytes % 8 == 0);
+    final words = aligned ? length ~/ 8 : 0;
+    if (words > 0) _codeWords(rows, inputs, outputs, words);
+    if (words * 8 < length) {
+      _codeBytes(rows, inputs, outputs, words * 8, length);
+    }
+  }
+
+  static void _codeWords(
+    List<Uint8List> rows,
+    List<Uint8List> inputs,
+    List<Uint8List> outputs,
+    int words,
+  ) {
     final table = Galois8.mulTable;
-    final tail = length - length % 8;
+    final in64 = [
+      for (final b in inputs) b.buffer.asUint64List(b.offsetInBytes, words),
+    ];
+    for (var j = 0; j < outputs.length; j++) {
+      final o = outputs[j];
+      final out = o.buffer.asUint64List(o.offsetInBytes, words);
+      final row = rows[j];
+      for (var c = 0; c < inputs.length; c++) {
+        final input = in64[c];
+        final base = row[c] * 256;
+        final mul = Uint8List.sublistView(table, base, base + 256);
+        if (c == 0) {
+          for (var i = 0; i < words; i++) {
+            final x = input[i];
+            out[i] =
+                mul[x & 0xFF] |
+                (mul[(x >>> 8) & 0xFF] << 8) |
+                (mul[(x >>> 16) & 0xFF] << 16) |
+                (mul[(x >>> 24) & 0xFF] << 24) |
+                (mul[(x >>> 32) & 0xFF] << 32) |
+                (mul[(x >>> 40) & 0xFF] << 40) |
+                (mul[(x >>> 48) & 0xFF] << 48) |
+                (mul[x >>> 56] << 56);
+          }
+        } else {
+          for (var i = 0; i < words; i++) {
+            final x = input[i];
+            out[i] ^=
+                mul[x & 0xFF] |
+                (mul[(x >>> 8) & 0xFF] << 8) |
+                (mul[(x >>> 16) & 0xFF] << 16) |
+                (mul[(x >>> 24) & 0xFF] << 24) |
+                (mul[(x >>> 32) & 0xFF] << 32) |
+                (mul[(x >>> 40) & 0xFF] << 40) |
+                (mul[(x >>> 48) & 0xFF] << 48) |
+                (mul[x >>> 56] << 56);
+          }
+        }
+      }
+    }
+  }
+
+  static void _codeBytes(
+    List<Uint8List> rows,
+    List<Uint8List> inputs,
+    List<Uint8List> outputs,
+    int from,
+    int to,
+  ) {
+    final table = Galois8.mulTable;
     for (var j = 0; j < outputs.length; j++) {
       final out = outputs[j];
       final row = rows[j];
       for (var c = 0; c < inputs.length; c++) {
         final input = inputs[c];
-        final mul = Uint8List.sublistView(
-          table,
-          row[c] * 256,
-          row[c] * 256 + 256,
-        );
-        if (c == 0) {
-          var i = 0;
-          for (; i < tail; i += 8) {
-            out[i] = mul[input[i]];
-            out[i + 1] = mul[input[i + 1]];
-            out[i + 2] = mul[input[i + 2]];
-            out[i + 3] = mul[input[i + 3]];
-            out[i + 4] = mul[input[i + 4]];
-            out[i + 5] = mul[input[i + 5]];
-            out[i + 6] = mul[input[i + 6]];
-            out[i + 7] = mul[input[i + 7]];
-          }
-          for (; i < length; i++) {
-            out[i] = mul[input[i]];
-          }
-        } else {
-          var i = 0;
-          for (; i < tail; i += 8) {
-            out[i] ^= mul[input[i]];
-            out[i + 1] ^= mul[input[i + 1]];
-            out[i + 2] ^= mul[input[i + 2]];
-            out[i + 3] ^= mul[input[i + 3]];
-            out[i + 4] ^= mul[input[i + 4]];
-            out[i + 5] ^= mul[input[i + 5]];
-            out[i + 6] ^= mul[input[i + 6]];
-            out[i + 7] ^= mul[input[i + 7]];
-          }
-          for (; i < length; i++) {
-            out[i] ^= mul[input[i]];
-          }
+        final base = row[c] * 256;
+        for (var i = from; i < to; i++) {
+          final product = table[base + input[i]];
+          out[i] = c == 0 ? product : out[i] ^ product;
         }
       }
     }

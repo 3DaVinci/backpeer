@@ -134,6 +134,36 @@ void main() {
     });
   });
 
+  test('невыровненные представления и выровненные дают одно и то же', () {
+    final rs = ReedSolomon(4, 3);
+    final random = Random(_seed + 4);
+    const length = 203;
+    final aligned = _encoded(rs, random, length);
+    // Каждый фрагмент — представление со сдвигом 1..7 байт в общем буфере.
+    final backing = Uint8List(7 * (length + 8));
+    final views = [
+      for (var i = 0; i < 7; i++)
+        Uint8List.sublistView(
+          backing,
+          i * (length + 8) + 1 + i % 7,
+          i * (length + 8) + 1 + i % 7 + length,
+        ),
+    ];
+    for (var i = 0; i < 4; i++) {
+      views[i].setAll(0, aligned[i]);
+    }
+    rs.encode(views);
+    for (var i = 4; i < 7; i++) {
+      expect(views[i], aligned[i], reason: 'чётность $i');
+    }
+    final shards = <Uint8List?>[...views];
+    shards[0] = null;
+    shards[2] = null;
+    rs.reconstruct(shards);
+    expect(shards[0], aligned[0]);
+    expect(shards[2], aligned[2]);
+  });
+
   group('кеш обратных матриц', () {
     test(
       'повтор набора не добавляет записей; только чётность — без матрицы',

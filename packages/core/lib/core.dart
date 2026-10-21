@@ -13,6 +13,7 @@
 library;
 
 export 'src/build_info.dart';
+export 'src/chunking/chunk_id.dart';
 export 'src/chunking/fastcdc.dart';
 export 'src/chunking/file_chunker.dart';
 export 'src/crypto/account_keys.dart';

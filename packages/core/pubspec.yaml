@@ -13,6 +13,8 @@ dependencies:
   # chmod через libc для прав файла ключей (задача 1.2.5).
   ffi: ^2.1.0
   hashlib: ^2.4.2
+  # @immutable для типов-значений (ChunkId).
+  meta: ^1.16.0
   # Основной CryptoProvider: libsodium через FFI (решение 0.5.1).
   sodium: ^4.1.2
   # NFKC пароля (crypto.md, раздел 4). Версия точная: от неё зависит,

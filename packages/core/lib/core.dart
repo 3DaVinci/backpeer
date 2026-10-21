@@ -16,6 +16,7 @@ export 'src/build_info.dart';
 export 'src/crypto/account_keys.dart';
 export 'src/crypto/crypto_provider.dart';
 export 'src/crypto/dart_crypto_provider.dart';
+export 'src/crypto/encrypted_blob.dart';
 export 'src/crypto/recovery_phrase.dart' show RecoveryPhrase;
 export 'src/crypto/secret_bytes.dart';
 export 'src/crypto/sodium_crypto_provider.dart';

@@ -72,6 +72,7 @@ enum IntegrityCheck {
   merkleRoot('корень Меркла'),
   fragmentId('идентификатор фрагмента'),
   checksum('контрольная сумма'),
+  objectId('идентификатор объекта'),
   signature('подпись');
 
   new(this.description);

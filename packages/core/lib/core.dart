@@ -27,6 +27,7 @@ export 'src/crypto/sodium_crypto_provider.dart';
 export 'src/erasure/erasure_coder.dart';
 export 'src/erasure/reed_solomon.dart';
 export 'src/errors.dart';
+export 'src/format/durability.dart';
 export 'src/format/fragment.dart';
 export 'src/format/merkle.dart';
 export 'src/format/segment.dart';

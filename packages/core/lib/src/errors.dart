@@ -169,5 +169,16 @@ final class SourceChangedException extends CoreException {
       '$path: файл менялся во время чтения ($attempts попыток)';
 }
 
+/// Недопустимое значение в конфигурации.
+final class ConfigException extends CoreException {
+  const new({required this.key, required this.reason});
+
+  final String key;
+  final String reason;
+
+  @override
+  String get message => 'конфигурация, $key: $reason';
+}
+
 String _shortId(Uint8List id) =>
     bytesToHex(id.length > 8 ? Uint8List.sublistView(id, 0, 8) : id);

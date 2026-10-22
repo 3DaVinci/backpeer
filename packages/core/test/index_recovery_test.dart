@@ -25,7 +25,7 @@ final class _IndexSink implements ChunkSink {
       k: 2,
       n: 3,
       blobLength: data.length + 80,
-      shardSize: 64,
+      shardSize: shardSizeFor(data.length + 80, 2),
       fragmentIds: [for (var i = 0; i < 3; i++) Uint8List(32)..[0] = i],
       chunks: [
         SegmentChunk(

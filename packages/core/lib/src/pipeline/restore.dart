@@ -10,12 +10,12 @@ import 'package:core/src/pipeline/segment_packer.dart';
 import 'package:core/src/pipeline/segment_reader.dart';
 import 'package:core/src/snapshot/fs_entry.dart';
 import 'package:core/src/snapshot/fs_writer.dart';
+import 'package:core/src/snapshot/manifest_objects.dart';
 import 'package:core/src/snapshot/snapshot_catalog.dart';
 import 'package:core/src/snapshot/walker.dart';
 import 'package:core/src/storage/fragment_store.dart';
 import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
-import 'package:protobuf/protobuf.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Итог восстановления.
@@ -143,15 +143,11 @@ final class _Restorer {
     for (final id in ids) {
       out.add(await reader.chunk(id));
     }
-    try {
-      return pb.Tree.fromBuffer(out.takeBytes());
-    } on InvalidProtocolBufferException catch (e) {
-      throw DataFormatException(
-        object: 'tree',
-        problem: FormatProblem.invalidField,
-        detail: e.message,
-      );
-    }
+    final bytes = out.takeBytes();
+    return ManifestObjects.parseMessage<pb.Tree>(
+      'tree',
+      () => pb.Tree.fromBuffer(bytes),
+    );
   }
 
   Future<void> node(pb.Node node, Uint8List path, String logical) async {

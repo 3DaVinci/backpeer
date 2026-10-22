@@ -45,7 +45,10 @@ abstract final class ManifestObjects {
       blob,
       expectedId,
     );
-    final snapshot = _parse('snapshot', () => pb.Snapshot.fromBuffer(plain));
+    final snapshot = parseMessage(
+      'snapshot',
+      () => pb.Snapshot.fromBuffer(plain),
+    );
     _checkVersion('snapshot', snapshot.formatVersion);
     _checkId('snapshot', snapshot.snapshotId, id);
     return snapshot;
@@ -82,7 +85,7 @@ abstract final class ManifestObjects {
       blob,
       expectedId,
     );
-    final index = _parse('index', () => pb.Index.fromBuffer(plain));
+    final index = parseMessage('index', () => pb.Index.fromBuffer(plain));
     _checkVersion('index', index.formatVersion);
     _checkId('index', index.indexId, id);
     return index;
@@ -133,7 +136,11 @@ abstract final class ManifestObjects {
     return (header.objectId, plain);
   }
 
-  static T _parse<T>(String object, T Function() parse) {
+  /// Разбор сообщения Protobuf; любая ошибка разбора —
+  /// [DataFormatException]. Пакет `protobuf` 6.1 на отрицательной длине
+  /// поля (varint с битом знака) бросает `ArgumentError` или `RangeError`,
+  /// а не `InvalidProtocolBufferException` — нашёл фаззинг (1.8.5).
+  static T parseMessage<T>(String object, T Function() parse) {
     try {
       return parse();
     } on InvalidProtocolBufferException catch (e) {
@@ -141,6 +148,14 @@ abstract final class ManifestObjects {
         object: object,
         problem: FormatProblem.invalidField,
         detail: e.message,
+      );
+      // Ошибка пакета, а не нашего кода: вход недоверенный.
+      // ignore: avoid_catching_errors
+    } on ArgumentError catch (e) {
+      throw DataFormatException(
+        object: object,
+        problem: FormatProblem.invalidField,
+        detail: '$e',
       );
     }
   }

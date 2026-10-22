@@ -4,6 +4,7 @@ import 'package:core/src/chunking/chunk_id.dart';
 import 'package:core/src/crypto/crypto_provider.dart';
 import 'package:core/src/crypto/secret_bytes.dart';
 import 'package:core/src/errors.dart';
+import 'package:core/src/format/fragment.dart';
 import 'package:core/src/snapshot/manifest_objects.dart';
 import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
@@ -43,6 +44,12 @@ SegmentEntry segmentEntry(pb.SegmentRecord record) {
   if (record.fragmentIds.length != record.n ||
       record.fragmentIds.any((id) => id.length != 32)) {
     throw bad('fragment_ids');
+  }
+  if (record.blobLength == 0 ||
+      record.shardSize != shardSizeFor(record.blobLength, record.k)) {
+    throw bad(
+      'blob_length ${record.blobLength}, shard_size ${record.shardSize}',
+    );
   }
   return SegmentEntry(
     segmentId: Uint8List.fromList(record.segmentId),

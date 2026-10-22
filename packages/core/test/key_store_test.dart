@@ -206,6 +206,33 @@ void main() {
       );
     });
 
+    test('фраза по паролю, переживает смену пароля', () async {
+      final phrase = RecoveryPhrase.generate(crypto);
+      final phraseKeys = await AccountKeys.fromPhrase(phrase, crypto);
+      final store = open();
+      await store.create(phraseKeys, 'old', phrase: phrase);
+      expect(store.hasPhrase, isTrue);
+      expect((await store.unlockPhrase('old')).phrase, phrase.phrase);
+      await expectLater(
+        store.unlockPhrase('wrong'),
+        throwsA(isA<IntegrityException>()),
+      );
+      await store.changePassword('old', 'new');
+      expect((await store.unlockPhrase('new')).phrase, phrase.phrase);
+      if (!Platform.isWindows) {
+        expect(store.phraseFile.statSync().mode & 0x1FF, 0x180);
+      }
+    });
+
+    test('чужая фраза рядом с KeyBundle распознаётся', () async {
+      final store = open();
+      await store.create(keys, 'pw', phrase: RecoveryPhrase.generate(crypto));
+      await expectLater(
+        store.unlockPhrase('pw'),
+        throwsA(isA<IntegrityException>()),
+      );
+    });
+
     test('повреждённый файл — ошибка формата', () async {
       final store = open();
       await store.create(keys, 'pw');

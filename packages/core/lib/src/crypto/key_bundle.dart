@@ -164,6 +164,29 @@ final class KeyBundle {
     Uint8List? salt,
     Uint8List? nonce,
   }) async {
+    final (bundle, derived) = await createDerived(
+      crypto,
+      keys: keys,
+      password: password,
+      params: params,
+      salt: salt,
+      nonce: nonce,
+    );
+    derived.dispose();
+    return bundle;
+  }
+
+  /// Как [create], но отдаёт и ключи из пароля — чтобы зашифровать тем же
+  /// `KEK` локальную копию фразы (crypto.md, раздел 4.2) без второго
+  /// Argon2id. Вызывающий уничтожает ключи.
+  static Future<(KeyBundle, PasswordKeys)> createDerived(
+    CryptoProvider crypto, {
+    required AccountKeys keys,
+    required String password,
+    Argon2Params params = const Argon2Params(),
+    Uint8List? salt,
+    Uint8List? nonce,
+  }) async {
     _checkParams(params);
     final s = salt ?? crypto.randomBytes(saltLength);
     if (s.length != saltLength) throw ArgumentError('Соль — $saltLength байт');
@@ -173,32 +196,44 @@ final class KeyBundle {
       salt: s,
       params: params,
     );
-    try {
-      final blob = EncryptedBlob.seal(
-        crypto,
-        type: BlobType.keyBundle,
-        objectId: keys.accountId,
-        key: derived.kek,
-        plaintext: keys.masterKey.bytes,
-        nonce: nonce,
-      );
-      return KeyBundle._(params: params, salt: s, blob: blob);
-    } finally {
-      derived.dispose();
-    }
+    final blob = EncryptedBlob.seal(
+      crypto,
+      type: BlobType.keyBundle,
+      objectId: keys.accountId,
+      key: derived.kek,
+      plaintext: keys.masterKey.bytes,
+      nonce: nonce,
+    );
+    return (KeyBundle._(params: params, salt: s, blob: blob), derived);
   }
+
+  /// Ключи из пароля по соли и параметрам этого KeyBundle.
+  Future<PasswordKeys> deriveKeys(CryptoProvider crypto, String password) =>
+      PasswordKeys.derive(
+        crypto,
+        password: password,
+        salt: salt,
+        params: params,
+      );
 
   /// Расшифровывает мастер-ключ и восстанавливает ключи учётной записи.
   /// Неверный пароль — [IntegrityException] (тег AEAD). Мастер-ключ,
   /// который не соответствует идентификатору учётной записи в заголовке, —
   /// тоже [IntegrityException].
   Future<AccountKeys> unlock(CryptoProvider crypto, String password) async {
-    final derived = await PasswordKeys.derive(
-      crypto,
-      password: password,
-      salt: salt,
-      params: params,
-    );
+    final derived = await deriveKeys(crypto, password);
+    try {
+      return await unlockWith(crypto, derived);
+    } finally {
+      derived.dispose();
+    }
+  }
+
+  /// Как [unlock], но с уже выведенными из пароля ключами.
+  Future<AccountKeys> unlockWith(
+    CryptoProvider crypto,
+    PasswordKeys derived,
+  ) async {
     final Uint8List masterKey;
     try {
       masterKey = EncryptedBlob.open(
@@ -212,8 +247,6 @@ final class KeyBundle {
         object: _object,
         check: IntegrityCheck.aeadTag,
       );
-    } finally {
-      derived.dispose();
     }
     if (masterKey.length != CryptoProvider.keyLength) {
       masterKey.fillRange(0, masterKey.length, 0);

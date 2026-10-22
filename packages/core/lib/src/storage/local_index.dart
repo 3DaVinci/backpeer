@@ -214,6 +214,11 @@ final class LocalIndex {
     });
   }
 
+  bool hasSegment(Uint8List segmentId) => _db.select(
+    'SELECT 1 FROM segments WHERE segment_id = ?',
+    [segmentId],
+  ).isNotEmpty;
+
   /// Отмечает, что фрагмент сохранён на узле [node].
   void setFragmentNode(Uint8List segmentId, int number, String node) {
     _db.execute(

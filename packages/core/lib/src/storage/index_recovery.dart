@@ -127,7 +127,8 @@ Future<RecoveryReport> recoverIndex({
           }
           index
             ..addSegment(segment)
-            ..markSegmentStored(segment.segmentId);
+            ..markSegmentStored(segment.segmentId)
+            ..markInIndex([segment.segmentId]);
           report.segmentsAdded++;
         }
       });

@@ -44,6 +44,7 @@ void main() {
       StorageException() => 'storage',
       SourceChangedException() => 'changed',
       ConfigException() => 'config',
+      CancelledException() => 'cancelled',
     };
     expect(
       kind(const InsufficientShardsException(available: 3, required: 4)),

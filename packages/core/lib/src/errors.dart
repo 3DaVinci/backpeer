@@ -180,5 +180,13 @@ final class ConfigException extends CoreException {
   String get message => 'конфигурация, $key: $reason';
 }
 
+/// Операция отменена пользователем.
+final class CancelledException extends CoreException {
+  const new();
+
+  @override
+  String get message => 'операция отменена';
+}
+
 String _shortId(Uint8List id) =>
     bytesToHex(id.length > 8 ? Uint8List.sublistView(id, 0, 8) : id);

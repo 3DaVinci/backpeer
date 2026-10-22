@@ -127,7 +127,11 @@ final class FragmentHeader {
 
 /// Фрагмент: заголовок и тело `shard_size` байт.
 final class Fragment {
-  const new(this.header, this.body);
+  const new(this.header, this.body) : _bytes = null;
+
+  /// Фрагмент, уже собранный в одном буфере (заголовок и тело подряд):
+  /// [toBytes] отдаёт его без копирования.
+  const new _assembled(this.header, this.body, this._bytes);
 
   /// Разбор: заголовок и длина тела. Ошибки — [DataFormatException]. Корень
   /// Меркла и идентификатор проверяет [verify].
@@ -143,18 +147,26 @@ final class Fragment {
         FragmentHeader.length,
       );
     }
-    return Fragment(
+    return Fragment._assembled(
       header,
       Uint8List.sublistView(bytes, FragmentHeader.length),
+      bytes,
     );
   }
 
   final FragmentHeader header;
   final Uint8List body;
+  final Uint8List? _bytes;
 
+  /// Заголовок и тело подряд, новая копия.
   Uint8List toBytes() => Uint8List(FragmentHeader.length + body.length)
     ..setAll(0, header.toBytes())
     ..setAll(FragmentHeader.length, body);
+
+  /// Заголовок и тело подряд без копирования, если фрагмент уже собран в
+  /// одном буфере (после [encodeFragments] или [Fragment.parse]); иначе —
+  /// копия. Буфер общий с фрагментом: не изменять.
+  Uint8List get bytes => _bytes ?? toBytes();
 
   /// Проверка целостности (data-format.md, раздел 5, шаги 2–3): корень
   /// дерева тела и, если задан, ожидаемый `fragment_id` (по индексу или
@@ -195,16 +207,22 @@ List<Fragment> encodeFragments(
     throw ArgumentError('ErasureCoder для других k и n');
   }
   final size = shardSizeFor(blob.length, k);
-  final buffer = Uint8List(n * size)..setAll(0, blob);
-  final shards = [
-    for (var i = 0; i < n; i++)
-      Uint8List.sublistView(buffer, i * size, (i + 1) * size),
-  ];
+  // Каждый фрагмент сразу в своём буфере «заголовок + тело»: Reed–Solomon
+  // пишет прямо в тела, лишних копий нет. Смещение тела 96 кратно 8, так
+  // что быстрый путь на словах u64 сохраняется.
+  const h = FragmentHeader.length;
+  final buffers = [for (var i = 0; i < n; i++) Uint8List(h + size)];
+  final shards = [for (final b in buffers) Uint8List.sublistView(b, h)];
+  for (var i = 0, offset = 0; i < k && offset < blob.length; i++) {
+    final take = blob.length - offset < size ? blob.length - offset : size;
+    shards[i].setRange(0, take, blob, offset);
+    offset += take;
+  }
   rs.encode(shards);
   return [
     for (var i = 0; i < n; i++)
-      Fragment(
-        FragmentHeader(
+      () {
+        final header = FragmentHeader(
           k: k,
           n: n,
           index: i,
@@ -212,9 +230,10 @@ List<Fragment> encodeFragments(
           shardSize: size,
           segmentId: Uint8List.fromList(segmentId),
           bodyRoot: merkleRoot(crypto, shards[i]),
-        ),
-        shards[i],
-      ),
+        );
+        buffers[i].setAll(0, header.toBytes());
+        return Fragment._assembled(header, shards[i], buffers[i]);
+      }(),
   ];
 }
 

@@ -28,6 +28,9 @@ final class TreeStats {
   /// Файлов прочитано с диска (остальные взяты из кеша файлов).
   int filesRead = 0;
 
+  /// Байт прочитано с диска — для прогресса.
+  int bytesRead = 0;
+
   pb.SnapshotStats toProto() => pb.SnapshotStats(
     files: Int64(files),
     directories: Int64(directories),
@@ -176,6 +179,7 @@ final class TreeBuilder {
             }
             chunks.add(id);
             size += data.length;
+            stats.bytesRead += data.length;
           case ReadRestarted():
             chunks = <ChunkId>[];
             size = 0;

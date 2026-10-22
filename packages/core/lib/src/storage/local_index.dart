@@ -237,6 +237,70 @@ final class LocalIndex {
     _expectUpdated('segment');
   }
 
+  /// Удаляет сегменты, не дописанные прерванным бэкапом, вместе с их
+  /// чанками: эти чанки упакуются заново. Возвращает число удалённых.
+  int discardPendingSegments() => transaction(() {
+    _db.execute('DELETE FROM segments WHERE stored = 0');
+    return _db.updatedRows;
+  });
+
+  /// Сохранённые сегменты, ещё не попавшие ни в один объект-индекс.
+  List<SegmentEntry> segmentsNotInIndex() => [
+    for (final row in _db.select(
+      'SELECT segment_id FROM segments WHERE stored = 1 AND in_index = 0 '
+      'ORDER BY id',
+    ))
+      segment(row['segment_id'] as Uint8List)!,
+  ];
+
+  /// Отмечает, что сегменты записаны в объект-индекс.
+  void markInIndex(Iterable<Uint8List> segmentIds) => transaction(() {
+    for (final id in segmentIds) {
+      _db.execute('UPDATE segments SET in_index = 1 WHERE segment_id = ?', [
+        id,
+      ]);
+    }
+  });
+
+  /// Сегмент с оглавлением и идентификаторами фрагментов.
+  SegmentEntry? segment(Uint8List segmentId) {
+    final rows = _db.select(
+      'SELECT id, k, n, blob_length, shard_size FROM segments '
+      'WHERE segment_id = ?',
+      [segmentId],
+    );
+    if (rows.isEmpty) return null;
+    final row = rows.single;
+    final rowId = row['id'] as int;
+    return SegmentEntry(
+      segmentId: segmentId,
+      k: row['k'] as int,
+      n: row['n'] as int,
+      blobLength: row['blob_length'] as int,
+      shardSize: row['shard_size'] as int,
+      fragmentIds: [
+        for (final f in _db.select(
+          'SELECT fragment_id FROM fragments WHERE segment = ? ORDER BY number',
+          [rowId],
+        ))
+          f['fragment_id'] as Uint8List,
+      ],
+      chunks: [
+        for (final c in _db.select(
+          'SELECT chunk_id, type, offset, length FROM chunks WHERE segment = ? '
+          'ORDER BY offset',
+          [rowId],
+        ))
+          SegmentChunk(
+            chunkId: ChunkId(c['chunk_id'] as Uint8List),
+            type: c['type'] as int,
+            offset: c['offset'] as int,
+            length: c['length'] as int,
+          ),
+      ],
+    );
+  }
+
   /// Идентификаторы сегментов, ещё не сохранённых (прерванный бэкап).
   List<Uint8List> pendingSegments() => [
     for (final row in _db.select(
@@ -463,5 +527,11 @@ const _migrations = [
     key TEXT PRIMARY KEY,
     value NOT NULL
   ) WITHOUT ROWID;
+  ''',
+  // 3: попал ли сохранённый сегмент в объект-индекс. Нужен, чтобы после
+  // обрыва бэкапа сегменты, сохранённые до обрыва, вошли в индекс при
+  // следующем запуске.
+  '''
+  ALTER TABLE segments ADD COLUMN in_index INTEGER NOT NULL DEFAULT 0;
   ''',
 ];

@@ -214,7 +214,7 @@ void main() {
       final again = LocalIndex.open(path);
       expect(again.maxSequence, 9);
       expect(again.lastOwnSnapshot, id(1));
-      expect(again.schemaVersion, 2);
+      expect(again.schemaVersion, LocalIndex.latestVersion);
       again.close();
     });
   });

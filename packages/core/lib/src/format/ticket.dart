@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
+import 'package:core/src/crypto/crypto_provider.dart';
+import 'package:core/src/crypto/signed_message.dart';
 import 'package:core/src/errors.dart';
+import 'package:core/src/format/coordinator_keys.dart';
 import 'package:core/src/format/fragment.dart';
 import 'package:core/src/snapshot/manifest_objects.dart';
 import 'package:core/src/util/bytes.dart';
@@ -59,6 +62,30 @@ abstract final class FragmentTickets {
     }
     check(ticket);
     return ticket;
+  }
+
+  /// Проверяет подписанный талон: подписавший входит в [trusted]
+  /// (protocol.md, раздел 5.1), подпись верна, поля по [parse]. Чужой ключ
+  /// или неверная подпись — [IntegrityException], поля — [DataFormatException].
+  /// Срок, узел и устройство проверяет вызывающий ([checkTime]).
+  static Future<pb.FragmentTicket> open(
+    CryptoProvider crypto,
+    pb.Signed signed,
+    CoordinatorKeySet trusted,
+  ) async {
+    if (!trusted.trusts(signed.signer)) {
+      throw const IntegrityException(
+        object: 'fragment-ticket',
+        check: IntegrityCheck.signature,
+      );
+    }
+    return await SignedMessages.open(
+      crypto,
+      signed,
+      context: signingContext,
+      object: 'fragment-ticket',
+      parse: (body) => parse(Uint8List.fromList(body)),
+    );
   }
 
   /// Проверяет поля уже построенного талона (protocol.md, раздел 5).

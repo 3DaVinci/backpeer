@@ -32,6 +32,13 @@ limits:
   ip_burst: 200
   key_per_second: 20
   key_burst: 100
+  # Вход по паролю (GetLoginParams, GetKeyBundle) по IP, в минуту.
+  login_per_minute: 10
+  login_burst: 20
+
+accounts:
+  # Действующих устройств на учётную запись.
+  max_devices: 5
 
 log:
   level: info

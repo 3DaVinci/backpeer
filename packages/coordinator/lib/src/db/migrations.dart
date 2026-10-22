@@ -41,6 +41,41 @@ const List<Migration> schemaMigrations = [
     )''',
     'CREATE INDEX nodes_account_id ON nodes (account_id)',
   ]),
+  Migration(3, 'вход по паролю и отзывы устройств', [
+    // Имя для входа добавлено столбцом без NOT NULL: строки, созданные до
+    // миграции, остаются; новые учётные записи без имени не создаются.
+    r'''
+    ALTER TABLE accounts
+      ADD COLUMN login text UNIQUE
+        CHECK (login ~ '^[a-z0-9][a-z0-9._-]{2,31}$'),
+      ADD COLUMN key_bundle bytea,
+      ADD COLUMN auth_verifier bytea CHECK (length(auth_verifier) = 32),
+      ADD COLUMN key_bundle_updated_at timestamptz,
+      ADD CONSTRAINT accounts_key_bundle_pair
+        CHECK ((key_bundle IS NULL) = (auth_verifier IS NULL))''',
+    'CREATE SEQUENCE device_revocation_seq',
+    '''
+    ALTER TABLE devices
+      ADD COLUMN revocation bytea,
+      ADD COLUMN revocation_seq bigint UNIQUE,
+      ADD CONSTRAINT devices_revocation_pair
+        CHECK ((revocation IS NULL) = (revocation_seq IS NULL))''',
+    // Неудачные входы по имени — и для несуществующих имён (protocol.md,
+    // раздел 4.7). Ключ — H(имя): имена, которых нет, не хранятся открыто.
+    '''
+    CREATE TABLE login_attempts (
+      login_hash bytea PRIMARY KEY CHECK (length(login_hash) = 32),
+      failures integer NOT NULL,
+      locked_until timestamptz,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )''',
+    '''
+    CREATE TABLE server_secrets (
+      name text PRIMARY KEY,
+      value bytea NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

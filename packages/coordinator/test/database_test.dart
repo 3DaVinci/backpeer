@@ -54,8 +54,10 @@ void main() {
       expect(await tables(), [
         'accounts',
         'devices',
+        'login_attempts',
         'nodes',
         'schema_migrations',
+        'server_secrets',
       ]);
       // Повторный запуск ничего не меняет.
       expect(await migrator.migrate(), schemaMigrations.length);
@@ -78,7 +80,7 @@ void main() {
           parameters: {'d': device, 'a': account, 'c': Uint8List(10)},
         );
       });
-      expect(await migrator.migrate(), 2);
+      expect(await migrator.migrate(), schemaMigrations.length);
       final keys = PostgresKeyDirectory(db);
       expect((await keys.lookup(device))?.kind, KeyKind.device);
       final names = await db.run(
@@ -103,7 +105,7 @@ void main() {
     test('сбой в миграции откатывает её целиком', () async {
       final broken = [
         ...schemaMigrations,
-        const Migration(3, 'сломанная', [
+        Migration(schemaMigrations.length + 1, 'сломанная', const [
           'CREATE TABLE half (x int)',
           'SELECT * FROM нет_такой_таблицы',
         ]),

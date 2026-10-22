@@ -2,7 +2,8 @@
 ///
 /// Устройство `lib/src/`:
 ///
-/// - `rpc/` — HTTP-обработчик API, таблица методов, ошибки;
+/// - `rpc/` — HTTP-обработчик API, таблица методов, ошибки, сервис на базе;
+/// - `accounts/` — учётные записи, устройства, вход по паролю;
 /// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
 ///   ключей;
 /// - `limits/` — ограничение частоты запросов;
@@ -11,6 +12,9 @@
 /// - `config.dart`, `log.dart`, `server.dart` — настройки, журнал, запуск.
 library;
 
+export 'src/accounts/account_service.dart';
+export 'src/accounts/certificates.dart';
+export 'src/accounts/login_service.dart';
 export 'src/auth/key_directory.dart';
 export 'src/auth/replay_cache.dart';
 export 'src/auth/request_verifier.dart';
@@ -22,6 +26,7 @@ export 'src/limits/rate_limiter.dart';
 export 'src/log.dart';
 export 'src/rpc/api_handler.dart';
 export 'src/rpc/call_context.dart';
+export 'src/rpc/database_service.dart';
 export 'src/rpc/errors.dart';
 export 'src/rpc/methods.dart';
 export 'src/rpc/service.dart';

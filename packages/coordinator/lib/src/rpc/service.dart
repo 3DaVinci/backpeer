@@ -26,6 +26,26 @@ abstract base class CoordinatorService {
     pb.RevokeDeviceRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.ListDevicesResponse> listDevices(
+    CallContext context,
+    pb.ListDevicesRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.ListRevocationsResponse> listRevocations(
+    CallContext context,
+    pb.ListRevocationsRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.GetLoginParamsResponse> getLoginParams(
+    CallContext context,
+    pb.GetLoginParamsRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.SetKeyBundleResponse> setKeyBundle(
+    CallContext context,
+    pb.SetKeyBundleRequest request,
+  ) => _unimplemented(context);
+
   Future<pb.GetKeyBundleResponse> getKeyBundle(
     CallContext context,
     pb.GetKeyBundleRequest request,

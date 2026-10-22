@@ -48,12 +48,19 @@ final class RateLimits {
     this.ipBurst = 200,
     this.keyPerSecond = 20,
     this.keyBurst = 100,
+    this.loginPerMinute = 10,
+    this.loginBurst = 20,
   });
 
   final double ipPerSecond;
   final int ipBurst;
   final double keyPerSecond;
   final int keyBurst;
+
+  /// `GetLoginParams` и `GetKeyBundle` по IP — строже (protocol.md,
+  /// раздел 4.7).
+  final double loginPerMinute;
+  final int loginBurst;
 }
 
 /// Настройки координатора: YAML-файл и переменные окружения
@@ -67,6 +74,7 @@ final class CoordinatorConfig {
     this.tlsPrivateKey,
     this.database = const DatabaseConfig(),
     this.limits = const RateLimits(),
+    this.maxDevicesPerAccount = 5,
     this.logLevel = Level.INFO,
   });
 
@@ -134,6 +142,9 @@ final class CoordinatorConfig {
     'limits.ip_burst',
     'limits.key_per_second',
     'limits.key_burst',
+    'limits.login_per_minute',
+    'limits.login_burst',
+    'accounts.max_devices',
     'log.level',
   };
 
@@ -148,6 +159,10 @@ final class CoordinatorConfig {
 
   final DatabaseConfig database;
   final RateLimits limits;
+
+  /// Действующих устройств на учётную запись (mvp-scope.md).
+  final int maxDevicesPerAccount;
+
   final Level logLevel;
 }
 
@@ -211,7 +226,12 @@ final class _Reader {
         ipBurst: _int('limits.ip_burst', 1, 1 << 30) ?? lim.ipBurst,
         keyPerSecond: _double('limits.key_per_second') ?? lim.keyPerSecond,
         keyBurst: _int('limits.key_burst', 1, 1 << 30) ?? lim.keyBurst,
+        loginPerMinute:
+            _double('limits.login_per_minute') ?? lim.loginPerMinute,
+        loginBurst: _int('limits.login_burst', 1, 1 << 30) ?? lim.loginBurst,
       ),
+      maxDevicesPerAccount:
+          _int('accounts.max_devices', 1, 100) ?? d.maxDevicesPerAccount,
       logLevel:
           _enum('log.level', {
             'fine': Level.FINE,

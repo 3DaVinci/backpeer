@@ -66,17 +66,41 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.AddDeviceRequest.fromBuffer,
     handle: s.addDevice,
   ),
+  RpcMethod<pb.ListDevicesRequest, pb.ListDevicesResponse>(
+    name: 'ListDevices',
+    auth: AuthRequirement.account,
+    parse: pb.ListDevicesRequest.fromBuffer,
+    handle: s.listDevices,
+  ),
   RpcMethod<pb.RevokeDeviceRequest, pb.RevokeDeviceResponse>(
     name: 'RevokeDevice',
     auth: AuthRequirement.account,
     parse: pb.RevokeDeviceRequest.fromBuffer,
     handle: s.revokeDevice,
   ),
+  RpcMethod<pb.ListRevocationsRequest, pb.ListRevocationsResponse>(
+    name: 'ListRevocations',
+    auth: AuthRequirement.node,
+    parse: pb.ListRevocationsRequest.fromBuffer,
+    handle: s.listRevocations,
+  ),
+  RpcMethod<pb.GetLoginParamsRequest, pb.GetLoginParamsResponse>(
+    name: 'GetLoginParams',
+    auth: AuthRequirement.none,
+    parse: pb.GetLoginParamsRequest.fromBuffer,
+    handle: s.getLoginParams,
+  ),
   RpcMethod<pb.GetKeyBundleRequest, pb.GetKeyBundleResponse>(
     name: 'GetKeyBundle',
     auth: AuthRequirement.none,
     parse: pb.GetKeyBundleRequest.fromBuffer,
     handle: s.getKeyBundle,
+  ),
+  RpcMethod<pb.SetKeyBundleRequest, pb.SetKeyBundleResponse>(
+    name: 'SetKeyBundle',
+    auth: AuthRequirement.account,
+    parse: pb.SetKeyBundleRequest.fromBuffer,
+    handle: s.setKeyBundle,
   ),
   RpcMethod<pb.PutObjectRequest, pb.PutObjectResponse>(
     name: 'PutObject',

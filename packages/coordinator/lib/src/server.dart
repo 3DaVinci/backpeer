@@ -8,6 +8,7 @@ import 'package:coordinator/src/db/postgres_key_directory.dart';
 import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/rpc/api_handler.dart';
+import 'package:coordinator/src/rpc/database_service.dart';
 import 'package:coordinator/src/rpc/methods.dart';
 import 'package:coordinator/src/rpc/service.dart';
 import 'package:core/core.dart';
@@ -24,7 +25,7 @@ final class CoordinatorServer {
   static Future<CoordinatorServer> start(
     CoordinatorConfig config, {
     required CryptoProvider crypto,
-    CoordinatorService service = const UnimplementedCoordinatorService(),
+    CoordinatorService Function(Database db)? service,
     bool migrate = false,
   }) async {
     final db = Database.open(config.database);
@@ -41,7 +42,14 @@ final class CoordinatorServer {
       }
       final limits = config.limits;
       final handler = ApiHandler(
-        methods: coordinatorMethods(service),
+        methods: coordinatorMethods(
+          service?.call(db) ??
+              DatabaseCoordinatorService(
+                db: db,
+                crypto: crypto,
+                config: config,
+              ),
+        ),
         verifier: RequestVerifier(
           crypto: crypto,
           keys: PostgresKeyDirectory(db),

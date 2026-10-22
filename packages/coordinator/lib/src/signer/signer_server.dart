@@ -41,7 +41,7 @@ final class SignerServer {
     socket.listen(server._accept);
     _log.info(
       LogEvent('listening', {
-        'key': bytesToHex(service.publicKey),
+        'key_id': CoordinatorKeySet.keyId(service.crypto, service.publicKey),
         'max_lifetime_min': service.maxLifetime.inMinutes,
         'uid_check': allowedUids.isNotEmpty,
       }),

@@ -62,10 +62,10 @@ Future<void> main(List<String> arguments) async {
     switch (command.name) {
       case 'keygen':
         final key = await SignerKeyFile.generate(keyPath, crypto);
-        stdout.writeln(bytesToHex(key.publicKey));
+        _printKey(crypto, key);
       case 'public-key':
         final key = await SignerKeyFile.load(keyPath, crypto);
-        stdout.writeln(bytesToHex(key.publicKey));
+        _printKey(crypto, key);
       case 'serve':
         await _serve(crypto, keyPath, options!);
     }
@@ -109,6 +109,15 @@ Future<void> _serve(
   }
   await server.close();
   key.seed.dispose();
+}
+
+/// Открытый ключ в stdout (для скриптов), идентификатор — в stderr
+/// (protocol.md, раздел 5.1).
+void _printKey(CryptoProvider crypto, Ed25519KeyPair key) {
+  stdout.writeln(bytesToHex(key.publicKey));
+  stderr.writeln(
+    'Идентификатор ключа: ${CoordinatorKeySet.keyId(crypto, key.publicKey)}',
+  );
 }
 
 final class _ServeOptions {

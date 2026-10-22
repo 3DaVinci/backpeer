@@ -77,7 +77,8 @@ final class ApiHandler {
           'строка запроса не поддерживается',
         );
       }
-      _limit(ipLimiter, _clientAddress(request), 'IP');
+      final address = _clientAddress(request);
+      _limit(ipLimiter, address, 'IP');
       _checkContentType(request);
       final body = await _readBody(request, method.maxBodyBytes);
       bytesIn = body.length;
@@ -94,6 +95,7 @@ final class ApiHandler {
         method: method.name,
         requestId: requestId,
         caller: caller,
+        clientAddress: address,
       );
       response = _protobuf(200, await method.call(context, body), requestId);
     } on RpcException catch (e) {

@@ -2,7 +2,12 @@ import 'package:coordinator/src/auth/request_verifier.dart';
 
 /// Сведения о вызове для обработчика метода.
 final class CallContext {
-  const new({required this.method, required this.requestId, this.caller});
+  const new({
+    required this.method,
+    required this.requestId,
+    this.caller,
+    this.clientAddress = '',
+  });
 
   /// Имя метода: `PutObject`.
   final String method;
@@ -12,4 +17,7 @@ final class CallContext {
 
   /// Кто подписал запрос; `null` — метод без подписи.
   final Caller? caller;
+
+  /// Адрес клиента — для пределов частоты; в журнал не пишется.
+  final String clientAddress;
 }

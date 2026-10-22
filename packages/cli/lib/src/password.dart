@@ -1,49 +1,48 @@
-import 'dart:math';
+import 'package:core/core.dart';
 
-/// Минимальная длина пароля (модель угроз, К-3).
-const int minPasswordLength = 12;
-
-/// Грубая оценка стойкости пароля, бит. Учитывает длину, классы символов,
-/// повторы и самые частые пароли; это ориентир для предупреждения, а не
-/// гарантия.
-double estimatePasswordBits(String password) {
-  final runes = password.runes.toList();
-  if (runes.isEmpty) return 0;
-  final lower = password.toLowerCase();
-  for (final common in _common) {
-    if (lower.contains(common)) return 10;
-  }
-  var pool = 0;
-  if (runes.any((r) => r >= 0x61 && r <= 0x7A)) pool += 26;
-  if (runes.any((r) => r >= 0x41 && r <= 0x5A)) pool += 26;
-  if (runes.any((r) => r >= 0x30 && r <= 0x39)) pool += 10;
-  if (runes.any((r) => r >= 0x20 && r < 0x7F && !_isAlnum(r))) pool += 33;
-  if (runes.any((r) => r >= 0x80)) pool += 100;
-  final unique = runes.toSet().length;
-  // Повторы и короткий набор символов: считаем только «полезную» длину.
-  final effective = min(runes.length, unique * 2);
-  return effective * log(pool) / ln2;
-}
+/// Сообщения о пароле для консоли. Проверка и оценка — `PasswordPolicy`
+/// из core (crypto.md, раздел 4.3); здесь только слова.
 
 /// Оценка словами.
-String passwordRating(double bits) => bits < 50
-    ? 'слабый'
-    : bits < 70
-    ? 'средний'
-    : 'стойкий';
+String passwordRating(PasswordVerdict verdict) => switch (verdict) {
+  PasswordVerdict.rejected => 'слабый',
+  PasswordVerdict.weak => 'средний',
+  PasswordVerdict.strong => 'стойкий',
+};
 
-bool _isAlnum(int r) =>
-    (r >= 0x30 && r <= 0x39) ||
-    (r >= 0x41 && r <= 0x5A) ||
-    (r >= 0x61 && r <= 0x7A);
+/// Почему пароль не принят — одной строкой.
+String passwordProblems(PasswordAssessment a) => [
+  for (final p in a.problems)
+    switch (p) {
+      PasswordProblem.tooShort => 'короче ${PasswordPolicy.minLength} символов',
+      PasswordProblem.forbiddenCharacter =>
+        'есть управляющий символ или символ, не назначенный в Unicode '
+            '${PasswordPolicy.unicodeVersion}',
+      PasswordProblem.tooGuessable =>
+        'подбирается слишком быстро (≈ ${a.bits.round()} бит, нужно не '
+            'меньше ${_bits(PasswordPolicy.rejectBelowLog10)})',
+    },
+].join('; ');
 
-const _common = [
-  'password',
-  'qwerty',
-  '123456',
-  'йцукен',
-  'пароль',
-  'letmein',
-  'iloveyou',
-  'admin',
+/// Подсказки: что сделало пароль предсказуемым.
+List<String> passwordHints(PasswordAssessment a) => [
+  for (final h in a.hints)
+    switch (h) {
+      PasswordHint.commonPassword => 'это один из частых паролей',
+      PasswordHint.dictionaryWord => 'словарные слова подбираются первыми',
+      PasswordHint.name => 'имена и фамилии подбираются первыми',
+      PasswordHint.personalInfo => 'в пароле сведения об учётной записи',
+      PasswordHint.otherLayout =>
+        'слово в другой раскладке не сложнее самого слова',
+      PasswordHint.substitution =>
+        'замены вроде @ вместо a почти не усложняют подбор',
+      PasswordHint.reversed => 'слово задом наперёд не сложнее самого слова',
+      PasswordHint.keyboardPattern =>
+        'соседние клавиши (qwerty, 1qaz) подбираются первыми',
+      PasswordHint.repeat => 'повторы почти не добавляют стойкости',
+      PasswordHint.sequence => 'последовательности (abc, 123) предсказуемы',
+      PasswordHint.date => 'даты и годы предсказуемы',
+    },
 ];
+
+int _bits(double log10) => (log10 * 3.321928).round();

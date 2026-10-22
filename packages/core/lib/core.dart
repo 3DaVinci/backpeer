@@ -9,7 +9,8 @@
 /// - `format/` — сегменты, фрагменты, дерево Меркла, правила талонов;
 /// - `snapshot/` — обход папок, деревья, снимки и индексы;
 /// - `storage/` — хранилища фрагментов и объектов, локальный индекс;
-/// - `pipeline/` — конвейеры бэкапа и восстановления.
+/// - `pipeline/` — конвейеры бэкапа и восстановления;
+/// - `password/` — оценка стойкости и требования к паролю.
 library;
 
 export 'src/build_info.dart';
@@ -34,6 +35,8 @@ export 'src/format/fragment.dart';
 export 'src/format/merkle.dart';
 export 'src/format/segment.dart';
 export 'src/format/ticket.dart';
+export 'src/password/estimator.dart';
+export 'src/password/policy.dart';
 export 'src/pipeline/backup.dart';
 export 'src/pipeline/restore.dart';
 export 'src/pipeline/segment_encoder.dart';

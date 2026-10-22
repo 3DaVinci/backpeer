@@ -137,32 +137,36 @@ final class CliContext {
     return value;
   }
 
-  /// Новый пароль: дважды, не короче [minPasswordLength], с оценкой
-  /// стойкости и подтверждением слабого (модель угроз, К-3).
+  /// Новый пароль: дважды, по требованиям `PasswordPolicy` (crypto.md,
+  /// раздел 4.3): слабый отклоняется, средний — только с подтверждением.
+  /// Из `FS_PASSWORD` средний принимается без вопроса: это для скриптов.
   String newPassword() {
     if (env['FS_PASSWORD'] case final String p) {
-      if (p.runes.length < minPasswordLength) {
-        throw const CliException(
-          'FS_PASSWORD короче $minPasswordLength символов',
-        );
+      final a = PasswordPolicy.assess(p);
+      if (a.verdict == PasswordVerdict.rejected) {
+        throw CliException('FS_PASSWORD не принят: ${passwordProblems(a)}');
       }
       return p;
     }
     for (;;) {
       final first = password(
-        'Новый пароль (не короче $minPasswordLength символов): ',
+        'Новый пароль (не короче ${PasswordPolicy.minLength} символов): ',
       );
-      if (first.runes.length < minPasswordLength) {
-        console.err('Слишком короткий пароль.');
+      final a = PasswordPolicy.assess(first);
+      if (a.verdict == PasswordVerdict.rejected) {
+        console.err('Пароль не принят: ${passwordProblems(a)}.');
+        passwordHints(a).forEach((h) => console.err('  – $h'));
+        console.err('Лучше 4–5 случайных слов.');
         continue;
       }
-      final bits = estimatePasswordBits(first);
       console.err(
-        'Оценка стойкости: ${passwordRating(bits)} (≈ ${bits.round()} бит).',
+        'Оценка стойкости: ${passwordRating(a.verdict)} '
+        '(≈ ${a.bits.round()} бит).',
       );
-      if (bits < 50) {
+      if (a.verdict == PasswordVerdict.weak) {
+        passwordHints(a).forEach((h) => console.err('  – $h'));
         console.err(
-          'Слабый пароль можно подобрать, если копия ключа попадёт к '
+          'Такой пароль можно подобрать, если копия ключа попадёт к '
           'злоумышленнику. Лучше 4–5 случайных слов.',
         );
         final answer = console.ask('Оставить этот пароль? (да/нет): ');

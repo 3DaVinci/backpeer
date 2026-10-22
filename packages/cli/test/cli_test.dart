@@ -159,6 +159,52 @@ void main() {
     },
   );
 
+  test(
+    'новый пароль: слабый отклоняется, средний — с подтверждением',
+    () async {
+      final weak = {...env, 'FS_PASSWORD': 'qwerty123456'};
+      final (code, console) = await cli(
+        ['init'],
+        environment: weak,
+        answer: answerWords,
+      );
+      expect(code, isNot(ExitCode.ok));
+      expect(console.errors.join('\n'), contains('FS_PASSWORD не принят'));
+
+      final passwords = [
+        'qwerty123456',
+        'another long password',
+        'correct horse battery staple',
+      ].iterator;
+      final asked = <String>[];
+      String? answer(String prompt, List<String> out) {
+        asked.add(prompt);
+        if (prompt.startsWith('Новый пароль')) {
+          passwords.moveNext();
+          return passwords.current;
+        }
+        if (prompt.startsWith('Повторите')) return passwords.current;
+        if (prompt.startsWith('Оставить')) return 'нет';
+        return answerWords(prompt, out);
+      }
+
+      final interactive = Map.of(env)..remove('FS_PASSWORD');
+      final (ok, c) = await cli(
+        ['init'],
+        environment: interactive,
+        answer: answer,
+      );
+      expect(ok, ExitCode.ok, reason: c.errors.join('\n'));
+      final errors = c.errors.join('\n');
+      expect(errors, contains('Пароль не принят: подбирается слишком быстро'));
+      expect(errors, contains('это один из частых паролей'));
+      expect(errors, contains('Оценка стойкости: средний'));
+      expect(errors, contains('Оценка стойкости: стойкий'));
+      expect(asked.where((p) => p.startsWith('Новый пароль')), hasLength(3));
+      expect(asked.where((p) => p.startsWith('Оставить')), hasLength(1));
+    },
+  );
+
   test('неверный пароль и короткий префикс снимка', () async {
     await init();
     final (code, console) = await cli(

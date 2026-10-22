@@ -8,6 +8,8 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
+  # Разбор команд и флагов (BSD-3-Clause, пакет команды Dart).
+  args: ^2.7.0
   core: any
   protocol: any
 

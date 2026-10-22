@@ -98,24 +98,15 @@ final class SnapshotCatalog {
     );
   }
 
-  /// Снимок по началу идентификатора в hex (не короче 4 символов).
-  /// Не найден или неоднозначен — `ArgumentError`.
-  Future<Uint8List> resolve(String prefix) async {
+  /// Снимки, идентификатор которых начинается с [prefix] (hex, любой
+  /// регистр). Префикс не из hex-символов — пустой список.
+  Future<List<Uint8List>> matching(String prefix) async {
     final p = prefix.toLowerCase();
-    if (p.length < 4 || !RegExp(r'^[0-9a-f]+$').hasMatch(p)) {
-      throw ArgumentError('Идентификатор снимка: не меньше 4 hex-символов');
-    }
-    final matches = [
+    if (p.isEmpty || !RegExp(r'^[0-9a-f]+$').hasMatch(p)) return const [];
+    return [
       for (final info in await store.list(ObjectKind.snapshot))
         if (bytesToHex(info.id).startsWith(p)) info.id,
     ];
-    if (matches.isEmpty) throw ArgumentError('Снимок $prefix не найден');
-    if (matches.length > 1) {
-      throw ArgumentError(
-        'Префикс $prefix подходит к ${matches.length} снимкам',
-      );
-    }
-    return matches.single;
   }
 
   /// Удаляет снимок. Чтобы удаление не выглядело потом как откат: если

@@ -47,7 +47,7 @@ void main() {
         expect(listing.snapshots.map((s) => s.sequence.toInt()), [1, 2, 3]);
         expect(listing.warnings, isEmpty);
 
-        await catalog.forget(await catalog.resolve('b2'.padRight(4, '0')));
+        await catalog.forget((await catalog.matching('b2')).single);
         listing = await catalog.list();
         expect(listing.snapshots.map((s) => s.snapshotId[0]), [0xA1, 0xC3]);
         expect(listing.warnings, isEmpty);
@@ -110,13 +110,13 @@ void main() {
       },
     );
 
-    test('resolve: короткий, неоднозначный и неизвестный префикс', () async {
+    test('matching: префикс, неоднозначность, неизвестный', () async {
       await catalog.save(snapshot(0xA1, 1));
       await catalog.save(snapshot(0xA2, 2));
-      expect(() => catalog.resolve('a1'), throwsArgumentError);
-      expect(() => catalog.resolve('a1000'), returnsNormally);
-      await expectLater(catalog.resolve('ffff'), throwsArgumentError);
-      expect((await catalog.resolve('a100'))[0], 0xA1);
+      expect(await catalog.matching('a'), hasLength(2));
+      expect((await catalog.matching('A100')).single[0], 0xA1);
+      expect(await catalog.matching('ffff'), isEmpty);
+      expect(await catalog.matching('xyz'), isEmpty);
     });
   });
 }

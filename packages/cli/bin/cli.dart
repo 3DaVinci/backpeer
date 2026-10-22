@@ -1,14 +1,10 @@
 import 'dart:io';
 
-import 'package:core/core.dart';
+import 'package:cli/cli.dart';
 
 Future<void> main(List<String> arguments) async {
-  if (arguments.contains('--version')) {
-    stdout.writeln(versionLine('cli'));
-    // Заодно проверяет, что libsodium из папки сборки загружается.
-    final crypto = await SodiumCryptoProvider.load();
-    stdout.writeln('libsodium ${crypto.libraryVersion}');
-    return;
-  }
-  stdout.writeln('cli: not implemented yet');
+  exitCode = await runCli(arguments);
+  // Isolate libsodium и таймеры не должны держать процесс.
+  await stdout.flush();
+  exit(exitCode);
 }

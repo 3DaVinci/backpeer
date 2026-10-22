@@ -145,10 +145,12 @@ final class SegmentReader {
         segmentId: segmentId,
       );
     }
+    // Каждый фрагмент уже проверен в fetch по fragment_id из индекса.
     return decodeFragments(
       crypto,
       valid.sublist(0, entry.k),
       segmentId: segmentId,
+      verified: true,
     );
   }
 

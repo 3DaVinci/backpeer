@@ -297,6 +297,26 @@ void main() {
             decodeFragments(crypto, [a[0], forged], segmentId: built.segmentId),
         throwsA(isA<IntegrityException>()),
       );
+      // verified: дерево Меркла не пересчитывается, проверка сегмента
+      // остаётся.
+      expect(
+        () => decodeFragments(
+          crypto,
+          [a[0], b[1]],
+          segmentId: built.segmentId,
+          verified: true,
+        ),
+        throwsA(isA<IntegrityException>()),
+      );
+      expect(
+        decodeFragments(
+          crypto,
+          [a[0], a[1]],
+          segmentId: built.segmentId,
+          verified: true,
+        ),
+        built.blob,
+      );
     });
   });
 }

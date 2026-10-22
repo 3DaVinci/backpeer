@@ -79,6 +79,35 @@ void main() {
     expect(second.fold(0, (sum, c) => sum + c.data.length), data.length + 3);
   });
 
+  test('мелкий файл вырос больше буфера во время чтения', () async {
+    // Буфер мелкого файла — по его размеру; после роста нарезка по
+    // неполному окну отбрасывается, вторая попытка режет как эталон.
+    final data = splitmix64Bytes(10, 1000);
+    final grown = splitmix64Bytes(11, 3 * 1024 * 1024);
+    final file = write('small', data);
+    var stamps = 0;
+    final events = await chunkFile(
+      file,
+      cdc,
+      stamp: () {
+        // Рост между снятием штампа и открытием файла.
+        if (stamps++ == 0) {
+          final before = (size: data.length, mtimeNs: 0, ctimeNs: 0);
+          file.writeAsBytesSync([...data, ...grown]);
+          return before;
+        }
+        return (size: data.length + grown.length, mtimeNs: 1, ctimeNs: 1);
+      },
+    ).toList();
+    final restart = events.indexWhere((e) => e is ReadRestarted);
+    expect(restart, greaterThan(0));
+    final second = events.skip(restart + 1).cast<ChunkRead>().toList();
+    expect(
+      second.map((c) => c.data.length).toList(),
+      cdc.chunkLengths(Uint8List.fromList([...data, ...grown])),
+    );
+  });
+
   test('файл меняется постоянно — SourceChangedException', () async {
     final file = write('always', splitmix64Bytes(9, 12 * 1024 * 1024));
     var n = 0;

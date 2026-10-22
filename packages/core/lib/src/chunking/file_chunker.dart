@@ -67,9 +67,15 @@ Stream<FileChunkEvent> _chunkFile(
   int maxAttempts,
   FileSnapshot Function() stamp,
 ) async* {
-  final buffer = Uint8List(bufferSize);
   for (var attempt = 1; ; attempt++) {
     final before = stamp();
+    // Файлу меньше окна хватает буфера по размеру: окно 16 МиБ на каждый
+    // мелкий файл — главная трата времени при бэкапе мелких файлов (замер
+    // 1.8.3). Если файл вырос, нарезка по неполному окну может разойтись
+    // с эталонной, но тогда не сойдётся размер и чтение начнётся заново.
+    final buffer = Uint8List(
+      before.size < bufferSize ? before.size + 1 : bufferSize,
+    );
     final raf = await file.open();
     var consistent = true;
     try {
@@ -95,10 +101,7 @@ Stream<FileChunkEvent> _chunkFile(
         }
         if (start == end) break;
         final size = cdc.cut(buffer, start, end);
-        yield ChunkRead(
-          offset,
-          Uint8List.fromList(buffer.sublist(start, start + size)),
-        );
+        yield ChunkRead(offset, buffer.sublist(start, start + size));
         start += size;
         offset += size;
       }

@@ -106,6 +106,9 @@ final class LocalFolderStore implements FragmentStore {
           cause: 'сбой записи (внесённый)',
         );
       }
+      // Синхронно: асинхронная запись в dart:io быстрее на 25%, но копии
+      // буферов сборщик мусора убирает поздно, и рост памяти бэкапа —
+      // 1,2 ГиБ вместо 0,55 (замер 1.8.3). Чтение — асинхронное.
       temp
         ..writeAsBytesSync(fragment, flush: true)
         ..renameSync(file.path);
@@ -126,7 +129,7 @@ final class LocalFolderStore implements FragmentStore {
     final file = _file(node, fragmentId);
     final Uint8List bytes;
     try {
-      bytes = file.readAsBytesSync();
+      bytes = await file.readAsBytes();
     } on PathNotFoundException {
       throw StorageException(
         location: '$node/${bytesToHex(fragmentId)}',

@@ -65,6 +65,13 @@ final class TreeBuilder {
   final LocalIndex index;
   final TreeStats stats = TreeStats();
 
+  /// Записи кеша файлов, ещё не сохранённые в [index]. Пишутся пачками в
+  /// одной транзакции: отдельная транзакция на файл — это fsync на файл,
+  /// и бэкап мелких файлов упирается в диск (замер 1.8.3). Потерянные при
+  /// сбое записи безопасны: файлы просто прочитаются заново.
+  final List<(Uint8List, FileStamp, List<ChunkId>)> _pendingFiles = [];
+  static const _filesPerTransaction = 256;
+
   /// Корневое дерево снимка: по узлу на каждый путь из [paths], имя узла —
   /// путь целиком в UTF-8 (manifest.md, раздел 2). Возвращает chunk_id
   /// чанков корневого дерева.
@@ -86,6 +93,7 @@ final class TreeBuilder {
     }
     nodes.sort((a, b) => compareBytes(_bytes(a.name), _bytes(b.name)));
     final root = await _storeTree(nodes);
+    _flushFiles();
     stats.skipped = walker.report.skipped.length;
     return root;
   }
@@ -194,8 +202,19 @@ final class TreeBuilder {
     }
     // Штамп снят до чтения: если файл менялся после обхода, следующий
     // бэкап увидит другой штамп и прочитает файл снова.
-    index.putFile(path, stamp, chunks);
+    _pendingFiles.add((path, stamp, chunks));
+    if (_pendingFiles.length >= _filesPerTransaction) _flushFiles();
     return (chunks: chunks, size: size);
+  }
+
+  void _flushFiles() {
+    if (_pendingFiles.isEmpty) return;
+    index.transaction(() {
+      for (final (path, stamp, chunks) in _pendingFiles) {
+        index.putFile(path, stamp, chunks);
+      }
+    });
+    _pendingFiles.clear();
   }
 
   Future<List<ChunkId>> _storeTree(List<pb.Node> nodes) async {

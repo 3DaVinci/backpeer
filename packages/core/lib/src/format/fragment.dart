@@ -242,12 +242,17 @@ List<Fragment> encodeFragments(
 /// номерам, из индекса. Чужой сегмент или другие параметры —
 /// [IntegrityException]; повтор номера и нехватка —
 /// [InsufficientShardsException].
+///
+/// [verified] — фрагменты уже проверены вызывающим ([Fragment.verify] при
+/// чтении): дерево Меркла не считается второй раз. Проверка сегмента,
+/// параметров и номеров остаётся.
 Uint8List decodeFragments(
   CryptoProvider crypto,
   List<Fragment> fragments, {
   required Uint8List segmentId,
   Map<int, Uint8List>? expectedFragmentIds,
   ErasureCoder? coder,
+  bool verified = false,
 }) {
   if (fragments.isEmpty) {
     throw const InsufficientShardsException(available: 0, required: 1);
@@ -264,7 +269,9 @@ Uint8List decodeFragments(
         objectId: h.segmentId,
       );
     }
-    f.verify(crypto, expectedFragmentId: expectedFragmentIds?[h.index]);
+    if (!verified) {
+      f.verify(crypto, expectedFragmentId: expectedFragmentIds?[h.index]);
+    }
     if (shards[h.index] == null) {
       shards[h.index] = f.body;
       present++;

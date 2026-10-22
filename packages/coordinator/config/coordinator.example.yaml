@@ -1,0 +1,37 @@
+# Пример настроек координатора (docs/ops/coordinator.md). Любой ключ можно
+# переопределить переменной FS_COORDINATOR_<РАЗДЕЛ>_<КЛЮЧ>, например
+# FS_COORDINATOR_DATABASE_PASSWORD.
+
+listen:
+  host: 127.0.0.1
+  port: 8443
+  # Координатор за обратным прокси (nginx, Caddy): адрес клиента — из
+  # последнего значения X-Forwarded-For. Без прокси — false, иначе клиент
+  # подставит любой адрес и обойдёт ограничение частоты по IP.
+  trust_forwarded_for: true
+
+# TLS самого координатора. Без этого раздела сервер слушает HTTP, и TLS
+# должен завершать прокси.
+# tls:
+#   certificate: /etc/fs-coordinator/fullchain.pem
+#   private_key: /etc/fs-coordinator/privkey.pem
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  name: fs_coordinator
+  user: fs_coordinator
+  # Пароль — не в этом файле: FS_COORDINATOR_DATABASE_PASSWORD или файл
+  # (права 0600, владелец — пользователь координатора).
+  # password_file: /etc/fs-coordinator/db-password
+  ssl: verify-full
+  max_connections: 10
+
+limits:
+  ip_per_second: 50
+  ip_burst: 200
+  key_per_second: 20
+  key_burst: 100
+
+log:
+  level: info

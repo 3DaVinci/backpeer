@@ -1,0 +1,272 @@
+import 'dart:io';
+
+import 'package:logging/logging.dart';
+import 'package:yaml/yaml.dart';
+
+/// Ошибка в настройках: сообщение для оператора.
+final class ConfigException implements Exception {
+  const new(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'ConfigException: $message';
+}
+
+/// Режим TLS соединения с PostgreSQL.
+enum DatabaseSsl { disable, require, verifyFull }
+
+/// Подключение к PostgreSQL.
+final class DatabaseConfig {
+  const new({
+    this.host = '127.0.0.1',
+    this.port = 5432,
+    this.name = 'fs_coordinator',
+    this.user = 'fs_coordinator',
+    this.password,
+    this.ssl = DatabaseSsl.disable,
+    this.maxConnections = 10,
+  });
+
+  final String host;
+  final int port;
+  final String name;
+  final String user;
+  final String? password;
+  final DatabaseSsl ssl;
+  final int maxConnections;
+
+  @override
+  String toString() =>
+      'DatabaseConfig($user@$host:$port/$name, ssl: ${ssl.name})';
+}
+
+/// Пределы частоты запросов (protocol.md, раздел 4.5).
+final class RateLimits {
+  const new({
+    this.ipPerSecond = 50,
+    this.ipBurst = 200,
+    this.keyPerSecond = 20,
+    this.keyBurst = 100,
+  });
+
+  final double ipPerSecond;
+  final int ipBurst;
+  final double keyPerSecond;
+  final int keyBurst;
+}
+
+/// Настройки координатора: YAML-файл и переменные окружения
+/// `FS_COORDINATOR_<РАЗДЕЛ>_<КЛЮЧ>` поверх него (`docs/ops/coordinator.md`).
+final class CoordinatorConfig {
+  const new({
+    this.host = '127.0.0.1',
+    this.port = 8443,
+    this.trustForwardedFor = false,
+    this.tlsCertificate,
+    this.tlsPrivateKey,
+    this.database = const DatabaseConfig(),
+    this.limits = const RateLimits(),
+    this.logLevel = Level.INFO,
+  });
+
+  /// Из YAML-текста [yaml] (может быть пустым) и окружения [environment].
+  factory parse(String yaml, Map<String, String> environment) {
+    final Object? doc;
+    try {
+      doc = loadYaml(yaml);
+    } on YamlException catch (e) {
+      throw ConfigException('YAML не разбирается: ${e.message}');
+    }
+    if (doc != null && doc is! YamlMap) {
+      throw const ConfigException('корень настроек должен быть словарём');
+    }
+    final values = <String, Object?>{};
+    void flatten(String prefix, YamlMap map) {
+      for (final MapEntry(:key, :value) in map.entries) {
+        final name = prefix.isEmpty ? '$key' : '$prefix.$key';
+        if (value is YamlMap) {
+          flatten(name, value);
+        } else {
+          values[name] = value;
+        }
+      }
+    }
+
+    if (doc is YamlMap) flatten('', doc);
+    final unknown = values.keys.where((k) => !_keys.contains(k)).toList();
+    if (unknown.isNotEmpty) {
+      throw ConfigException('неизвестные настройки: ${unknown.join(', ')}');
+    }
+    for (final key in _keys) {
+      final env = environment[envName(key)];
+      if (env != null) values[key] = env;
+    }
+    return _Reader(values).build();
+  }
+
+  /// Из файла [path] (если задан) и окружения процесса.
+  factory load(String? path) => CoordinatorConfig.parse(
+    path == null ? '' : File(path).readAsStringSync(),
+    Platform.environment,
+  );
+
+  /// Имя переменной окружения для ключа: `database.password` →
+  /// `FS_COORDINATOR_DATABASE_PASSWORD`.
+  static String envName(String key) =>
+      'FS_COORDINATOR_${key.replaceAll('.', '_').toUpperCase()}';
+
+  static const _keys = {
+    'listen.host',
+    'listen.port',
+    'listen.trust_forwarded_for',
+    'tls.certificate',
+    'tls.private_key',
+    'database.host',
+    'database.port',
+    'database.name',
+    'database.user',
+    'database.password',
+    'database.password_file',
+    'database.ssl',
+    'database.max_connections',
+    'limits.ip_per_second',
+    'limits.ip_burst',
+    'limits.key_per_second',
+    'limits.key_burst',
+    'log.level',
+  };
+
+  final String host;
+  final int port;
+  final bool trustForwardedFor;
+
+  /// Пути к цепочке сертификатов и закрытому ключу в PEM. Без них сервер
+  /// слушает HTTP — только за обратным прокси с TLS.
+  final String? tlsCertificate;
+  final String? tlsPrivateKey;
+
+  final DatabaseConfig database;
+  final RateLimits limits;
+  final Level logLevel;
+}
+
+final class _Reader {
+  new(this._values);
+
+  final Map<String, Object?> _values;
+
+  CoordinatorConfig build() {
+    const d = CoordinatorConfig();
+    const db = DatabaseConfig();
+    const lim = RateLimits();
+    final cert = _string('tls.certificate');
+    final key = _string('tls.private_key');
+    if ((cert == null) != (key == null)) {
+      throw const ConfigException(
+        'tls.certificate и tls.private_key задаются вместе',
+      );
+    }
+    var password = _string('database.password');
+    final passwordFile = _string('database.password_file');
+    if (password != null && passwordFile != null) {
+      throw const ConfigException(
+        'database.password и database.password_file задаются по отдельности',
+      );
+    }
+    if (passwordFile != null) {
+      try {
+        password = File(passwordFile).readAsStringSync().trim();
+      } on FileSystemException catch (e) {
+        throw ConfigException(
+          'database.password_file не читается: ${e.message}',
+        );
+      }
+    }
+    return CoordinatorConfig(
+      host: _string('listen.host') ?? d.host,
+      port: _int('listen.port', 1, 65535) ?? d.port,
+      trustForwardedFor:
+          _bool('listen.trust_forwarded_for') ?? d.trustForwardedFor,
+      tlsCertificate: cert,
+      tlsPrivateKey: key,
+      database: DatabaseConfig(
+        host: _string('database.host') ?? db.host,
+        port: _int('database.port', 1, 65535) ?? db.port,
+        name: _string('database.name') ?? db.name,
+        user: _string('database.user') ?? db.user,
+        password: password,
+        ssl:
+            _enum('database.ssl', {
+              'disable': DatabaseSsl.disable,
+              'require': DatabaseSsl.require,
+              'verify-full': DatabaseSsl.verifyFull,
+            }) ??
+            db.ssl,
+        maxConnections:
+            _int('database.max_connections', 1, 1000) ?? db.maxConnections,
+      ),
+      limits: RateLimits(
+        ipPerSecond: _double('limits.ip_per_second') ?? lim.ipPerSecond,
+        ipBurst: _int('limits.ip_burst', 1, 1 << 30) ?? lim.ipBurst,
+        keyPerSecond: _double('limits.key_per_second') ?? lim.keyPerSecond,
+        keyBurst: _int('limits.key_burst', 1, 1 << 30) ?? lim.keyBurst,
+      ),
+      logLevel:
+          _enum('log.level', {
+            'fine': Level.FINE,
+            'info': Level.INFO,
+            'warning': Level.WARNING,
+            'severe': Level.SEVERE,
+          }) ??
+          d.logLevel,
+    );
+  }
+
+  String? _string(String key) {
+    final v = _values[key];
+    if (v == null) return null;
+    if (v is String || v is num) return '$v';
+    throw ConfigException('$key: ожидается строка');
+  }
+
+  int? _int(String key, int min, int max) {
+    final v = _values[key];
+    if (v == null) return null;
+    final n = v is int ? v : int.tryParse('$v');
+    if (n == null || n < min || n > max) {
+      throw ConfigException('$key: ожидается целое от $min до $max');
+    }
+    return n;
+  }
+
+  double? _double(String key) {
+    final v = _values[key];
+    if (v == null) return null;
+    final n = v is num ? v.toDouble() : double.tryParse('$v');
+    if (n == null || !n.isFinite || n <= 0) {
+      throw ConfigException('$key: ожидается положительное число');
+    }
+    return n;
+  }
+
+  bool? _bool(String key) {
+    final v = _values[key];
+    if (v == null) return null;
+    if (v is bool) return v;
+    return switch ('$v') {
+      'true' => true,
+      'false' => false,
+      _ => throw ConfigException('$key: ожидается true или false'),
+    };
+  }
+
+  T? _enum<T>(String key, Map<String, T> options) {
+    final v = _string(key);
+    if (v == null) return null;
+    return options[v] ??
+        (throw ConfigException(
+          '$key: ожидается одно из ${options.keys.join(', ')}',
+        ));
+  }
+}

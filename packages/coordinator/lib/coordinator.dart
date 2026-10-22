@@ -1,2 +1,27 @@
 /// Центральный координатор (метаданные, аудиты, репутация узлов). Без Flutter.
+///
+/// Устройство `lib/src/`:
+///
+/// - `rpc/` — HTTP-обработчик API, таблица методов, ошибки;
+/// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
+///   ключей;
+/// - `limits/` — ограничение частоты запросов;
+/// - `db/` — пул PostgreSQL, миграции схемы, таблицы;
+/// - `config.dart`, `log.dart`, `server.dart` — настройки, журнал, запуск.
 library;
+
+export 'src/auth/key_directory.dart';
+export 'src/auth/replay_cache.dart';
+export 'src/auth/request_verifier.dart';
+export 'src/config.dart';
+export 'src/db/database.dart';
+export 'src/db/migrations.dart';
+export 'src/db/postgres_key_directory.dart';
+export 'src/limits/rate_limiter.dart';
+export 'src/log.dart';
+export 'src/rpc/api_handler.dart';
+export 'src/rpc/call_context.dart';
+export 'src/rpc/errors.dart';
+export 'src/rpc/methods.dart';
+export 'src/rpc/service.dart';
+export 'src/server.dart';

@@ -29,6 +29,20 @@ void main() {
       expect(limiter.take('a'), isNotNull);
     });
 
+    test('запрос весом в несколько токенов', () {
+      final clock = FakeClock();
+      final limiter = RateLimiter(perSecond: 10, burst: 20, clock: clock.call);
+      expect(limiter.take('a', cost: 15), isNull);
+      expect(
+        limiter.take('a', cost: 10),
+        const Duration(milliseconds: 500),
+        reason: 'не хватает 5 токенов',
+      );
+      expect(limiter.take('a', cost: 5), isNull, reason: 'отказ не списал');
+      expect(() => limiter.take('a', cost: 21), throwsArgumentError);
+      expect(() => limiter.take('a', cost: 0), throwsArgumentError);
+    });
+
     test('полные вёдра удаляются, таблица ограничена', () {
       final clock = FakeClock();
       final limiter = RateLimiter(

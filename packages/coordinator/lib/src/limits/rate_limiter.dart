@@ -26,9 +26,12 @@ final class RateLimiter {
 
   int get trackedKeys => _buckets.length;
 
-  /// `null` — запрос разрешён (токен списан); иначе — через сколько
-  /// появится токен.
-  Duration? take(String key) {
+  /// `null` — запрос разрешён ([cost] токенов списано); иначе — через
+  /// сколько появятся токены. [cost] не больше [burst].
+  Duration? take(String key, {int cost = 1}) {
+    if (cost < 1 || cost > burst) {
+      throw ArgumentError.value(cost, 'cost', 'вне 1…$burst');
+    }
     final nowUs = _clock().microsecondsSinceEpoch;
     _maybeSweep(nowUs);
     var bucket = _buckets[key];
@@ -41,11 +44,11 @@ final class RateLimiter {
       bucket = _buckets[key] = _Bucket(burst.toDouble(), nowUs);
     }
     bucket.refill(nowUs, perSecond, burst);
-    if (bucket.tokens >= 1) {
-      bucket.tokens -= 1;
+    if (bucket.tokens >= cost) {
+      bucket.tokens -= cost;
       return null;
     }
-    final waitUs = ((1 - bucket.tokens) / perSecond * 1e6).ceil();
+    final waitUs = ((cost - bucket.tokens) / perSecond * 1e6).ceil();
     return Duration(microseconds: math.max(waitUs, 1000));
   }
 

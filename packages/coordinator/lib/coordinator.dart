@@ -6,6 +6,7 @@
 /// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
 ///   ключей;
 /// - `limits/` — ограничение частоты запросов;
+/// - `signer/` — процесс-подписант талонов и клиент к нему для веб-сервера;
 /// - `db/` — пул PostgreSQL, миграции схемы, таблицы;
 /// - `config.dart`, `log.dart`, `server.dart` — настройки, журнал, запуск.
 library;
@@ -25,3 +26,8 @@ export 'src/rpc/errors.dart';
 export 'src/rpc/methods.dart';
 export 'src/rpc/service.dart';
 export 'src/server.dart';
+export 'src/signer/signer_key.dart';
+export 'src/signer/signer_server.dart';
+export 'src/signer/signer_wire.dart';
+export 'src/signer/ticket_signer.dart';
+export 'src/signer/ticket_signing_service.dart';

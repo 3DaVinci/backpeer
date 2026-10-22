@@ -53,10 +53,24 @@ void restrictToOwner(String path) {
     }
     return;
   }
+  setUnixFileMode(path, _ownerReadWrite);
+}
+
+/// Права файла [mode] через `chmod` из libc (Linux и macOS). В Dart нет
+/// восьмеричных литералов: 0660 — `432`, 0600 — `384`.
+void setUnixFileMode(String path, int mode) {
+  if (Platform.isWindows) {
+    throw UnsupportedError('chmod недоступен на Windows');
+  }
   final native = path.toNativeUtf8();
   try {
-    final rc = _chmod(native, _ownerReadWrite);
-    if (rc != 0) throw FileSystemException('chmod 0600 не удался', path);
+    final rc = _chmod(native, mode);
+    if (rc != 0) {
+      throw FileSystemException(
+        'chmod ${mode.toRadixString(8).padLeft(4, '0')} не удался',
+        path,
+      );
+    }
   } finally {
     malloc.free(native);
   }

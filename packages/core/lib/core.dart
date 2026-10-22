@@ -6,7 +6,7 @@
 /// - `crypto/` — `CryptoProvider`, ключи, зашифрованный блоб, KeyBundle;
 /// - `chunking/` — FastCDC и идентификаторы чанков;
 /// - `erasure/` — `ErasureCoder` и Reed–Solomon;
-/// - `format/` — сегменты, фрагменты, дерево Меркла;
+/// - `format/` — сегменты, фрагменты, дерево Меркла, правила талонов;
 /// - `snapshot/` — обход папок, деревья, снимки и индексы;
 /// - `storage/` — хранилища фрагментов и объектов, локальный индекс;
 /// - `pipeline/` — конвейеры бэкапа и восстановления.
@@ -33,6 +33,7 @@ export 'src/format/durability.dart';
 export 'src/format/fragment.dart';
 export 'src/format/merkle.dart';
 export 'src/format/segment.dart';
+export 'src/format/ticket.dart';
 export 'src/pipeline/backup.dart';
 export 'src/pipeline/restore.dart';
 export 'src/pipeline/segment_encoder.dart';
@@ -55,4 +56,5 @@ export 'src/storage/local_index.dart';
 export 'src/storage/local_object_store.dart';
 export 'src/storage/object_store.dart';
 export 'src/storage/placement.dart';
+export 'src/storage/private_file.dart';
 export 'src/util/bytes.dart';

@@ -24,4 +24,6 @@ dependencies:
   yaml: ^3.1.4
 
 dev_dependencies:
+  # Int64 полей Protobuf в тестах (BSD-3-Clause, уже в core).
+  fixnum: ^1.1.1
   test: ^1.31.1

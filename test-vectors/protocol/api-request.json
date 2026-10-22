@@ -1,7 +1,7 @@
 {
   "spec": "protocol/api-request",
   "specVersion": 1,
-  "generator": "tool/protocol_vectors.py (Python hashlib, cryptography)",
+  "generator": "tool/protocol_vectors.py (Python hashlib, cryptography, libsodium)",
   "description": "Подпись запроса к координатору, заголовок FS-Auth (protocol.md, раздел 4.2). operation = sign: из seed Ed25519, пути, времени (мс) и тела получаются открытый ключ, H(тело) (BLAKE2b-256), подписываемое сообщение (контекст api-request с байтом 0x00), подпись и заголовок. operation = verify: разбор заголовка и проверка подписи над путём и телом; error = format — заголовок не разбирается, valid = false — подпись не сходится. Окно времени и известность ключа не проверяются: это состояние координатора.",
   "cases": [
     {

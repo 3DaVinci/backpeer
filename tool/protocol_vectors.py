@@ -2,8 +2,10 @@
 """Генератор тестовых векторов для docs/spec/protocol.md.
 
 Эталонная реализация подписи запроса к координатору (заголовок FS-Auth,
-раздел 4.2), независимая от кода на Dart: стандартная библиотека Python
-(BLAKE2b) и пакет cryptography (Ed25519).
+раздел 4.2) и входа по паролю (раздел 4.7, crypto.md, раздел 4.4),
+независимая от кода на Dart: стандартная библиотека Python (BLAKE2b,
+unicodedata), пакет cryptography (Ed25519, HKDF) и libsodium через ctypes
+(Argon2id).
 
 Запуск из корня репозитория:
 
@@ -13,20 +15,48 @@
 повторный запуск даёт те же файлы.
 """
 
+import ctypes
+import ctypes.util
 import hashlib
 import json
 import os
 import re
 import struct
+import unicodedata
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 OUT_DIR = os.path.join("test-vectors", "protocol")
-GENERATOR = "tool/protocol_vectors.py (Python hashlib, cryptography)"
+GENERATOR = "tool/protocol_vectors.py (Python hashlib, cryptography, libsodium)"
 
 CONTEXT = b"fs/v1/sign/api-request\x00"
 HEADER_RE = re.compile(r"^([0-9a-f]{64})\.(0|[1-9][0-9]{0,14})\.([0-9a-f]{128})$")
+
+
+_sodium = ctypes.CDLL(ctypes.util.find_library("sodium") or "libsodium.so.23")
+assert _sodium.sodium_init() >= 0
+LOGIN_CONTEXT = b"fs/v1/sign/login\x00"
+LOGIN_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,31}$")
+
+
+def argon2id(password: bytes, salt: bytes, m_kib: int, t: int) -> bytes:
+    out = ctypes.create_string_buffer(32)
+    rc = _sodium.crypto_pwhash(
+        out, ctypes.c_ulonglong(32),
+        password, ctypes.c_ulonglong(len(password)),
+        salt,
+        ctypes.c_ulonglong(t), ctypes.c_size_t(m_kib * 1024),
+        ctypes.c_int(2),  # crypto_pwhash_ALG_ARGON2ID13
+    )
+    assert rc == 0
+    return out.raw
+
+
+def hkdf(ikm: bytes, info: bytes) -> bytes:
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=info).derive(ikm)
 
 
 def h(data: bytes) -> bytes:
@@ -155,7 +185,83 @@ def api_request_cases() -> list:
     return cases
 
 
+def normalize_login(login: str):
+    """Имя для входа (protocol.md, раздел 4.7): нижний регистр ASCII, затем
+    проверка; None — имя недопустимо."""
+    if not login.isascii():
+        return None
+    lowered = login.lower()
+    return lowered if LOGIN_RE.match(lowered) else None
+
+
+def login_cases() -> list:
+    cases = []
+    for name, raw in [
+        ("login-simple", "alice"),
+        ("login-uppercase", "Alice.Smith"),
+        ("login-symbols", "a_b-c.9"),
+        ("login-min", "abc"),
+        ("login-max", "a" * 32),
+        ("login-too-short", "ab"),
+        ("login-too-long", "a" * 33),
+        ("login-leading-dot", ".alice"),
+        ("login-space", "ali ce"),
+        ("login-cyrillic", "алиса"),
+        ("login-at", "alice@example.com"),
+        ("login-empty", ""),
+        ("login-kelvin", "\u212aelvin"),
+    ]:
+        cases.append({
+            "name": name,
+            "input": {"operation": "normalize", "login": raw},
+            "expected": {"login": normalize_login(raw)},
+        })
+
+    salt = bytes(range(16))
+    time_ms = 1792713600000  # 23.10.2026 00:00 UTC
+    for name, password, login, m, t in [
+        ("proof-fast-params", "correct horse battery staple", "alice", 1024, 1),
+        ("proof-nfkc-fast-params", "Ｐａｓｓ ﬁ ½ пароль", "bob.smith", 1024, 1),
+    ]:
+        pk = argon2id(unicodedata.normalize("NFKC", password).encode("utf-8"), salt, m, t)
+        auth = hkdf(pk, b"fs/v1/auth")
+        key = Ed25519PrivateKey.from_private_bytes(auth)
+        message = LOGIN_CONTEXT + struct.pack(">Q", time_ms) + login.encode("ascii")
+        cases.append({
+            "name": name,
+            "input": {
+                "operation": "proof",
+                "password": password,
+                "salt": salt,
+                "memoryKiB": m,
+                "iterations": t,
+                "login": login,
+                "timeMs": time_ms,
+            },
+            "expected": {
+                "auth": auth,
+                "verifier": key.public_key().public_bytes(Encoding.Raw, PublicFormat.Raw),
+                "message": message,
+                "proof": key.sign(message),
+            },
+        })
+    return cases
+
+
 def main() -> None:
+    write(
+        "login.json",
+        "protocol/login",
+        "Вход по паролю (protocol.md, раздел 4.7; crypto.md, раздел 4.4). "
+        "operation = normalize: имя для входа в нижнем регистре или null, если "
+        "имя недопустимо (3–32 символа a–z, 0–9, '.', '_', '-', первый — буква "
+        "или цифра; не-ASCII отклоняется до приведения регистра). "
+        "operation = proof: AUTH из пароля (NFKC, Argon2id, HKDF), открытый "
+        "ключ входа (Ed25519 из seed = AUTH), подписываемое сообщение "
+        "(контекст login с байтом 0x00, u64be времени, имя) и подпись. "
+        "Случаи *-fast-params используют малые параметры только для скорости.",
+        login_cases(),
+    )
     write(
         "api-request.json",
         "protocol/api-request",

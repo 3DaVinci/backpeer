@@ -11,11 +11,13 @@ import "fs/v1/common.proto";
 // --- Учётная запись и устройства ---------------------------------------
 
 // Регистрация учётной записи. Запрос подписан ключом учётной записи
-// (контекст "api-request"), а не устройства.
+// (контекст "api-request"), а не устройства. Правила — protocol.md,
+// раздел 4.7.
 message RegisterAccountRequest {
   Signed device_certificate = 1; // первое устройство
   bytes key_bundle = 2;          // KeyBundle (crypto.md, раздел 4.1) или пусто
-  bytes auth_verifier = 3;       // производное от AUTH, схема — этап 2
+  bytes auth_verifier = 3;       // открытый ключ входа (crypto.md, 4.4) или пусто
+  string login = 4;              // имя для входа, нижний регистр
 }
 message RegisterAccountResponse {}
 
@@ -23,6 +25,17 @@ message AddDeviceRequest {
   Signed device_certificate = 1;
 }
 message AddDeviceResponse {}
+
+// Устройства учётной записи, включая отозванные.
+message ListDevicesRequest {}
+message ListDevicesResponse {
+  repeated DeviceInfo devices = 1;
+}
+message DeviceInfo {
+  Signed certificate = 1;        // DeviceCertificate
+  int64 added_at_unix_ms = 2;
+  int64 revoked_at_unix_ms = 3;  // 0 — действует
+}
 
 // Отзыв устройства (потеряно или украдено). Запрос подписан ключом учётной
 // записи; revocation — fs.v1.Signed с DeviceRevocation (контекст
@@ -33,14 +46,50 @@ message RevokeDeviceRequest {
 }
 message RevokeDeviceResponse {}
 
-// Получить копию мастер-ключа для входа на новом устройстве (этап 2).
+// Отзывы устройств для узлов (подписан ключом узла), по возрастанию
+// sequence.
+message ListRevocationsRequest {
+  uint64 after_sequence = 1;
+  uint32 limit = 2;              // 0 — по умолчанию; не больше 1000
+}
+message ListRevocationsResponse {
+  repeated RevocationEntry revocations = 1;
+  bool more = 2;
+}
+message RevocationEntry {
+  uint64 sequence = 1;
+  Signed revocation = 2;         // DeviceRevocation
+}
+
+// Вход по паролю на новом устройстве (protocol.md, раздел 4.7; crypto.md,
+// раздел 4.4). Оба запроса без подписи.
+message GetLoginParamsRequest {
+  string login = 1;
+}
+message GetLoginParamsResponse {
+  bytes salt = 1;                // 16 байт
+  uint32 memory_kib = 2;         // параметры Argon2id
+  uint32 iterations = 3;
+  uint32 parallelism = 4;
+}
+
 message GetKeyBundleRequest {
-  bytes account_id = 1;
-  bytes auth_proof = 2;          // доказательство знания AUTH, схема — этап 2
+  reserved 1;                    // был account_id
+  bytes auth_proof = 2;          // подпись ключом входа
+  string login = 3;
+  int64 time_unix_ms = 4;        // время в auth_proof
 }
 message GetKeyBundleResponse {
   bytes key_bundle = 1;
 }
+
+// Смена пароля или переход в режим без копии мастер-ключа (оба поля
+// пусты). Подписан ключом учётной записи.
+message SetKeyBundleRequest {
+  bytes key_bundle = 1;
+  bytes auth_verifier = 2;
+}
+message SetKeyBundleResponse {}
 
 // --- Снимки и индексы (зашифрованные блобы) -------------------------------
 
@@ -138,7 +187,9 @@ message RegisterNodeRequest {
   string software = 5;
 }
 message RegisterNodeResponse {
-  bytes coordinator_key = 1;         // для проверки талонов (сверяется с вшитым)
+  // Ключи, которыми координатор подписывает талоны сейчас; узел сверяет их
+  // с вшитым списком (protocol.md, раздел 5.1), но доверяет только ему.
+  repeated bytes coordinator_keys = 1;
 }
 
 message HeartbeatRequest {

@@ -1,0 +1,174 @@
+{
+  "spec": "protocol/login",
+  "specVersion": 1,
+  "generator": "tool/protocol_vectors.py (Python hashlib, cryptography, libsodium)",
+  "description": "Вход по паролю (protocol.md, раздел 4.7; crypto.md, раздел 4.4). operation = normalize: имя для входа в нижнем регистре или null, если имя недопустимо (3–32 символа a–z, 0–9, '.', '_', '-', первый — буква или цифра; не-ASCII отклоняется до приведения регистра). operation = proof: AUTH из пароля (NFKC, Argon2id, HKDF), открытый ключ входа (Ed25519 из seed = AUTH), подписываемое сообщение (контекст login с байтом 0x00, u64be времени, имя) и подпись. Случаи *-fast-params используют малые параметры только для скорости.",
+  "cases": [
+    {
+      "name": "login-simple",
+      "input": {
+        "operation": "normalize",
+        "login": "alice"
+      },
+      "expected": {
+        "login": "alice"
+      }
+    },
+    {
+      "name": "login-uppercase",
+      "input": {
+        "operation": "normalize",
+        "login": "Alice.Smith"
+      },
+      "expected": {
+        "login": "alice.smith"
+      }
+    },
+    {
+      "name": "login-symbols",
+      "input": {
+        "operation": "normalize",
+        "login": "a_b-c.9"
+      },
+      "expected": {
+        "login": "a_b-c.9"
+      }
+    },
+    {
+      "name": "login-min",
+      "input": {
+        "operation": "normalize",
+        "login": "abc"
+      },
+      "expected": {
+        "login": "abc"
+      }
+    },
+    {
+      "name": "login-max",
+      "input": {
+        "operation": "normalize",
+        "login": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": {
+        "login": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "name": "login-too-short",
+      "input": {
+        "operation": "normalize",
+        "login": "ab"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-too-long",
+      "input": {
+        "operation": "normalize",
+        "login": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-leading-dot",
+      "input": {
+        "operation": "normalize",
+        "login": ".alice"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-space",
+      "input": {
+        "operation": "normalize",
+        "login": "ali ce"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-cyrillic",
+      "input": {
+        "operation": "normalize",
+        "login": "алиса"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-at",
+      "input": {
+        "operation": "normalize",
+        "login": "alice@example.com"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-empty",
+      "input": {
+        "operation": "normalize",
+        "login": ""
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "login-kelvin",
+      "input": {
+        "operation": "normalize",
+        "login": "Kelvin"
+      },
+      "expected": {
+        "login": null
+      }
+    },
+    {
+      "name": "proof-fast-params",
+      "input": {
+        "operation": "proof",
+        "password": "correct horse battery staple",
+        "salt": "000102030405060708090a0b0c0d0e0f",
+        "memoryKiB": 1024,
+        "iterations": 1,
+        "login": "alice",
+        "timeMs": 1792713600000
+      },
+      "expected": {
+        "auth": "66eeb5b480637081215396236ac6e2d49c018cda9ff0db02360debcb5f1642e1",
+        "verifier": "8f5f0f2f8e63cf53bc09e4b89d82cd4f5730762b793d19c19c845b76a93c0a55",
+        "message": "66732f76312f7369676e2f6c6f67696e00000001a1660eac00616c696365",
+        "proof": "91c22c563907dbbb4782a7efd88ddf6bbaf9db2e0a13aa1988077a498d76af520d107a5cdce053189461678a177b0857c5998df7a7f258b439a8f615180f5a05"
+      }
+    },
+    {
+      "name": "proof-nfkc-fast-params",
+      "input": {
+        "operation": "proof",
+        "password": "Ｐａｓｓ ﬁ ½ пароль",
+        "salt": "000102030405060708090a0b0c0d0e0f",
+        "memoryKiB": 1024,
+        "iterations": 1,
+        "login": "bob.smith",
+        "timeMs": 1792713600000
+      },
+      "expected": {
+        "auth": "483bf4198744cc7ee1531ebf190f3f04e749310b1189a8686acd01e954c054dc",
+        "verifier": "9bc8139dbeaed368f18d3a1ba9a4c1c2901be01c7fc59dd32dad56e138f6a6f5",
+        "message": "66732f76312f7369676e2f6c6f67696e00000001a1660eac00626f622e736d697468",
+        "proof": "daccea5be333ab36e629fe0e64744063831d538ceee3e93f1ae27e861cfcf0b027c24d2ef3eac16ca2143b5ee555b741f378f4adaf47e1d5047fc6ff574a010b"
+      }
+    }
+  ]
+}

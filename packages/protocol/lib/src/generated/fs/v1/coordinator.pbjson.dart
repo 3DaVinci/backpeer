@@ -44,6 +44,7 @@ const RegisterAccountRequest$json = {
     },
     {'1': 'key_bundle', '3': 2, '4': 1, '5': 12, '10': 'keyBundle'},
     {'1': 'auth_verifier', '3': 3, '4': 1, '5': 12, '10': 'authVerifier'},
+    {'1': 'login', '3': 4, '4': 1, '5': 9, '10': 'login'},
   ],
 };
 
@@ -51,7 +52,8 @@ const RegisterAccountRequest$json = {
 final $typed_data.Uint8List registerAccountRequestDescriptor = $convert.base64Decode(
     'ChZSZWdpc3RlckFjY291bnRSZXF1ZXN0EjwKEmRldmljZV9jZXJ0aWZpY2F0ZRgBIAEoCzINLm'
     'ZzLnYxLlNpZ25lZFIRZGV2aWNlQ2VydGlmaWNhdGUSHQoKa2V5X2J1bmRsZRgCIAEoDFIJa2V5'
-    'QnVuZGxlEiMKDWF1dGhfdmVyaWZpZXIYAyABKAxSDGF1dGhWZXJpZmllcg==');
+    'QnVuZGxlEiMKDWF1dGhfdmVyaWZpZXIYAyABKAxSDGF1dGhWZXJpZmllchIUCgVsb2dpbhgEIA'
+    'EoCVIFbG9naW4=');
 
 @$core.Deprecated('Use registerAccountResponseDescriptor instead')
 const RegisterAccountResponse$json = {
@@ -91,6 +93,64 @@ const AddDeviceResponse$json = {
 final $typed_data.Uint8List addDeviceResponseDescriptor =
     $convert.base64Decode('ChFBZGREZXZpY2VSZXNwb25zZQ==');
 
+@$core.Deprecated('Use listDevicesRequestDescriptor instead')
+const ListDevicesRequest$json = {
+  '1': 'ListDevicesRequest',
+};
+
+/// Descriptor for `ListDevicesRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listDevicesRequestDescriptor =
+    $convert.base64Decode('ChJMaXN0RGV2aWNlc1JlcXVlc3Q=');
+
+@$core.Deprecated('Use listDevicesResponseDescriptor instead')
+const ListDevicesResponse$json = {
+  '1': 'ListDevicesResponse',
+  '2': [
+    {
+      '1': 'devices',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.DeviceInfo',
+      '10': 'devices'
+    },
+  ],
+};
+
+/// Descriptor for `ListDevicesResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listDevicesResponseDescriptor = $convert.base64Decode(
+    'ChNMaXN0RGV2aWNlc1Jlc3BvbnNlEisKB2RldmljZXMYASADKAsyES5mcy52MS5EZXZpY2VJbm'
+    'ZvUgdkZXZpY2Vz');
+
+@$core.Deprecated('Use deviceInfoDescriptor instead')
+const DeviceInfo$json = {
+  '1': 'DeviceInfo',
+  '2': [
+    {
+      '1': 'certificate',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'certificate'
+    },
+    {'1': 'added_at_unix_ms', '3': 2, '4': 1, '5': 3, '10': 'addedAtUnixMs'},
+    {
+      '1': 'revoked_at_unix_ms',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'revokedAtUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `DeviceInfo`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deviceInfoDescriptor = $convert.base64Decode(
+    'CgpEZXZpY2VJbmZvEi8KC2NlcnRpZmljYXRlGAEgASgLMg0uZnMudjEuU2lnbmVkUgtjZXJ0aW'
+    'ZpY2F0ZRInChBhZGRlZF9hdF91bml4X21zGAIgASgDUg1hZGRlZEF0VW5peE1zEisKEnJldm9r'
+    'ZWRfYXRfdW5peF9tcxgDIAEoA1IPcmV2b2tlZEF0VW5peE1z');
+
 @$core.Deprecated('Use revokeDeviceRequestDescriptor instead')
 const RevokeDeviceRequest$json = {
   '1': 'RevokeDeviceRequest',
@@ -120,19 +180,112 @@ const RevokeDeviceResponse$json = {
 final $typed_data.Uint8List revokeDeviceResponseDescriptor =
     $convert.base64Decode('ChRSZXZva2VEZXZpY2VSZXNwb25zZQ==');
 
+@$core.Deprecated('Use listRevocationsRequestDescriptor instead')
+const ListRevocationsRequest$json = {
+  '1': 'ListRevocationsRequest',
+  '2': [
+    {'1': 'after_sequence', '3': 1, '4': 1, '5': 4, '10': 'afterSequence'},
+    {'1': 'limit', '3': 2, '4': 1, '5': 13, '10': 'limit'},
+  ],
+};
+
+/// Descriptor for `ListRevocationsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listRevocationsRequestDescriptor =
+    $convert.base64Decode(
+        'ChZMaXN0UmV2b2NhdGlvbnNSZXF1ZXN0EiUKDmFmdGVyX3NlcXVlbmNlGAEgASgEUg1hZnRlcl'
+        'NlcXVlbmNlEhQKBWxpbWl0GAIgASgNUgVsaW1pdA==');
+
+@$core.Deprecated('Use listRevocationsResponseDescriptor instead')
+const ListRevocationsResponse$json = {
+  '1': 'ListRevocationsResponse',
+  '2': [
+    {
+      '1': 'revocations',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.RevocationEntry',
+      '10': 'revocations'
+    },
+    {'1': 'more', '3': 2, '4': 1, '5': 8, '10': 'more'},
+  ],
+};
+
+/// Descriptor for `ListRevocationsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List listRevocationsResponseDescriptor =
+    $convert.base64Decode(
+        'ChdMaXN0UmV2b2NhdGlvbnNSZXNwb25zZRI4CgtyZXZvY2F0aW9ucxgBIAMoCzIWLmZzLnYxLl'
+        'Jldm9jYXRpb25FbnRyeVILcmV2b2NhdGlvbnMSEgoEbW9yZRgCIAEoCFIEbW9yZQ==');
+
+@$core.Deprecated('Use revocationEntryDescriptor instead')
+const RevocationEntry$json = {
+  '1': 'RevocationEntry',
+  '2': [
+    {'1': 'sequence', '3': 1, '4': 1, '5': 4, '10': 'sequence'},
+    {
+      '1': 'revocation',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'revocation'
+    },
+  ],
+};
+
+/// Descriptor for `RevocationEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List revocationEntryDescriptor = $convert.base64Decode(
+    'Cg9SZXZvY2F0aW9uRW50cnkSGgoIc2VxdWVuY2UYASABKARSCHNlcXVlbmNlEi0KCnJldm9jYX'
+    'Rpb24YAiABKAsyDS5mcy52MS5TaWduZWRSCnJldm9jYXRpb24=');
+
+@$core.Deprecated('Use getLoginParamsRequestDescriptor instead')
+const GetLoginParamsRequest$json = {
+  '1': 'GetLoginParamsRequest',
+  '2': [
+    {'1': 'login', '3': 1, '4': 1, '5': 9, '10': 'login'},
+  ],
+};
+
+/// Descriptor for `GetLoginParamsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getLoginParamsRequestDescriptor =
+    $convert.base64Decode(
+        'ChVHZXRMb2dpblBhcmFtc1JlcXVlc3QSFAoFbG9naW4YASABKAlSBWxvZ2lu');
+
+@$core.Deprecated('Use getLoginParamsResponseDescriptor instead')
+const GetLoginParamsResponse$json = {
+  '1': 'GetLoginParamsResponse',
+  '2': [
+    {'1': 'salt', '3': 1, '4': 1, '5': 12, '10': 'salt'},
+    {'1': 'memory_kib', '3': 2, '4': 1, '5': 13, '10': 'memoryKib'},
+    {'1': 'iterations', '3': 3, '4': 1, '5': 13, '10': 'iterations'},
+    {'1': 'parallelism', '3': 4, '4': 1, '5': 13, '10': 'parallelism'},
+  ],
+};
+
+/// Descriptor for `GetLoginParamsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getLoginParamsResponseDescriptor = $convert.base64Decode(
+    'ChZHZXRMb2dpblBhcmFtc1Jlc3BvbnNlEhIKBHNhbHQYASABKAxSBHNhbHQSHQoKbWVtb3J5X2'
+    'tpYhgCIAEoDVIJbWVtb3J5S2liEh4KCml0ZXJhdGlvbnMYAyABKA1SCml0ZXJhdGlvbnMSIAoL'
+    'cGFyYWxsZWxpc20YBCABKA1SC3BhcmFsbGVsaXNt');
+
 @$core.Deprecated('Use getKeyBundleRequestDescriptor instead')
 const GetKeyBundleRequest$json = {
   '1': 'GetKeyBundleRequest',
   '2': [
-    {'1': 'account_id', '3': 1, '4': 1, '5': 12, '10': 'accountId'},
     {'1': 'auth_proof', '3': 2, '4': 1, '5': 12, '10': 'authProof'},
+    {'1': 'login', '3': 3, '4': 1, '5': 9, '10': 'login'},
+    {'1': 'time_unix_ms', '3': 4, '4': 1, '5': 3, '10': 'timeUnixMs'},
+  ],
+  '9': [
+    {'1': 1, '2': 2},
   ],
 };
 
 /// Descriptor for `GetKeyBundleRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getKeyBundleRequestDescriptor = $convert.base64Decode(
-    'ChNHZXRLZXlCdW5kbGVSZXF1ZXN0Eh0KCmFjY291bnRfaWQYASABKAxSCWFjY291bnRJZBIdCg'
-    'phdXRoX3Byb29mGAIgASgMUglhdXRoUHJvb2Y=');
+    'ChNHZXRLZXlCdW5kbGVSZXF1ZXN0Eh0KCmF1dGhfcHJvb2YYAiABKAxSCWF1dGhQcm9vZhIUCg'
+    'Vsb2dpbhgDIAEoCVIFbG9naW4SIAoMdGltZV91bml4X21zGAQgASgDUgp0aW1lVW5peE1zSgQI'
+    'ARAC');
 
 @$core.Deprecated('Use getKeyBundleResponseDescriptor instead')
 const GetKeyBundleResponse$json = {
@@ -145,6 +298,29 @@ const GetKeyBundleResponse$json = {
 /// Descriptor for `GetKeyBundleResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getKeyBundleResponseDescriptor = $convert.base64Decode(
     'ChRHZXRLZXlCdW5kbGVSZXNwb25zZRIdCgprZXlfYnVuZGxlGAEgASgMUglrZXlCdW5kbGU=');
+
+@$core.Deprecated('Use setKeyBundleRequestDescriptor instead')
+const SetKeyBundleRequest$json = {
+  '1': 'SetKeyBundleRequest',
+  '2': [
+    {'1': 'key_bundle', '3': 1, '4': 1, '5': 12, '10': 'keyBundle'},
+    {'1': 'auth_verifier', '3': 2, '4': 1, '5': 12, '10': 'authVerifier'},
+  ],
+};
+
+/// Descriptor for `SetKeyBundleRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setKeyBundleRequestDescriptor = $convert.base64Decode(
+    'ChNTZXRLZXlCdW5kbGVSZXF1ZXN0Eh0KCmtleV9idW5kbGUYASABKAxSCWtleUJ1bmRsZRIjCg'
+    '1hdXRoX3ZlcmlmaWVyGAIgASgMUgxhdXRoVmVyaWZpZXI=');
+
+@$core.Deprecated('Use setKeyBundleResponseDescriptor instead')
+const SetKeyBundleResponse$json = {
+  '1': 'SetKeyBundleResponse',
+};
+
+/// Descriptor for `SetKeyBundleResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List setKeyBundleResponseDescriptor =
+    $convert.base64Decode('ChRTZXRLZXlCdW5kbGVSZXNwb25zZQ==');
 
 @$core.Deprecated('Use putObjectRequestDescriptor instead')
 const PutObjectRequest$json = {
@@ -474,14 +650,14 @@ final $typed_data.Uint8List registerNodeRequestDescriptor = $convert.base64Decod
 const RegisterNodeResponse$json = {
   '1': 'RegisterNodeResponse',
   '2': [
-    {'1': 'coordinator_key', '3': 1, '4': 1, '5': 12, '10': 'coordinatorKey'},
+    {'1': 'coordinator_keys', '3': 1, '4': 3, '5': 12, '10': 'coordinatorKeys'},
   ],
 };
 
 /// Descriptor for `RegisterNodeResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List registerNodeResponseDescriptor = $convert.base64Decode(
-    'ChRSZWdpc3Rlck5vZGVSZXNwb25zZRInCg9jb29yZGluYXRvcl9rZXkYASABKAxSDmNvb3JkaW'
-    '5hdG9yS2V5');
+    'ChRSZWdpc3Rlck5vZGVSZXNwb25zZRIpChBjb29yZGluYXRvcl9rZXlzGAEgAygMUg9jb29yZG'
+    'luYXRvcktleXM=');
 
 @$core.Deprecated('Use heartbeatRequestDescriptor instead')
 const HeartbeatRequest$json = {

@@ -1,0 +1,266 @@
+{
+  "spec": "protocol/api-request",
+  "specVersion": 1,
+  "generator": "tool/protocol_vectors.py (Python hashlib, cryptography)",
+  "description": "Подпись запроса к координатору, заголовок FS-Auth (protocol.md, раздел 4.2). operation = sign: из seed Ed25519, пути, времени (мс) и тела получаются открытый ключ, H(тело) (BLAKE2b-256), подписываемое сообщение (контекст api-request с байтом 0x00), подпись и заголовок. operation = verify: разбор заголовка и проверка подписи над путём и телом; error = format — заголовок не разбирается, valid = false — подпись не сходится. Окно времени и известность ключа не проверяются: это состояние координатора.",
+  "cases": [
+    {
+      "name": "sign-put-object",
+      "input": {
+        "operation": "sign",
+        "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+        "path": "/api/v1/PutObject",
+        "timeMs": 1792627200000,
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "bodyHash": "bd088f1a191a8f9d1e10d02b0a8398c68e6d5b6d798691805dd6def9140306b7",
+        "message": "66732f76312f7369676e2f6170692d72657175657374002f6170692f76312f5075744f626a656374000001a160e85000bd088f1a191a8f9d1e10d02b0a8398c68e6d5b6d798691805dd6def9140306b7",
+        "signature": "3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e"
+      }
+    },
+    {
+      "name": "sign-empty-body",
+      "input": {
+        "operation": "sign",
+        "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+        "path": "/api/v1/Heartbeat",
+        "timeMs": 1792627200001,
+        "body": ""
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "bodyHash": "0e5751c026e543b2e8ab2eb06099daa1d1e5df47778f7787faab45cdf12fe3a8",
+        "message": "66732f76312f7369676e2f6170692d72657175657374002f6170692f76312f486561727462656174000001a160e850010e5751c026e543b2e8ab2eb06099daa1d1e5df47778f7787faab45cdf12fe3a8",
+        "signature": "415c32ea264e4594cd014ece1c041667dc1c12ff13530b72555fbd906ab8a3c03891d6290d3a3e7679a9c323940546b1b034f590c15237acbc99b84b6d0b9405",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200001.415c32ea264e4594cd014ece1c041667dc1c12ff13530b72555fbd906ab8a3c03891d6290d3a3e7679a9c323940546b1b034f590c15237acbc99b84b6d0b9405"
+      }
+    },
+    {
+      "name": "sign-other-key",
+      "input": {
+        "operation": "sign",
+        "seed": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+        "path": "/api/v1/RegisterAccount",
+        "timeMs": 1,
+        "body": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+      },
+      "expected": {
+        "publicKey": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+        "bodyHash": "39a7eb9fedc19aabc83425c6755dd90e6f9d0c804964a1f4aaeea3b9fb599835",
+        "message": "66732f76312f7369676e2f6170692d72657175657374002f6170692f76312f52656769737465724163636f756e74000000000000000139a7eb9fedc19aabc83425c6755dd90e6f9d0c804964a1f4aaeea3b9fb599835",
+        "signature": "220472b01ace47c7ff8e090ab39136518d757ed0982b3a0c8e3a4a631fd731f283c08463ad74f1961fc4a803740c275dd78ada46258832ea9ec7739ab7486b02",
+        "header": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7.1.220472b01ace47c7ff8e090ab39136518d757ed0982b3a0c8e3a4a631fd731f283c08463ad74f1961fc4a803740c275dd78ada46258832ea9ec7739ab7486b02"
+      }
+    },
+    {
+      "name": "sign-max-time",
+      "input": {
+        "operation": "sign",
+        "seed": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+        "path": "/api/v1/ListObjects",
+        "timeMs": 999999999999999,
+        "body": "00"
+      },
+      "expected": {
+        "publicKey": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7",
+        "bodyHash": "03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314",
+        "message": "66732f76312f7369676e2f6170692d72657175657374002f6170692f76312f4c6973744f626a6563747300038d7ea4c67fff03170a2e7597b7b7e3d84c05391d139a62b157e78786d8c082f29dcf4c111314",
+        "signature": "d030b87c1eeaf09e5c1883edc7052145161bcbdbd4d2a6f6c26bfa3553a9a6901bfbb5c9756acb51e6e59fec6c707e59d63b0865d585a0b57fbbf455614d8e04",
+        "header": "29acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7.999999999999999.d030b87c1eeaf09e5c1883edc7052145161bcbdbd4d2a6f6c26bfa3553a9a6901bfbb5c9756acb51e6e59fec6c707e59d63b0865d585a0b57fbbf455614d8e04"
+      }
+    },
+    {
+      "name": "verify-ok",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "timeMs": 1792627200000,
+        "valid": true
+      }
+    },
+    {
+      "name": "verify-wrong-path",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/GetObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "timeMs": 1792627200000,
+        "valid": false
+      }
+    },
+    {
+      "name": "verify-wrong-body",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a3031323334353637383900"
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "timeMs": 1792627200000,
+        "valid": false
+      }
+    },
+    {
+      "name": "verify-wrong-time",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200001.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "timeMs": 1792627200001,
+        "valid": false
+      }
+    },
+    {
+      "name": "verify-foreign-signature",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.220472b01ace47c7ff8e090ab39136518d757ed0982b3a0c8e3a4a631fd731f283c08463ad74f1961fc4a803740c275dd78ada46258832ea9ec7739ab7486b02",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "publicKey": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8",
+        "timeMs": 1792627200000,
+        "valid": false
+      }
+    },
+    {
+      "name": "format-uppercase-hex",
+      "input": {
+        "operation": "verify",
+        "header": "03A107BFF3CE10BE1D70DD18E74BC09967E4D6309BA50D5F1DDC8664125531B8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-leading-zero-time",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.01792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-time-16-digits",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1000000000000000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-negative-time",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.-1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-short-key",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-short-signature",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-missing-part",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-extra-part",
+      "input": {
+        "operation": "verify",
+        "header": "03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e.00",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-spaces",
+      "input": {
+        "operation": "verify",
+        "header": " 03a107bff3ce10be1d70dd18e74bc09967e4d6309ba50d5f1ddc8664125531b8.1792627200000.3d8d9581de4d49fdc2b0ef626708886d4140fbaae0e5f2225c023200347fc0cd40e3d176571c782181a3f45f5b97e1134b416f1d54fa91405ad71531904e9b0e",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "format-empty",
+      "input": {
+        "operation": "verify",
+        "header": "",
+        "path": "/api/v1/PutObject",
+        "body": "0801120a30313233343536373839"
+      },
+      "expected": {
+        "error": "format"
+      }
+    }
+  ]
+}

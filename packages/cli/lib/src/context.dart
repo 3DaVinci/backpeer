@@ -101,16 +101,21 @@ final class CliContext {
   final Map<String, String> env;
   final AppHome home;
 
-  CryptoProvider? _crypto;
+  Future<CryptoProvider>? _crypto;
 
-  /// libsodium; если не загрузилась — запасная реализация на Dart.
-  Future<CryptoProvider> crypto() async {
-    if (_crypto case final c?) return c;
+  /// libsodium; если не загрузилась — запасная реализация на Dart. Один
+  /// раз на запуск, даже при одновременных вызовах.
+  Future<CryptoProvider> crypto() => _crypto ??= _loadCrypto();
+
+  Future<CryptoProvider> _loadCrypto() async {
     try {
-      return _crypto = await SodiumCryptoProvider.load();
+      return await SodiumCryptoProvider.load();
     } on Object catch (e) {
-      report.warn('libsodium недоступна ($e), работаю медленнее, на Dart');
-      return _crypto = DartCryptoProvider();
+      report.warn(
+        'libsodium недоступна, работаю медленнее, на Dart: '
+        '${_nativeHint('$e')}',
+      );
+      return DartCryptoProvider();
     }
   }
 
@@ -197,7 +202,17 @@ final class CliContext {
   LocalObjectStore objects(AppConfig config) =>
       LocalObjectStore(Directory(config.objects));
 
-  LocalIndex index() => LocalIndex.open(home.indexPath);
+  /// Локальный индекс. Если библиотека SQLite не загружается (например,
+  /// слишком старая glibc), — понятная ошибка вместо трассировки.
+  LocalIndex index() {
+    try {
+      return LocalIndex.open(home.indexPath);
+      // Ошибку загрузки нативной библиотеки FFI бросает как ArgumentError.
+      // ignore: avoid_catching_errors
+    } on ArgumentError catch (e) {
+      throw CliException('не загружается SQLite: ${_nativeHint('$e')}');
+    }
+  }
 
   final Random random = Random.secure();
 }
@@ -210,4 +225,15 @@ abstract class CliCommand extends Command<int> {
 
   @override
   void printUsage() => ctx.console.out(usage);
+}
+
+/// Короткое объяснение ошибки загрузки нативной библиотеки.
+String _nativeHint(String error) {
+  final glibc = RegExp("version `(GLIBC_[0-9.]+)' not found").firstMatch(error);
+  if (glibc != null) {
+    return 'в системе слишком старая glibc, нужна ${glibc[1]} или новее '
+        '(минимум для сборки — GLIBC_2.34, docs/cli.md)';
+  }
+  final line = error.split('\n').first;
+  return line.length > 200 ? '${line.substring(0, 200)}…' : line;
 }

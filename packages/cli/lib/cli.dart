@@ -26,7 +26,9 @@ Future<int> runCli(
     console: console,
     env: env,
     home: AppHome.resolve(env: env, override: global),
+    json: arguments.contains('--json'),
   );
+  final report = ctx.report;
   final runner =
       _Runner(
           console,
@@ -44,6 +46,13 @@ Future<int> runCli(
           negatable: false,
           help: 'Версия программы',
         )
+        ..argParser.addFlag(
+          'json',
+          negatable: false,
+          help:
+              'Машинный вывод: JSON Lines в stdout, последняя строка — '
+              'result или error (docs/cli.md)',
+        )
         ..addCommand(InitCommand(ctx))
         ..addCommand(RecoverCommand(ctx))
         ..addCommand(BackupCommand(ctx))
@@ -56,25 +65,38 @@ Future<int> runCli(
   try {
     final top = runner.parse(arguments);
     if (top.flag('version')) {
-      console.out(versionLine('cli'));
       final crypto = await ctx.crypto();
-      if (crypto is SodiumCryptoProvider) {
-        console.out('libsodium ${crypto.libraryVersion}');
-      }
+      final sodium = crypto is SodiumCryptoProvider
+          ? crypto.libraryVersion
+          : null;
+      report.info(versionLine('cli'));
+      if (sodium != null) report.info('libsodium $sodium');
+      report.result({
+        'version': appVersion,
+        'commit': gitCommit,
+        'libsodium': sodium,
+      });
       return ExitCode.ok;
     }
     return await runner.runCommand(top) ?? ExitCode.ok;
   } on UsageException catch (e) {
-    console
-      ..err(e.message)
-      ..err('')
-      ..err(e.usage);
+    if (ctx.json) {
+      report.error(e.message, ExitCode.usage);
+    } else {
+      console
+        ..err(e.message)
+        ..err('')
+        ..err(e.usage);
+    }
     return ExitCode.usage;
   } on CliException catch (e) {
-    console.err('Ошибка: ${e.message}');
+    report.error(e.message, e.exitCode);
     return e.exitCode;
+  } on CancelledException {
+    report.error('операция прервана', ExitCode.cancelled);
+    return ExitCode.cancelled;
   } on CoreException catch (e) {
-    console.err('Ошибка: ${e.message}');
+    report.error(e.message, ExitCode.error);
     return ExitCode.error;
   }
 }

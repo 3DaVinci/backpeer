@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -18,8 +19,62 @@ abstract final class ExitCode {
   static const int usage = 2;
 
   /// Частичный успех: выполнено, но часть файлов пропущена или не
-  /// восстановлена.
+  /// восстановлена, есть предупреждения о снимках или фрагментах.
   static const int partial = 3;
+
+  /// Прервано пользователем (Ctrl+C), как принято в Unix: 128 + SIGINT.
+  static const int cancelled = 130;
+}
+
+/// Вывод команд: текст для человека или JSON Lines (`--json`): каждая
+/// строка — объект с полем `type` (`progress`, `warning`, `phrase`,
+/// `result`, `error`); последняя — `result` или `error`.
+final class Reporter {
+  new(this.console, {required this.json});
+
+  final Console console;
+  final bool json;
+
+  /// Текст только для человека.
+  void info(String text) {
+    if (!json) console.out(text);
+  }
+
+  /// Предупреждение: текст в stderr или событие `warning`.
+  void warn(String text, [Map<String, Object?> data = const {}]) {
+    if (json) {
+      _emit({'type': 'warning', 'message': text, ...data});
+    } else {
+      console.err(text);
+    }
+  }
+
+  void progress(Map<String, Object?> data, String human) {
+    if (json) {
+      _emit({'type': 'progress', ...data});
+    } else {
+      console.progress(human);
+    }
+  }
+
+  /// Произвольное событие JSON (например, `phrase`); в тексте не выводится.
+  void event(String type, Map<String, Object?> data) {
+    if (json) _emit({'type': type, ...data});
+  }
+
+  void result(Map<String, Object?> data, {int exitCode = ExitCode.ok}) {
+    if (json) _emit({'type': 'result', 'exitCode': exitCode, ...data});
+  }
+
+  void error(String message, int exitCode) {
+    if (json) {
+      _emit({'type': 'error', 'exitCode': exitCode, 'message': message});
+    } else {
+      console.err('Ошибка: $message');
+    }
+  }
+
+  void _emit(Map<String, Object?> event) => console.out(jsonEncode(event));
 }
 
 /// Ошибка, понятная пользователю, с кодом возврата.
@@ -33,9 +88,16 @@ final class CliException implements Exception {
 /// Общее для команд: ввод-вывод, каталог программы, криптография,
 /// разблокировка ключей.
 final class CliContext {
-  new({required this.console, required this.env, required this.home});
+  new({
+    required this.console,
+    required this.env,
+    required this.home,
+    this.json = false,
+  }) : report = Reporter(console, json: json);
 
   final Console console;
+  final bool json;
+  final Reporter report;
   final Map<String, String> env;
   final AppHome home;
 
@@ -47,7 +109,7 @@ final class CliContext {
     try {
       return _crypto = await SodiumCryptoProvider.load();
     } on Object catch (e) {
-      console.err('libsodium недоступна ($e), работаю медленнее, на Dart');
+      report.warn('libsodium недоступна ($e), работаю медленнее, на Dart');
       return _crypto = DartCryptoProvider();
     }
   }
@@ -90,7 +152,7 @@ final class CliContext {
         continue;
       }
       final bits = estimatePasswordBits(first);
-      console.out(
+      console.err(
         'Оценка стойкости: ${passwordRating(bits)} (≈ ${bits.round()} бит).',
       );
       if (bits < 50) {

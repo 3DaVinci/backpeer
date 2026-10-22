@@ -18,7 +18,9 @@ abstract interface class Console {
   void progress(String line);
 }
 
-/// Терминал: пароль вводится без эха.
+/// Терминал: пароль вводится без эха. Подсказки ввода и строка прогресса
+/// идут в stderr, чтобы stdout оставался для результата (в том числе
+/// `--json`).
 final class StdConsole implements Console {
   const new();
 
@@ -30,13 +32,13 @@ final class StdConsole implements Console {
 
   @override
   String? ask(String prompt) {
-    stdout.write(prompt);
+    stderr.write(prompt);
     return stdin.readLineSync(encoding: utf8);
   }
 
   @override
   String? askSecret(String prompt) {
-    stdout.write(prompt);
+    stderr.write(prompt);
     final terminal = stdin.hasTerminal;
     if (terminal) stdin.echoMode = false;
     try {
@@ -44,13 +46,13 @@ final class StdConsole implements Console {
     } finally {
       if (terminal) {
         stdin.echoMode = true;
-        stdout.writeln();
+        stderr.writeln();
       }
     }
   }
 
   @override
   void progress(String line) {
-    if (stdout.hasTerminal) stdout.write('\r\x1B[2K$line');
+    if (stderr.hasTerminal) stderr.write('\r\x1B[2K$line');
   }
 }

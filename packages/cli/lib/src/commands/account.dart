@@ -73,29 +73,36 @@ final class InitCommand extends CliCommand {
     final config = _newConfig(ctx, argResults!, crypto);
     final phrase = RecoveryPhrase.generate(crypto);
     final words = phrase.words;
-    ctx.console
-      ..out('Фраза восстановления — единственный способ вернуть данные, ')
-      ..out('если пароль забыт. Запишите её на бумаге и храните отдельно:')
-      ..out('');
+    ctx.report
+      ..info('Фраза восстановления — единственный способ вернуть данные, ')
+      ..info('если пароль забыт. Запишите её на бумаге и храните отдельно:')
+      ..info('')
+      ..event('phrase', {'words': words});
     for (var i = 0; i < words.length; i += 4) {
-      ctx.console.out(
+      ctx.report.info(
         [
           for (var j = i; j < i + 4; j++)
             '${(j + 1).toString().padLeft(2)}. ${words[j].padRight(10)}',
         ].join(' '),
       );
     }
-    ctx.console.out('');
+    ctx.report.info('');
     _checkWords(words);
     final password = ctx.newPassword();
     final keys = await AccountKeys.fromPhrase(phrase, crypto);
     await (await ctx.keyStore()).create(keys, password, phrase: phrase);
     config.save(ctx.home);
     ctx.index().close();
-    ctx.console.out(
-      'Учётная запись создана: ${bytesToHex(keys.accountId).substring(0, 16)}… '
-      '(${config.durability}).',
-    );
+    ctx.report
+      ..info(
+        'Учётная запись создана: '
+        '${bytesToHex(keys.accountId).substring(0, 16)}… '
+        '(${config.durability}).',
+      )
+      ..result({
+        'accountId': bytesToHex(keys.accountId),
+        ...config.durability.toConfig(),
+      });
     keys.dispose();
     phrase.dispose();
     return ExitCode.ok;
@@ -171,17 +178,25 @@ final class RecoverCommand extends CliCommand {
         store: ctx.objects(config),
         index: index,
       );
-      ctx.console.out(
+      ctx.report.info(
         'Учётная запись восстановлена: '
         '${bytesToHex(keys.accountId).substring(0, 16)}…; '
         'индексов ${report.indexesRead}, сегментов ${report.segmentsAdded}.',
       );
       for (final (id, e) in report.unreadable) {
-        ctx.console.err(
+        ctx.report.warn(
           'Индекс ${bytesToHex(id).substring(0, 16)} не прочитан: ${e.message}',
+          {'index': bytesToHex(id)},
         );
       }
-      return report.unreadable.isEmpty ? ExitCode.ok : ExitCode.partial;
+      final code = report.unreadable.isEmpty ? ExitCode.ok : ExitCode.partial;
+      ctx.report.result({
+        'accountId': bytesToHex(keys.accountId),
+        'indexes': report.indexesRead,
+        'segments': report.segmentsAdded,
+        'unreadable': report.unreadable.length,
+      }, exitCode: code);
+      return code;
     } finally {
       index.close();
       keys.dispose();
@@ -213,8 +228,9 @@ final class ShowPhraseCommand extends CliCommand {
     }
     final words = phrase.words;
     for (var i = 0; i < words.length; i++) {
-      ctx.console.out('${(i + 1).toString().padLeft(2)}. ${words[i]}');
+      ctx.report.info('${(i + 1).toString().padLeft(2)}. ${words[i]}');
     }
+    ctx.report.result({'words': words});
     phrase.dispose();
     return ExitCode.ok;
   }
@@ -271,16 +287,17 @@ final class ConfigCommand extends CliCommand {
       changed = true;
     }
     if (changed) config.save(ctx.home);
-    ctx.console
-      ..out('Каталог программы: ${ctx.home.dir.path}')
-      ..out('Папки-«узлы»: ${config.nodes} (${config.nodeCount})')
-      ..out('Папка объектов: ${config.objects}')
-      ..out('Надёжность: ${config.durability}')
-      ..out('Устройство: ${bytesToHex(config.deviceId).substring(0, 16)}…')
-      ..out(
+    ctx.report
+      ..info('Каталог программы: ${ctx.home.dir.path}')
+      ..info('Папки-«узлы»: ${config.nodes} (${config.nodeCount})')
+      ..info('Папка объектов: ${config.objects}')
+      ..info('Надёжность: ${config.durability}')
+      ..info('Устройство: ${bytesToHex(config.deviceId).substring(0, 16)}…')
+      ..info(
         'Исключения: '
         '${config.excludes.isEmpty ? 'нет' : config.excludes.join(', ')}',
-      );
+      )
+      ..result({'home': ctx.home.dir.path, ...config.toJson()});
     return ExitCode.ok;
   }
 }

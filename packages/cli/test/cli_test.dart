@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:cli/cli.dart';
 import 'package:test/test.dart';
@@ -217,4 +220,125 @@ void main() {
     expect(console.lines.first, startsWith('cli '));
     expect(console.lines.last, startsWith('libsodium '));
   });
+
+  group('--json', () {
+    List<Map<String, Object?>> events(_Console console) => [
+      for (final line in console.lines)
+        jsonDecode(line) as Map<String, Object?>,
+    ];
+
+    test('каждая строка — JSON, последняя — result с exitCode', () async {
+      final (initCode, initOut) = await cli(
+        ['--json', 'init'],
+        answer: (prompt, out) {
+          final m = RegExp(r'Слово №(\d+)').firstMatch(prompt);
+          if (m == null) return null;
+          final phrase = events(_Console()..lines.addAll(out))
+              .firstWhere((e) => e['type'] == 'phrase');
+          return (phrase['words']! as List)[int.parse(m[1]!) - 1] as String;
+        },
+      );
+      expect(initCode, ExitCode.ok, reason: initOut.errors.join('\n'));
+      final initEvents = events(initOut);
+      expect(initEvents.first['type'], 'phrase');
+      expect(initEvents.last, containsPair('type', 'result'));
+      expect(initEvents.last['accountId'], hasLength(64));
+
+      final data = Directory('${dir.path}/data')..createSync();
+      File('${data.path}/a.txt').writeAsStringSync('x');
+      final (code, out) = await cli(['--json', 'backup', data.path]);
+      expect(code, ExitCode.ok);
+      final last = events(out).last;
+      expect(last['type'], 'result');
+      expect(last['exitCode'], 0);
+      expect(last['files'], 1);
+      expect(last['snapshotId'], hasLength(64));
+
+      final list = events((await cli(['--json', 'snapshots'])).$2).last;
+      final snaps = (list['snapshots']! as List).cast<Map<String, Object?>>();
+      expect(snaps.single['id'], last['snapshotId']);
+      expect(
+        DateTime.parse(snaps.single['createdAt']! as String).isUtc,
+        isTrue,
+      );
+    });
+
+    test('ошибка — последняя строка error с тем же кодом', () async {
+      final (code, out) = await cli(['--json', 'snapshots']);
+      expect(code, ExitCode.error);
+      final last = events(out).single;
+      expect(last['type'], 'error');
+      expect(last['exitCode'], ExitCode.error);
+      expect(out.errors, isEmpty, reason: 'в режиме --json текст не выводится');
+
+      final (usage, usageOut) = await cli(['--json', 'nonsense']);
+      expect(usage, ExitCode.usage);
+      expect(events(usageOut).single['exitCode'], ExitCode.usage);
+    });
+
+    test('частичный успех: result с exitCode 3 и предупреждения', () async {
+      await init();
+      final data = Directory('${dir.path}/data')..createSync();
+      File('${data.path}/a.txt').writeAsStringSync('x');
+      await cli(['backup', data.path]);
+      final id = (await cli(['snapshots'])).$2.lines.single.substring(0, 12);
+      await cli(['restore', id, '--to', '${dir.path}/out']);
+      final (code, out) = await cli([
+        '--json',
+        'restore',
+        id,
+        '--to',
+        '${dir.path}/out',
+      ]);
+      expect(code, ExitCode.partial);
+      final all = events(out);
+      expect(all.where((e) => e['type'] == 'warning'), isNotEmpty);
+      expect(all.last, containsPair('exitCode', ExitCode.partial));
+      expect(all.last['skippedExisting'], 1);
+    });
+  });
+
+  test(
+    'Ctrl+C посреди бэкапа — код 130, повторный запуск продолжает',
+    () async {
+      await init();
+      final data = Directory('${dir.path}/big')..createSync();
+      final random = Random(1);
+      for (var i = 0; i < 12; i++) {
+        File(
+          '${data.path}/f$i.bin',
+        ).writeAsBytesSync(List.generate(16 << 20, (_) => random.nextInt(256)));
+      }
+      final process = await Process.start(Platform.resolvedExecutable, [
+        'run',
+        'bin/cli.dart',
+        'backup',
+        data.path,
+      ], environment: env);
+      final stderrText = StringBuffer();
+      process.stderr.transform(utf8.decoder).listen(stderrText.write);
+      unawaited(process.stdout.drain<void>());
+      // Ждём первого записанного фрагмента — бэкап точно идёт.
+      final nodes = Directory('${env['FS_HOME']}/nodes/node-00');
+      final deadline = DateTime.now().add(const Duration(minutes: 3));
+      while (!(nodes.existsSync() &&
+          nodes
+              .listSync(recursive: true)
+              .any((e) => e.path.endsWith('.frag')))) {
+        if (DateTime.now().isAfter(deadline)) {
+          fail('бэкап не начался: $stderrText');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+      process.kill(ProcessSignal.sigint);
+      expect(await process.exitCode, ExitCode.cancelled, reason: '$stderrText');
+
+      final (code, out) = await cli(['--json', 'backup', data.path]);
+      expect(code, ExitCode.ok);
+      final result = jsonDecode(out.lines.last) as Map<String, Object?>;
+      expect(result['files'], 12);
+    },
+    testOn: '!windows',
+    timeout: const Timeout(Duration(minutes: 5)),
+  );
 }

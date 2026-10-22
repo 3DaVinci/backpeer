@@ -56,7 +56,7 @@ final class BackupCommand extends CliCommand {
     final encoder = await IsolateSegmentEncoder.start(2);
     final cancel = CancellationToken();
     final sigint = ProcessSignal.sigint.watch().listen((_) {
-      ctx.console.err('\nОстанавливаюсь… готовые сегменты сохранятся.');
+      ctx.report.warn('Остановка… готовые сегменты сохранятся.');
       cancel.cancel();
     });
     try {
@@ -75,29 +75,54 @@ final class BackupCommand extends CliCommand {
         params: config.durability,
         encoder: encoder,
         cancel: cancel,
-        onProgress: (p) => ctx.console.progress(
+        onProgress: (p) => ctx.report.progress(
+          {
+            'files': p.files,
+            'bytesRead': p.bytesRead,
+            'newBytes': p.newBytes,
+            'segmentsStored': p.segmentsStored,
+            'elapsedMs': p.elapsed.inMilliseconds,
+          },
           'файлов ${p.files}, прочитано ${_size(p.bytesRead)}, '
           'новых ${_size(p.newBytes)}, сегментов ${p.segmentsStored}, '
           '${_size(p.readRate.round())}/с',
         ),
       );
       ctx.console.progress('');
-      final s = result.stats;
-      ctx.console.out(
-        'Снимок ${_shortId(result.snapshot.snapshotId)}: файлов ${s.files}, '
-        '${_size(s.bytes)}, новых ${_size(s.newBytes)} '
-        '(${s.newChunks} чанков, ${result.segmentsStored} сегментов).',
+      final st = result.stats;
+      ctx.report.info(
+        'Снимок ${_shortId(result.snapshot.snapshotId)}: файлов ${st.files}, '
+        '${_size(st.bytes)}, новых ${_size(st.newBytes)} '
+        '(${st.newChunks} чанков, ${result.segmentsStored} сегментов).',
       );
       for (final w in result.warnings) {
-        ctx.console.err('Внимание: ${_warning(w)}.');
+        ctx.report.warn('Внимание: ${_warning(w)}.', {'rollback': w.name});
       }
       for (final skipped in result.report.skipped) {
-        ctx.console.err('Пропущено: $skipped');
+        ctx.report.warn('Пропущено: $skipped', {
+          'path': skipped.path,
+          'reason': skipped.reason.name,
+          'detail': skipped.detail,
+        });
       }
-      return result.report.isClean ? ExitCode.ok : ExitCode.partial;
+      final code = result.report.isClean ? ExitCode.ok : ExitCode.partial;
+      ctx.report.result({
+        'snapshotId': bytesToHex(result.snapshot.snapshotId),
+        'sequence': result.snapshot.sequence.toInt(),
+        'files': st.files,
+        'directories': st.directories,
+        'bytes': st.bytes,
+        'newChunks': st.newChunks,
+        'newBytes': st.newBytes,
+        'segments': result.segmentsStored,
+        'skipped': result.report.skipped.length,
+        'excluded': result.report.excluded,
+      }, exitCode: code);
+      return code;
     } on CancelledException {
       throw const CliException(
         'Бэкап остановлен; следующий запуск продолжит без повторной отправки',
+        ExitCode.cancelled,
       );
     } finally {
       await encoder.close();
@@ -129,26 +154,44 @@ final class SnapshotsCommand extends CliCommand {
         store: ctx.objects(config),
         index: index,
       ).list();
-      if (listing.snapshots.isEmpty) ctx.console.out('Снимков нет.');
-      for (final s in listing.snapshots) {
-        final date = DateTime.fromMillisecondsSinceEpoch(
-          s.createdAtUnixMs.toInt(),
-        ).toLocal().toString().substring(0, 19);
-        ctx.console.out(
-          '${_shortId(s.snapshotId)}  №${s.sequence}  $date  ${s.hostname}  '
-          '${s.paths.join(', ')}  файлов ${s.stats.files}, '
-          '${_size(s.stats.bytes.toInt())}',
+      if (listing.snapshots.isEmpty) ctx.report.info('Снимков нет.');
+      final rows = <Map<String, Object?>>[];
+      for (final snap in listing.snapshots) {
+        final created = DateTime.fromMillisecondsSinceEpoch(
+          snap.createdAtUnixMs.toInt(),
         );
+        final date = created.toLocal().toString().substring(0, 19);
+        ctx.report.info(
+          '${_shortId(snap.snapshotId)}  №${snap.sequence}  $date  '
+          '${snap.hostname}  ${snap.paths.join(', ')}  '
+          'файлов ${snap.stats.files}, ${_size(snap.stats.bytes.toInt())}',
+        );
+        rows.add({
+          'id': bytesToHex(snap.snapshotId),
+          'sequence': snap.sequence.toInt(),
+          'createdAt': created.toUtc().toIso8601String(),
+          'hostname': snap.hostname,
+          'paths': snap.paths,
+          'files': snap.stats.files.toInt(),
+          'bytes': snap.stats.bytes.toInt(),
+          'parent': snap.parentSnapshotId.isEmpty
+              ? null
+              : bytesToHex(snap.parentSnapshotId),
+        });
       }
       for (final w in listing.warnings) {
-        ctx.console.err('Внимание: ${_warning(w)}.');
+        ctx.report.warn('Внимание: ${_warning(w)}.', {'rollback': w.name});
       }
       for (final (id, e) in listing.unreadable) {
-        ctx.console.err('Снимок ${_shortId(id)} не прочитан: ${e.message}');
+        ctx.report.warn('Снимок ${_shortId(id)} не прочитан: ${e.message}', {
+          'snapshotId': bytesToHex(id),
+        });
       }
-      return listing.warnings.isEmpty && listing.unreadable.isEmpty
+      final code = listing.warnings.isEmpty && listing.unreadable.isEmpty
           ? ExitCode.ok
           : ExitCode.partial;
+      ctx.report.result({'snapshots': rows}, exitCode: code);
+      return code;
     } finally {
       index.close();
       keys.dispose();
@@ -205,23 +248,38 @@ final class RestoreCommand extends CliCommand {
         paths: rest.skip(1).toList(),
         overwrite: argResults!.flag('overwrite'),
       );
-      ctx.console.out(
+      ctx.report.info(
         'Восстановлено: файлов ${result.files} (${_size(result.bytes)}), '
         'каталогов ${result.directories}, ссылок ${result.symlinks}.',
       );
       if (result.skippedExisting.isNotEmpty) {
-        ctx.console.err(
+        ctx.report.warn(
           'Не перезаписаны (уже есть, см. --overwrite): '
           '${result.skippedExisting.length}',
+          {'existing': result.skippedExisting},
         );
       }
       for (final (path, reason) in result.errors) {
-        ctx.console.err('Не восстановлено: $path: $reason');
+        ctx.report.warn('Не восстановлено: $path: $reason', {
+          'path': path,
+          'reason': reason,
+        });
       }
       if (!result.ownersRestored && !Platform.isWindows) {
-        ctx.console.out('Владелец файлов не менялся: нужны права root.');
+        ctx.report.info('Владелец файлов не менялся: нужны права root.');
       }
-      return result.isComplete ? ExitCode.ok : ExitCode.partial;
+      final code = result.isComplete ? ExitCode.ok : ExitCode.partial;
+      ctx.report.result({
+        'snapshotId': bytesToHex(id),
+        'files': result.files,
+        'directories': result.directories,
+        'symlinks': result.symlinks,
+        'bytes': result.bytes,
+        'skippedExisting': result.skippedExisting.length,
+        'errors': result.errors.length,
+        'ownersRestored': result.ownersRestored,
+      }, exitCode: code);
+      return code;
     } finally {
       index.close();
       keys.dispose();
@@ -260,23 +318,44 @@ final class VerifyCommand extends CliCommand {
         full: argResults!.flag('full'),
         params: config.durability,
       );
-      ctx.console.out(
+      ctx.report.info(
         'Сегментов ${report.segments}, фрагментов ${report.fragments}: '
         '${report.isHealthy ? 'всё в порядке' : 'есть проблемы'}.',
       );
       for (final p in report.problems) {
-        ctx.console.err('Фрагмент: $p');
+        ctx.report.warn('Фрагмент: $p', {
+          'segmentId': bytesToHex(p.segmentId),
+          'fragment': p.index,
+          'node': p.node,
+          'error': p.error.message,
+        });
       }
       for (final id in report.atRisk) {
-        ctx.console.err('В риске (нужен ремонт): сегмент ${_shortId(id)}');
+        ctx.report.warn('В риске (нужен ремонт): сегмент ${_shortId(id)}', {
+          'atRisk': bytesToHex(id),
+        });
       }
       for (final (id, e) in report.unrecoverable) {
-        ctx.console.err(
+        ctx.report.warn(
           'Не восстановить: сегмент ${_shortId(id)}: ${e.message}',
+          {'unrecoverable': bytesToHex(id)},
         );
       }
-      if (report.unrecoverable.isNotEmpty) return ExitCode.error;
-      return report.isHealthy ? ExitCode.ok : ExitCode.partial;
+      final code = report.unrecoverable.isNotEmpty
+          ? ExitCode.error
+          : report.isHealthy
+          ? ExitCode.ok
+          : ExitCode.partial;
+      ctx.report.result({
+        'full': argResults!.flag('full'),
+        'segments': report.segments,
+        'fragments': report.fragments,
+        'healthy': report.isHealthy,
+        'problems': report.problems.length,
+        'atRisk': report.atRisk.length,
+        'unrecoverable': report.unrecoverable.length,
+      }, exitCode: code);
+      return code;
     } finally {
       index.close();
       keys.dispose();
@@ -313,7 +392,9 @@ final class ForgetCommand extends CliCommand {
       );
       final id = await _resolve(catalog, rest.single);
       await catalog.forget(id);
-      ctx.console.out('Снимок ${_shortId(id)} удалён.');
+      ctx.report
+        ..info('Снимок ${_shortId(id)} удалён.')
+        ..result({'snapshotId': bytesToHex(id)});
       return ExitCode.ok;
     } finally {
       index.close();

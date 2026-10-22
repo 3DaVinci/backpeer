@@ -301,6 +301,14 @@ final class LocalIndex {
     );
   }
 
+  /// Идентификаторы сохранённых сегментов, в порядке записи.
+  List<Uint8List> storedSegments() => [
+    for (final row in _db.select(
+      'SELECT segment_id FROM segments WHERE stored = 1 ORDER BY id',
+    ))
+      row['segment_id'] as Uint8List,
+  ];
+
   /// Идентификаторы сегментов, ещё не сохранённых (прерванный бэкап).
   List<Uint8List> pendingSegments() => [
     for (final row in _db.select(

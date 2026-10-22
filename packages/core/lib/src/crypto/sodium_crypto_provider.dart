@@ -10,6 +10,14 @@ import 'package:sodium/sodium_sumo.dart';
 /// [CryptoProvider] на libsodium через FFI (пакет `sodium`, решение 0.5.1).
 /// libsodium собирает build hook пакета при сборке: нужен компилятор C
 /// (docs/ci.md). HKDF и PBKDF2 — на чистом Dart (`kdf.dart`).
+///
+/// Результаты пакета `sodium` — внешние буферы `sodium_malloc`, которые
+/// освобождает финализатор при сборке мусора. Наружу они не отдаются:
+/// результат копируется в обычный `Uint8List` ([_own]). Так время жизни
+/// нативной памяти не зависит от того, как код дальше держит байты
+/// (представления, isolate). Поводом стало падение SIGSEGV в
+/// `SegmentReader.segment` при нагрузочном замере 1.8.3; цена — одна копия
+/// сегмента (16 МиБ — единицы миллисекунд).
 final class SodiumCryptoProvider implements CryptoProvider {
   new _(this._sodium);
 
@@ -34,11 +42,13 @@ final class SodiumCryptoProvider implements CryptoProvider {
     _checkLength(nonce.length, CryptoProvider.aeadNonceLength, 'nonce');
     return _withKey(
       key,
-      (k) => _sodium.crypto.aeadXChaCha20Poly1305IETF.encrypt(
-        message: plaintext,
-        nonce: nonce,
-        key: k,
-        additionalData: aad,
+      (k) => _own(
+        _sodium.crypto.aeadXChaCha20Poly1305IETF.encrypt(
+          message: plaintext,
+          nonce: nonce,
+          key: k,
+          additionalData: aad,
+        ),
       ),
     );
   }
@@ -55,11 +65,13 @@ final class SodiumCryptoProvider implements CryptoProvider {
     if (ciphertext.length < CryptoProvider.aeadTagLength) return null;
     return _withKey(key, (k) {
       try {
-        return _sodium.crypto.aeadXChaCha20Poly1305IETF.decrypt(
-          cipherText: ciphertext,
-          nonce: nonce,
-          key: k,
-          additionalData: aad,
+        return _own(
+          _sodium.crypto.aeadXChaCha20Poly1305IETF.decrypt(
+            cipherText: ciphertext,
+            nonce: nonce,
+            key: k,
+            additionalData: aad,
+          ),
         );
       } on SodiumException {
         return null;
@@ -71,12 +83,13 @@ final class SodiumCryptoProvider implements CryptoProvider {
   Uint8List blake2b256(Uint8List data, {SecretBytes? key}) {
     final hash = _sodium.crypto.genericHash;
     if (key == null) {
-      return hash(message: data, outLen: CryptoProvider.hashLength);
+      return _own(hash(message: data, outLen: CryptoProvider.hashLength));
     }
     _checkLength(key.length, CryptoProvider.keyLength, 'key');
     return _withKey(
       key,
-      (k) => hash(message: data, outLen: CryptoProvider.hashLength, key: k),
+      (k) =>
+          _own(hash(message: data, outLen: CryptoProvider.hashLength, key: k)),
     );
   }
 
@@ -133,7 +146,7 @@ final class SodiumCryptoProvider implements CryptoProvider {
     pair.secretKey.dispose();
     return Ed25519KeyPair(
       seed: SecretBytes(seed.bytes),
-      publicKey: pair.publicKey,
+      publicKey: _own(pair.publicKey),
     );
   }
 
@@ -144,9 +157,11 @@ final class SodiumCryptoProvider implements CryptoProvider {
   ) async {
     final pair = _withKey(keyPair.seed, _sodium.crypto.sign.seedKeyPair);
     try {
-      return _sodium.crypto.sign.detached(
-        message: message,
-        secretKey: pair.secretKey,
+      return _own(
+        _sodium.crypto.sign.detached(
+          message: message,
+          secretKey: pair.secretKey,
+        ),
       );
     } finally {
       pair.secretKey.dispose();
@@ -179,7 +194,7 @@ final class SodiumCryptoProvider implements CryptoProvider {
     );
     return X25519KeyPair(
       secretKey: SecretBytes(secretKey.bytes),
-      publicKey: public,
+      publicKey: _own(public),
     );
   }
 
@@ -208,8 +223,11 @@ final class SodiumCryptoProvider implements CryptoProvider {
   @override
   Uint8List randomBytes(int length) {
     RangeError.checkNotNegative(length, 'length');
-    return length == 0 ? Uint8List(0) : _sodium.randombytes.buf(length);
+    return length == 0 ? Uint8List(0) : _own(_sodium.randombytes.buf(length));
   }
+
+  /// Копия результата `sodium` в обычной памяти Dart (см. описание класса).
+  static Uint8List _own(Uint8List native) => Uint8List.fromList(native);
 
   /// Временный [SecureKey] (защищённая память libsodium) на время вызова.
   T _withKey<T>(SecretBytes key, T Function(SecureKey key) body) {

@@ -39,6 +39,8 @@ export 'src/snapshot/snapshot_catalog.dart';
 export 'src/snapshot/tree_builder.dart';
 export 'src/snapshot/walker.dart';
 export 'src/storage/device_key_store.dart';
+export 'src/storage/fragment_store.dart';
+export 'src/storage/local_folder_store.dart';
 export 'src/storage/local_index.dart';
 export 'src/storage/local_object_store.dart';
 export 'src/storage/object_store.dart';

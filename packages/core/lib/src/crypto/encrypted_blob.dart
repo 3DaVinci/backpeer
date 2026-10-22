@@ -10,7 +10,11 @@ enum BlobType {
   segment(1),
   snapshot(2),
   indexObject(3),
-  keyBundle(4);
+  keyBundle(4),
+
+  /// Локальная копия фразы восстановления (crypto.md, раздел 4.2); на
+  /// координатор не отправляется.
+  localPhrase(5);
 
   new(this.code);
 

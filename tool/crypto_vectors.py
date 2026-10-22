@@ -558,6 +558,16 @@ def main() -> None:
     other_id = bytearray(good)
     other_id[8] ^= 0xFF
     corrupt("other-object-id", bytes(other_id), "integrity")
+    # Тип 5 (локальная копия фразы, crypto.md, раздел 4.2) — в конце файла,
+    # чтобы порядок выпущенных случаев не менялся.
+    for pt_name, pt in [("entropy", bytes(range(32)))]:
+        phrase_key = bytes(range(0x60, 0x80))
+        cases.append({
+            "name": f"localPhrase-{pt_name}",
+            "input": {"type": 5, "objectId": object_id, "nonce": nonce, "key": phrase_key,
+                      "plaintext": pt},
+            "expected": {"blob": blob(5, object_id, nonce, phrase_key, pt)},
+        })
     write("blob.json", "crypto/blob",
           "Зашифрованный блоб (crypto.md, раздел 5): шифрование с фиксированными ключом и nonce; "
           "разбор испорченных блобов. Поля plaintext и plaintextPattern взаимоисключающие.",

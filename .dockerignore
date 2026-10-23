@@ -1,0 +1,18 @@
+# Контекст сборки образа координатора (packages/coordinator/Dockerfile):
+# только пакеты рабочего пространства и корневые pubspec.
+**/.dart_tool
+**/build
+**/coverage
+**/*.iml
+.git
+.fvm
+.idea
+.claude
+.gitlab-ci-local
+apps
+prototypes
+Planning
+ADR
+docs
+test-vectors
+packages/*/test

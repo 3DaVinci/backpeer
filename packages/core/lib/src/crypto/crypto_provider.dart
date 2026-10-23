@@ -36,6 +36,16 @@ final class Ed25519KeyPair {
   final Uint8List publicKey;
 }
 
+/// Подготовленный ключ подписи Ed25519 ([CryptoProvider.ed25519Signer]).
+abstract interface class Ed25519Signer {
+  Uint8List get publicKey;
+
+  Future<Uint8List> sign(Uint8List message);
+
+  /// Затирает закрытый ключ.
+  void dispose();
+}
+
 /// Пара ключей X25519 (RFC 7748).
 final class X25519KeyPair {
   const new({required this.secretKey, required this.publicKey});
@@ -119,6 +129,11 @@ abstract interface class CryptoProvider {
   /// Подпись Ed25519, 64 байта. Контекст подписи (crypto.md, раздел 3.5)
   /// добавляет вызывающий.
   Future<Uint8List> ed25519Sign(Ed25519KeyPair keyPair, Uint8List message);
+
+  /// Ключ для многих подписей подряд (подписант талонов): закрытый ключ
+  /// готовится один раз, а не на каждую подпись. Подписи те же, что у
+  /// [ed25519Sign]. Освобождается [Ed25519Signer.dispose].
+  Future<Ed25519Signer> ed25519Signer(Ed25519KeyPair keyPair);
 
   Future<bool> ed25519Verify({
     required Uint8List publicKey,

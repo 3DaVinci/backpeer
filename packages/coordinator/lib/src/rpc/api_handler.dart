@@ -11,6 +11,7 @@ import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/rpc/methods.dart';
 import 'package:core/core.dart';
 import 'package:logging/logging.dart';
+import 'package:postgres/postgres.dart' show ServerException;
 import 'package:protocol/protocol.dart' as pb;
 import 'package:shelf/shelf.dart';
 
@@ -102,23 +103,47 @@ final class ApiHandler {
       code = errorCodeName(e.code);
       response = _error(e, requestId);
     } on Object catch (e, stack) {
-      _log.severe(
-        LogEvent('unhandled', {'rid': requestId, 'method': method?.name}),
-        e,
-        stack,
-      );
-      code = 'INTERNAL';
-      response = _error(
-        const RpcException(
-          pb.ErrorCode.ERROR_CODE_INTERNAL,
-          'внутренняя ошибка',
-        ),
-        requestId,
-      );
+      if (e is ServerException && _isConflict(e)) {
+        // Взаимоблокировка или конфликт сериализации в базе: транзакция
+        // откатилась целиком, повтор безопасен.
+        _log.warning(
+          LogEvent('db_conflict', {
+            'rid': requestId,
+            'method': method?.name,
+            'sqlstate': e.code,
+          }),
+        );
+        code = 'UNAVAILABLE';
+        response = _error(
+          const RpcException(
+            pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+            'конфликт транзакций',
+            retryAfter: Duration(milliseconds: 200),
+          ),
+          requestId,
+        );
+      } else {
+        _log.severe(
+          LogEvent('unhandled', {'rid': requestId, 'method': method?.name}),
+          e,
+          stack,
+        );
+        code = 'INTERNAL';
+        response = _error(
+          const RpcException(
+            pb.ErrorCode.ERROR_CODE_INTERNAL,
+            'внутренняя ошибка',
+          ),
+          requestId,
+        );
+      }
     }
     _logRequest(method?.name, code, response, started, requestId, bytesIn);
     return response;
   }
+
+  static bool _isConflict(ServerException e) =>
+      e.code == '40P01' || e.code == '40001';
 
   void _limit(RateLimiter limiter, String key, String what) {
     final wait = limiter.take(key);

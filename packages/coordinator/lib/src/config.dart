@@ -161,6 +161,7 @@ final class CoordinatorConfig {
     'placement.max_probation_share',
     'placement.ticket_minutes',
     'placement.distinct_subnets',
+    'placement.candidates_cache_ms',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -301,6 +302,11 @@ final class _Reader {
         ),
         distinctSubnets:
             _bool('placement.distinct_subnets') ?? pp.distinctSubnets,
+        candidatesCache: Duration(
+          milliseconds:
+              _int('placement.candidates_cache_ms', 0, 60000) ??
+              pp.candidatesCache.inMilliseconds,
+        ),
       ),
       signerSocket: _string('signer.socket'),
       adminRole: _role('admin.role') ?? d.adminRole,

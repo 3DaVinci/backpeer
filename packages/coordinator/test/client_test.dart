@@ -38,7 +38,10 @@ void main() {
       tlsCertificate: certificate,
       tlsPrivateKey: privateKey,
       nodes: const NodePolicy(minCapacityBytes: 0),
-      placement: const PlacementPolicy(probation: Duration.zero),
+      placement: const PlacementPolicy(
+        probation: Duration.zero,
+        candidatesCache: Duration.zero,
+      ),
     );
     final signerKey = await crypto.ed25519FromSeed(
       SecretBytes(Uint8List(32)..fillRange(0, 32, 0xC0)),

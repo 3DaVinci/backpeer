@@ -143,6 +143,16 @@ final class DartCryptoProvider implements CryptoProvider {
   }
 
   @override
+  Future<Ed25519Signer> ed25519Signer(Ed25519KeyPair keyPair) async =>
+      _DartSigner(
+        this,
+        Ed25519KeyPair(
+          seed: SecretBytes(keyPair.seed.bytes),
+          publicKey: keyPair.publicKey,
+        ),
+      );
+
+  @override
   Future<bool> ed25519Verify({
     required Uint8List publicKey,
     required Uint8List message,
@@ -211,4 +221,21 @@ void _checkLength(int actual, int expected, String name) {
   if (actual != expected) {
     throw ArgumentError('$name: нужно $expected байт, получено $actual');
   }
+}
+
+final class _DartSigner implements Ed25519Signer {
+  new(this._crypto, this._key);
+
+  final DartCryptoProvider _crypto;
+  final Ed25519KeyPair _key;
+
+  @override
+  Uint8List get publicKey => _key.publicKey;
+
+  @override
+  Future<Uint8List> sign(Uint8List message) =>
+      _crypto.ed25519Sign(_key, message);
+
+  @override
+  void dispose() => _key.seed.dispose();
 }

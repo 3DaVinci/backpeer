@@ -307,6 +307,43 @@ void main() {
         await service().candidates(fragmentSize: 1000, minAvailability: 1.1),
         isEmpty,
       );
+
+      // Кэш: новые сведения не видны, пока он жив; выданное место
+      // вычитается сразу.
+      final cached = service();
+      const cache = Duration(minutes: 1);
+      final before = await cached.candidates(
+        fragmentSize: 1000,
+        minAvailability: 0.6,
+        cacheFor: cache,
+      );
+      expect(before, hasLength(2));
+      await h.heartbeat(mine, used: 1 << 40); // места больше нет
+      expect(
+        await cached.candidates(
+          fragmentSize: 1000,
+          minAvailability: 0.6,
+          cacheFor: cache,
+        ),
+        hasLength(2),
+        reason: 'из кэша',
+      );
+      cached.noteAssigned([online.publicKey], (1 << 40) - 500);
+      final after = await cached.candidates(
+        fragmentSize: 1000,
+        minAvailability: 0.6,
+        cacheFor: cache,
+      );
+      expect(after.map((c) => bytesToHex(c.nodeId)), [
+        bytesToHex(mine.publicKey),
+      ], reason: 'online исчерпан выдачей, mine — по старым сведениям');
+      final fresh = await cached.candidates(
+        fragmentSize: 1000,
+        minAvailability: 0.6,
+      );
+      expect(fresh.map((c) => bytesToHex(c.nodeId)), [
+        bytesToHex(online.publicKey),
+      ], reason: 'без кэша — свежая выборка: mine заполнен');
     });
   });
 

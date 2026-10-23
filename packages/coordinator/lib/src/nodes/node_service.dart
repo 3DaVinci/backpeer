@@ -10,6 +10,7 @@ import 'package:coordinator/src/nodes/uptime.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
+import 'package:core/core.dart' show bytesToHex, constantTimeEquals;
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart';
@@ -225,46 +226,88 @@ final class NodeService {
   }
 
   /// Узлы, подходящие для размещения фрагментов размера [fragmentSize]
-  /// (задача 2.7.1): в сети, не удалены, свободного места хватает,
-  /// доступность не ниже [minAvailability], подсеть известна. Свободное
-  /// место — ёмкость минус большее из занятого по словам узла и выданного
-  /// координатором под фрагменты. Узлы владельца сегмента [exceptOwner]
-  /// исключаются; узлы моложе [probation] помечаются. Разнообразие
-  /// владельцев и подсетей обеспечивает [Placement].
+  /// (задача 2.7.1): в сети, не удалены и не исключены оператором, владелец
+  /// не заблокирован, свободного места хватает, доступность не ниже
+  /// [minAvailability], подсеть известна. Свободное место — ёмкость минус
+  /// большее из занятого по словам узла и выданного координатором под
+  /// фрагменты. Узлы владельца сегмента [exceptOwner] исключаются; узлы
+  /// моложе [probation] помечаются. Разнообразие владельцев и подсетей
+  /// обеспечивает [Placement].
+  ///
+  /// Список узлов в сети кэшируется на [cacheFor] (настройка
+  /// `placement.candidates_cache_ms`): выборка и разбор тысячи строк на
+  /// каждое размещение занимали ядро координатора (нагрузочный тест
+  /// 2.9.3). Место, выданное за время жизни кэша, вычитается в нём же
+  /// ([noteAssigned]); изменения от heartbeat видны после обновления кэша.
   Future<List<NodeCandidate>> candidates({
     required int fragmentSize,
     required double minAvailability,
     Uint8List? exceptOwner,
     Duration probation = Duration.zero,
-    Session? session,
+    Duration cacheFor = Duration.zero,
   }) async {
     final now = _clock();
-    final query = Sql.named('''
-      SELECT node_id, account_id, subnet,
-             capacity_bytes - greatest(used_bytes, assigned_bytes),
-             availability, endpoints, registered_at > @probation:timestamptz
-        FROM nodes
-        WHERE removed_at IS NULL
-          AND excluded_at IS NULL
-          AND account_id NOT IN (
-            SELECT account_id FROM accounts WHERE blocked_at IS NOT NULL)
-          AND last_heartbeat_at >= @online:timestamptz
-          AND subnet IS NOT NULL
-          AND capacity_bytes - greatest(used_bytes, assigned_bytes)
-              >= @size:int8
-          AND availability >= @min:float8
-          AND account_id <> @owner:bytea''');
-    final parameters = {
-      'online': now.subtract(policy.onlineWindow),
-      'probation': now.subtract(probation),
-      'size': fragmentSize,
-      'min': minAvailability,
-      'owner': exceptOwner ?? Uint8List(0),
-    };
-    final rows = session != null
-        ? await session.execute(query, parameters: parameters)
-        : await _db.run((s) => s.execute(query, parameters: parameters));
+    final online = await _online(now, cacheFor);
+    final probationStart = now.subtract(probation);
     return [
+      for (final node in online)
+        if (node.freeBytes >= fragmentSize &&
+            node.availability >= minAvailability &&
+            (exceptOwner == null ||
+                !constantTimeEquals(node.ownerId, exceptOwner)))
+          NodeCandidate(
+            nodeId: node.nodeId,
+            ownerId: node.ownerId,
+            subnet: node.subnet,
+            freeBytes: node.freeBytes,
+            availability: node.availability,
+            endpoints: node.endpoints,
+            onProbation: node.registeredAt.isAfter(probationStart),
+          ),
+    ];
+  }
+
+  /// Координатор выдал узлам [nodeIds] ещё по [bytes] байт: учесть в кэше
+  /// кандидатов до его обновления.
+  void noteAssigned(Iterable<Uint8List> nodeIds, int bytes) {
+    final cache = _cache;
+    if (cache == null) return;
+    for (final id in nodeIds) {
+      cache.byId[bytesToHex(id)]?.freeBytes -= bytes;
+    }
+  }
+
+  _OnlineCache? _cache;
+  Future<_OnlineCache>? _loading;
+
+  Future<List<_OnlineNode>> _online(DateTime now, Duration cacheFor) async {
+    final cache = _cache;
+    if (cache != null && cache.age.elapsed < cacheFor) return cache.nodes;
+    // Одновременные размещения ждут одну выборку, а не делают свои.
+    final loading = _loading ??= _load(now).whenComplete(() => _loading = null);
+    final fresh = await loading;
+    if (cacheFor > Duration.zero) _cache = fresh;
+    return fresh.nodes;
+  }
+
+  Future<_OnlineCache> _load(DateTime now) async {
+    final rows = await _db.run(
+      (s) => s.execute(
+        Sql.named('''
+          SELECT node_id, account_id, subnet,
+                 capacity_bytes - greatest(used_bytes, assigned_bytes),
+                 availability, endpoints, registered_at
+            FROM nodes
+            WHERE removed_at IS NULL
+              AND excluded_at IS NULL
+              AND account_id NOT IN (
+                SELECT account_id FROM accounts WHERE blocked_at IS NOT NULL)
+              AND last_heartbeat_at >= @online:timestamptz
+              AND subnet IS NOT NULL'''),
+        parameters: {'online': now.subtract(policy.onlineWindow)},
+      ),
+    );
+    final nodes = [
       for (final [
             id as List<int>,
             owner as List<int>,
@@ -272,19 +315,20 @@ final class NodeService {
             free as int,
             availability as double,
             endpoints as List<Object?>,
-            onProbation as bool,
+            registered as DateTime,
           ]
           in rows)
-        NodeCandidate(
+        _OnlineNode(
           nodeId: Uint8List.fromList(id),
           ownerId: Uint8List.fromList(owner),
           subnet: subnet,
           freeBytes: free,
           availability: availability,
           endpoints: [for (final e in endpoints) e! as String],
-          onProbation: onProbation,
+          registeredAt: registered,
         ),
     ];
+    return _OnlineCache(nodes);
   }
 
   /// Отмечает узел в сети: интервал засчитан, доступность пересчитана,
@@ -313,7 +357,10 @@ final class NodeService {
     );
     final registered = await tx.execute(
       Sql.named(
-        'SELECT registered_at FROM nodes WHERE node_id = @n:bytea FOR UPDATE',
+        // Не FOR UPDATE: она конфликтует с KEY SHARE вставок фрагментов в
+        // AllocateSegment и давала взаимоблокировку (2.9.3).
+        'SELECT registered_at FROM nodes WHERE node_id = @n:bytea '
+        'FOR NO KEY UPDATE',
       ),
       parameters: {'n': nodeId},
     );
@@ -379,4 +426,36 @@ final class NodeService {
 
   static RpcException _bad(String message) =>
       RpcException(pb.ErrorCode.ERROR_CODE_BAD_REQUEST, message);
+}
+
+/// Узел в сети для кэша кандидатов.
+final class _OnlineNode {
+  new({
+    required this.nodeId,
+    required this.ownerId,
+    required this.subnet,
+    required this.freeBytes,
+    required this.availability,
+    required this.endpoints,
+    required this.registeredAt,
+  });
+
+  final Uint8List nodeId;
+  final Uint8List ownerId;
+  final String subnet;
+  int freeBytes;
+  final double availability;
+  final List<String> endpoints;
+  final DateTime registeredAt;
+}
+
+final class _OnlineCache {
+  new(this.nodes) : byId = {for (final n in nodes) bytesToHex(n.nodeId): n};
+
+  final List<_OnlineNode> nodes;
+  final Map<String, _OnlineNode> byId;
+
+  /// Возраст по монотонным часам: подменённые часы тестов не продлевают
+  /// кэш.
+  final Stopwatch age = Stopwatch()..start();
 }

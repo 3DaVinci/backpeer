@@ -87,6 +87,7 @@ final class SegmentService {
       minAvailability: policy.minAvailability,
       exceptOwner: accountId,
       probation: policy.probation,
+      cacheFor: policy.candidatesCache,
     );
     final List<NodeCandidate> chosen;
     try {
@@ -166,6 +167,7 @@ final class SegmentService {
         ], size);
       });
     });
+    _nodes.noteAssigned([for (final c in chosen) c.nodeId], size);
     _log.info(
       LogEvent('segment_allocated', {'rid': context.requestId, 'n': n}),
     );
@@ -465,7 +467,11 @@ final class SegmentService {
   /// Меняет место на узлах [nodes] на [delta] за каждый фрагмент и место
   /// учётной записи — на сумму. Узлы блокируются по возрастанию
   /// идентификатора, чтобы одновременные размещения разных учётных
-  /// записей не взаимоблокировались.
+  /// записей не взаимоблокировались, и `FOR NO KEY UPDATE`: такая
+  /// блокировка не конфликтует с `KEY SHARE`, которую берут вставки
+  /// фрагментов других транзакций по внешнему ключу (с `FOR UPDATE` два
+  /// размещения на общих узлах взаимоблокировались — нагрузочный тест
+  /// 2.9.3).
   static Future<void> _addAssigned(
     TxSession tx,
     Uint8List accountId,
@@ -477,7 +483,7 @@ final class SegmentService {
       Sql.named('''
         SELECT 1 FROM nodes
           WHERE node_id IN (SELECT decode(h, 'hex') FROM unnest(@ids:_text) h)
-          ORDER BY node_id FOR UPDATE'''),
+          ORDER BY node_id FOR NO KEY UPDATE'''),
       parameters: {'ids': hex},
     );
     await tx.execute(

@@ -32,6 +32,7 @@ final class LiveCoordinator {
       placement: const PlacementPolicy(
         probation: Duration.zero,
         distinctSubnets: false,
+        candidatesCache: Duration.zero,
       ),
     );
     final signerKey = await crypto.ed25519FromSeed(

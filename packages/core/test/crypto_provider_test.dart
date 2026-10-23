@@ -52,9 +52,19 @@ void main() {
         sodium.blake2b256(data, key: key),
       );
       final pair = await sodium.ed25519FromSeed(key);
+      final signature = await sodium.ed25519Sign(pair, data);
+      expect(await dart.ed25519Sign(pair, data), signature);
+      // Подготовленный ключ подписывает так же.
+      for (final provider in [dart, sodium]) {
+        final signer = await provider.ed25519Signer(pair);
+        expect(signer.publicKey, pair.publicKey);
+        expect(await signer.sign(data), signature);
+        signer.dispose();
+      }
       expect(
-        await dart.ed25519Sign(pair, data),
-        await sodium.ed25519Sign(pair, data),
+        pair.seed.isDisposed,
+        isFalse,
+        reason: 'пара остаётся у владельца',
       );
     }
   });

@@ -275,8 +275,12 @@ void main() {
   group('испытательный срок (С-6)', () {
     test('узлов на испытательном сроке не больше доли сегмента', () async {
       await start(
-        // Испытательный срок по умолчанию: 72 часа, доля 0,25.
-        config: const CoordinatorConfig(nodes: NodePolicy(minCapacityBytes: 0)),
+        // Испытательный срок по умолчанию: 72 часа, доля 0,25. Без кэша
+        // кандидатов: тест меняет узлы в базе и сразу размещает.
+        config: const CoordinatorConfig(
+          nodes: NodePolicy(minCapacityBytes: 0),
+          placement: PlacementPolicy(candidatesCache: Duration.zero),
+        ),
       );
       // Все узлы только что зарегистрированы.
       await expectLater(

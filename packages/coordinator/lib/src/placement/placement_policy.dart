@@ -6,6 +6,7 @@ final class PlacementPolicy {
     this.maxProbationShare = 0.25,
     this.ticketLifetime = const Duration(minutes: 30),
     this.distinctSubnets = true,
+    this.candidatesCache = const Duration(seconds: 1),
   });
 
   /// Порог доступности хранителя (`mvp-scope.md`).
@@ -27,6 +28,10 @@ final class PlacementPolicy {
   /// (`docs/ops/coordinator.md`, раздел «Docker»); координатор тогда
   /// предупреждает в журнале при запуске.
   final bool distinctSubnets;
+
+  /// Сколько живёт кэш узлов в сети для размещения (`NodeService`):
+  /// новые узлы, heartbeat и исключение узла видны с этой задержкой.
+  final Duration candidatesCache;
 
   /// Узлов на испытательном сроке в сегменте из [n] фрагментов.
   int maxProbation(int n) => (n * maxProbationShare).floor();

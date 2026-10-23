@@ -151,6 +151,14 @@ final class SodiumCryptoProvider implements CryptoProvider {
   }
 
   @override
+  Future<Ed25519Signer> ed25519Signer(Ed25519KeyPair keyPair) async =>
+      _SodiumSigner(
+        _sodium,
+        _withKey(keyPair.seed, _sodium.crypto.sign.seedKeyPair).secretKey,
+        Uint8List.fromList(keyPair.publicKey),
+      );
+
+  @override
   Future<Uint8List> ed25519Sign(
     Ed25519KeyPair keyPair,
     Uint8List message,
@@ -273,4 +281,25 @@ void _checkLength(int actual, int expected, String name) {
   if (actual != expected) {
     throw ArgumentError('$name: нужно $expected байт, получено $actual');
   }
+}
+
+/// Закрытый ключ Ed25519 в защищённой памяти libsodium на всё время жизни:
+/// без выделения защищённой памяти и вывода ключа из seed на каждую
+/// подпись (в 7 раз быстрее, нагрузочный тест 2.9.3).
+final class _SodiumSigner implements Ed25519Signer {
+  new(this._sodium, this._secretKey, this.publicKey);
+
+  final Sodium _sodium;
+  final SecureKey _secretKey;
+
+  @override
+  final Uint8List publicKey;
+
+  @override
+  Future<Uint8List> sign(Uint8List message) async => Uint8List.fromList(
+    _sodium.crypto.sign.detached(message: message, secretKey: _secretKey),
+  );
+
+  @override
+  void dispose() => _secretKey.dispose();
 }

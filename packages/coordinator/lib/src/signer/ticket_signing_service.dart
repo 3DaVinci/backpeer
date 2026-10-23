@@ -45,6 +45,9 @@ final class TicketSigningService {
 
   static final _log = Logger('signer');
 
+  /// Ключ, подготовленный один раз (`CryptoProvider.ed25519Signer`).
+  Future<Ed25519Signer>? _signer;
+
   Uint8List get publicKey => key.publicKey;
 
   /// Тело ответа на тело запроса (`SignerWire`).
@@ -97,12 +100,10 @@ final class TicketSigningService {
         retryAfter: wait,
       );
     }
+    final signer = await (_signer ??= crypto.ed25519Signer(key));
     final signatures = [
       for (final body in bodies)
-        await crypto.ed25519Sign(
-          key,
-          signingInput(FragmentTickets.signingContext, body),
-        ),
+        await signer.sign(signingInput(FragmentTickets.signingContext, body)),
     ];
     _log.fine(
       LogEvent('signed', {

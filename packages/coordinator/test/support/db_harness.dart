@@ -77,7 +77,10 @@ final class DbHarness {
   /// Настройки тестов: узлы с любой ёмкостью, без испытательного срока.
   static const testConfig = CoordinatorConfig(
     nodes: NodePolicy(minCapacityBytes: 0),
-    placement: PlacementPolicy(probation: Duration.zero),
+    placement: PlacementPolicy(
+      probation: Duration.zero,
+      candidatesCache: Duration.zero,
+    ),
   );
 
   /// Время [FakeClock] по умолчанию.

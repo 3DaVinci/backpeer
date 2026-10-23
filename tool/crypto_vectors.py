@@ -568,6 +568,15 @@ def main() -> None:
                       "plaintext": pt},
             "expected": {"blob": blob(5, object_id, nonce, phrase_key, pt)},
         })
+    # Тип 6 (локальные ключи устройства, crypto.md, раздел 3.4) — тоже в конце.
+    device_key = bytes(range(0x60, 0x80))
+    device_pt = bytes(range(0x80, 0xC0))
+    cases.append({
+        "name": "localDeviceKeys-seeds",
+        "input": {"type": 6, "objectId": object_id, "nonce": nonce, "key": device_key,
+                  "plaintext": device_pt},
+        "expected": {"blob": blob(6, object_id, nonce, device_key, device_pt)},
+    })
     write("blob.json", "crypto/blob",
           "Зашифрованный блоб (crypto.md, раздел 5): шифрование с фиксированными ключом и nonce; "
           "разбор испорченных блобов. Поля plaintext и plaintextPattern взаимоисключающие.",

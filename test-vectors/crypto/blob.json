@@ -278,6 +278,19 @@
       "expected": {
         "blob": "4653454201050000a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf404142434445464748494a4b4c4d4e4f5051525354555657999c1beac67cd3ef08baf141ec5ed80c997419c71fe187da67573ba189396a921daa6ddb3eadf5ec5146931b394e99c1"
       }
+    },
+    {
+      "name": "localDeviceKeys-seeds",
+      "input": {
+        "type": 6,
+        "objectId": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "nonce": "404142434445464748494a4b4c4d4e4f5051525354555657",
+        "key": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+        "plaintext": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+      },
+      "expected": {
+        "blob": "4653454201060000a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf404142434445464748494a4b4c4d4e4f5051525354555657191c9b6a46fc536f883a71c16cde588c19f499479f61075ae7d7bb2109b9ea122fee51b0d161ea5b5bdc47b655f3195d993645a1f255d4eb1f6dc2a98b9a5787d0496f30395de9cafdc6b2ac19c86c97"
+      }
     }
   ]
 }

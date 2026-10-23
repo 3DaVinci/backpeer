@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
@@ -75,6 +76,8 @@ final class CoordinatorConfig {
     this.database = const DatabaseConfig(),
     this.limits = const RateLimits(),
     this.maxDevicesPerAccount = 5,
+    this.maxObjectBytesPerAccount = 1 << 30,
+    this.nodes = const NodePolicy(),
     this.logLevel = Level.INFO,
   });
 
@@ -145,6 +148,10 @@ final class CoordinatorConfig {
     'limits.login_per_minute',
     'limits.login_burst',
     'accounts.max_devices',
+    'accounts.max_object_bytes',
+    'nodes.min_capacity_bytes',
+    'nodes.max_per_account',
+    'nodes.heartbeat_seconds',
     'log.level',
   };
 
@@ -163,6 +170,13 @@ final class CoordinatorConfig {
   /// Действующих устройств на учётную запись (mvp-scope.md).
   final int maxDevicesPerAccount;
 
+  /// Объём снимков и индексов на учётную запись: 1 ГиБ, индексы 1 ТБ
+  /// данных занимают около 100 МиБ.
+  final int maxObjectBytesPerAccount;
+
+  /// Реестр узлов: минимум места, предел узлов, период heartbeat.
+  final NodePolicy nodes;
+
   final Level logLevel;
 }
 
@@ -175,6 +189,7 @@ final class _Reader {
     const d = CoordinatorConfig();
     const db = DatabaseConfig();
     const lim = RateLimits();
+    const np = NodePolicy();
     final cert = _string('tls.certificate');
     final key = _string('tls.private_key');
     if ((cert == null) != (key == null)) {
@@ -232,6 +247,20 @@ final class _Reader {
       ),
       maxDevicesPerAccount:
           _int('accounts.max_devices', 1, 100) ?? d.maxDevicesPerAccount,
+      maxObjectBytesPerAccount:
+          _int('accounts.max_object_bytes', 1 << 20, 1 << 50) ??
+          d.maxObjectBytesPerAccount,
+      nodes: NodePolicy(
+        minCapacityBytes:
+            _int('nodes.min_capacity_bytes', 0, 1 << 60) ?? np.minCapacityBytes,
+        maxPerAccount:
+            _int('nodes.max_per_account', 1, 1000) ?? np.maxPerAccount,
+        heartbeatInterval: Duration(
+          seconds:
+              _int('nodes.heartbeat_seconds', 10, 3600) ??
+              np.heartbeatInterval.inSeconds,
+        ),
+      ),
       logLevel:
           _enum('log.level', {
             'fine': Level.FINE,

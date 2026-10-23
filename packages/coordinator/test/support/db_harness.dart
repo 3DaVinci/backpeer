@@ -17,7 +17,7 @@ final class DbHarness {
   new _(this.crypto, this.clock, this.testDb, this.db, this.handler);
 
   static Future<DbHarness> create({
-    CoordinatorConfig config = const CoordinatorConfig(),
+    CoordinatorConfig config = testConfig,
   }) async {
     final crypto = await SodiumCryptoProvider.load();
     final clock = FakeClock();
@@ -45,6 +45,11 @@ final class DbHarness {
     );
     return DbHarness._(crypto, clock, testDb, db, handler);
   }
+
+  /// Настройки тестов: узлы с любой ёмкостью.
+  static const testConfig = CoordinatorConfig(
+    nodes: NodePolicy(minCapacityBytes: 0),
+  );
 
   /// Время [FakeClock] по умолчанию.
   static final DateTime startTime = FakeClock().now;
@@ -150,15 +155,13 @@ final class DbHarness {
     String password, {
     Argon2Params params = fastParams,
   }) async {
-    final (bundle, derived) = await KeyBundle.createDerived(
+    final copy = await KeyCopy.create(
       crypto,
       keys: account,
       password: password,
       params: params,
     );
-    final loginKey = await PasswordLogin.loginKey(crypto, derived);
-    derived.dispose();
-    return (bundle.toBytes(), loginKey.publicKey);
+    return (copy.keyBundle, copy.authVerifier);
   }
 
   /// Регистрирует учётную запись с первым устройством [device].
@@ -226,6 +229,61 @@ final class DbHarness {
     );
     return KeyBundle.parse(Uint8List.fromList(response.keyBundle));
   }
+}
+
+extension NodeHarness on DbHarness {
+  /// Сертификат узла [node], выпущенный владельцем [owner].
+  Future<pb.Signed> nodeCert(
+    AccountKeys owner,
+    Ed25519KeyPair node, {
+    DateTime? issuedAt,
+  }) => NodeCertificates.issue(
+    crypto,
+    owner,
+    nodeId: node.publicKey,
+    nodeDh: Uint8List(32)..[0] = 0x55,
+    issuedAt: issuedAt ?? clock.now,
+  );
+
+  /// Регистрирует узел [node] владельца [owner] с адреса [ip].
+  Future<pb.RegisterNodeResponse> registerNode(
+    AccountKeys owner,
+    Ed25519KeyPair node, {
+    String ip = '203.0.113.10',
+    int capacity = 1 << 40,
+    List<String> endpoints = const ['203.0.113.10:7000'],
+    List<int> versions = const [1],
+    pb.Signed? certificate,
+  }) async => await call(
+    'RegisterNode',
+    pb.RegisterNodeRequest(
+      nodeCertificate: certificate ?? await nodeCert(owner, node),
+      capacityBytes: Int64(capacity),
+      endpoints: endpoints,
+      versions: versions,
+      software: 'node 0.2.0',
+    ),
+    pb.RegisterNodeResponse.fromBuffer,
+    key: node,
+    ip: ip,
+  );
+
+  Future<pb.HeartbeatResponse> heartbeat(
+    Ed25519KeyPair node, {
+    String ip = '203.0.113.10',
+    int used = 0,
+    int capacity = 1 << 40,
+  }) => call(
+    'Heartbeat',
+    pb.HeartbeatRequest(
+      usedBytes: Int64(used),
+      capacityBytes: Int64(capacity),
+      endpoints: const ['203.0.113.10:7000'],
+    ),
+    pb.HeartbeatResponse.fromBuffer,
+    key: node,
+    ip: ip,
+  );
 }
 
 /// Ответ API с ошибкой.

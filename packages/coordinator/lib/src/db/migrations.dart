@@ -76,6 +76,52 @@ const List<Migration> schemaMigrations = [
       created_at timestamptz NOT NULL DEFAULT now()
     )''',
   ]),
+  Migration(4, 'снимки и индексы', [
+    // Объекты — в пространстве своей учётной записи: чужой идентификатор
+    // не конфликтует и не выдаёт, есть ли такой объект (protocol.md,
+    // раздел 4.8).
+    '''
+    CREATE TABLE objects (
+      account_id bytea NOT NULL REFERENCES accounts (account_id),
+      kind smallint NOT NULL CHECK (kind IN (1, 2)),
+      object_id bytea NOT NULL CHECK (length(object_id) = 32),
+      blob bytea NOT NULL,
+      size integer NOT NULL CHECK (size > 0),
+      sequence bigint NOT NULL CHECK (sequence >= 0),
+      stored_at timestamptz NOT NULL,
+      PRIMARY KEY (account_id, kind, object_id)
+    )''',
+    '''
+    ALTER TABLE accounts
+      ADD COLUMN object_bytes bigint NOT NULL DEFAULT 0
+        CHECK (object_bytes >= 0)''',
+  ]),
+  Migration(5, 'реестр узлов', [
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN capacity_bytes bigint NOT NULL DEFAULT 0
+        CHECK (capacity_bytes >= 0),
+      ADD COLUMN used_bytes bigint NOT NULL DEFAULT 0
+        CHECK (used_bytes >= 0),
+      ADD COLUMN endpoints text[] NOT NULL DEFAULT '{}',
+      ADD COLUMN versions integer[] NOT NULL DEFAULT '{}',
+      ADD COLUMN software text NOT NULL DEFAULT '',
+      ADD COLUMN subnet text,
+      ADD COLUMN last_heartbeat_at timestamptz,
+      ADD COLUMN availability real NOT NULL DEFAULT 0''',
+    // Доступность: на каждые сутки UTC — 96 битов по 15 минут, бит
+    // взведён, если в интервале был heartbeat (protocol.md, раздел 4.9).
+    '''
+    CREATE TABLE node_uptime (
+      node_id bytea NOT NULL REFERENCES nodes (node_id),
+      day integer NOT NULL,
+      slots bytea NOT NULL CHECK (length(slots) = 12),
+      PRIMARY KEY (node_id, day)
+    )''',
+    '''
+    CREATE INDEX nodes_online ON nodes (last_heartbeat_at)
+      WHERE removed_at IS NULL''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

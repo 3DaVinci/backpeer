@@ -15,7 +15,31 @@ void main() {
     expect(c.database.name, 'fs_coordinator');
     expect(c.database.ssl, DatabaseSsl.disable);
     expect(c.limits.ipBurst, 200);
+    expect(c.maxObjectBytesPerAccount, 1 << 30);
+    expect(c.nodes.minCapacityBytes, 100000000000);
+    expect(c.nodes.heartbeatInterval, const Duration(minutes: 5));
     expect(c.logLevel, Level.INFO);
+  });
+
+  test('объекты и реестр узлов (2.5, 2.6)', () {
+    final c = CoordinatorConfig.parse(
+      '''
+accounts:
+  max_object_bytes: 2097152
+nodes:
+  min_capacity_bytes: 0
+  max_per_account: 3
+''',
+      {'FS_COORDINATOR_NODES_HEARTBEAT_SECONDS': '60'},
+    );
+    expect(c.maxObjectBytesPerAccount, 2097152);
+    expect(c.nodes.minCapacityBytes, 0);
+    expect(c.nodes.maxPerAccount, 3);
+    expect(c.nodes.heartbeatInterval, const Duration(minutes: 1));
+    expect(
+      () => CoordinatorConfig.parse('nodes:\n  heartbeat_seconds: 1\n', {}),
+      throwsA(isA<ConfigException>()),
+    );
   });
 
   test('пример настроек из docs/ops разбирается', () {

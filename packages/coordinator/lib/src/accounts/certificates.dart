@@ -5,9 +5,9 @@ import 'package:core/core.dart';
 import 'package:protobuf/protobuf.dart';
 import 'package:protocol/protocol.dart' as pb;
 
-/// Проверка сертификатов устройств и отзывов (protocol.md, раздел 4.7).
-/// Ошибка в полях — `BAD_REQUEST`, подпись не та или не тем ключом —
-/// `UNAUTHENTICATED`.
+/// Проверка сертификатов устройств и узлов и отзывов (protocol.md, разделы
+/// 4.7, 4.9). Ошибка в полях — `BAD_REQUEST`, подпись не та или не тем
+/// ключом — `UNAUTHENTICATED`.
 final class CertificateChecks {
   new(this.crypto, {DateTime Function()? clock})
     : _clock = clock ?? DateTime.now;
@@ -57,6 +57,36 @@ final class CertificateChecks {
     }
     _notInFuture(revocation.revokedAtUnixMs.toInt(), 'revoked_at_unix_ms');
     return revocation;
+  }
+
+  /// `NodeCertificate` узла [nodeId], подписанный ключом учётной записи из
+  /// самого сертификата (контекст `node-cert`). Зарегистрирована ли эта
+  /// учётная запись, проверяет вызывающий.
+  Future<pb.NodeCertificate> nodeCertificate(
+    pb.Signed signed,
+    Uint8List nodeId,
+  ) async {
+    final owner = Uint8List.fromList(signed.signer);
+    final cert = await _open(
+      signed,
+      owner,
+      context: NodeCertificates.signingContext,
+      parse: pb.NodeCertificate.fromBuffer,
+    );
+    if (!constantTimeEquals(cert.accountId, owner)) {
+      throw const RpcException(
+        pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED,
+        'сертификат узла подписан не его владельцем',
+      );
+    }
+    if (cert.nodeId.length != 32 || cert.nodeDh.length != 32) {
+      throw _bad('ключи узла — по 32 байта');
+    }
+    if (!constantTimeEquals(cert.nodeId, nodeId)) {
+      throw _bad('сертификат другого узла');
+    }
+    _notInFuture(cert.issuedAtUnixMs.toInt(), 'issued_at_unix_ms');
+    return cert;
   }
 
   /// KeyBundle и `auth_verifier`: оба пусты — `null` (режим без копии),

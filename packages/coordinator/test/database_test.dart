@@ -55,7 +55,9 @@ void main() {
         'accounts',
         'devices',
         'login_attempts',
+        'node_uptime',
         'nodes',
+        'objects',
         'schema_migrations',
         'server_secrets',
       ]);
@@ -241,15 +243,16 @@ void main() {
         );
       });
       Future<(int, pb.Error)> call(Ed25519KeyPair signer) async {
-        final body = pb.ListObjectsRequest(limit: 10).writeToBuffer();
+        // Метод ещё не реализован (2.7.3): подпись принята — «не реализован».
+        final body = pb.LocateSegmentRequest().writeToBuffer();
         final auth = await RequestAuth.sign(
           crypto,
           signer,
-          path: '/api/v1/ListObjects',
+          path: '/api/v1/LocateSegment',
           body: body,
         );
         final request = await client.postUrl(
-          base.resolve('/api/v1/ListObjects'),
+          base.resolve('/api/v1/LocateSegment'),
         );
         request.headers
           ..contentType = ContentType('application', 'x-protobuf')

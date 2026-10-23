@@ -16,6 +16,7 @@ import 'support/postgres.dart';
 const pb.ErrorCode _badRequest = pb.ErrorCode.ERROR_CODE_BAD_REQUEST;
 const pb.ErrorCode _unauthenticated = pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED;
 const pb.ErrorCode _alreadyExists = pb.ErrorCode.ERROR_CODE_ALREADY_EXISTS;
+const pb.ErrorCode _accepted = pb.ErrorCode.ERROR_CODE_UNSPECIFIED;
 const pb.ErrorCode _rateLimited = pb.ErrorCode.ERROR_CODE_RATE_LIMITED;
 
 void main() {
@@ -27,13 +28,12 @@ void main() {
   setUp(() async => h = await DbHarness.create());
   tearDown(() => h.close());
 
-  /// Запрос устройства, для которого достаточно пройти проверку подписи:
-  /// метод объектов ещё не реализован и отвечает INTERNAL.
+  /// Запрос устройства: успех — [_accepted], иначе код ошибки.
   Future<pb.ErrorCode> deviceCall(Ed25519KeyPair device) async {
     try {
       await h.call(
         'ListObjects',
-        pb.ListObjectsRequest(),
+        pb.ListObjectsRequest(kind: pb.ObjectKind.OBJECT_KIND_SNAPSHOT),
         pb.ListObjectsResponse.fromBuffer,
         key: device,
       );
@@ -51,7 +51,7 @@ void main() {
       await h.register(account, device, login: 'Alice', password: 'пароль');
       expect(
         await deviceCall(device),
-        pb.ErrorCode.ERROR_CODE_INTERNAL,
+        _accepted,
         reason: 'подпись устройства принята',
       );
       final rows = await h.db.run(
@@ -275,10 +275,10 @@ void main() {
               key: by.accountSign,
             );
 
-        expect(await deviceCall(lost), pb.ErrorCode.ERROR_CODE_INTERNAL);
+        expect(await deviceCall(lost), _accepted);
         await revoke(account, lost);
         expect(await deviceCall(lost), _unauthenticated);
-        expect(await deviceCall(keep), pb.ErrorCode.ERROR_CODE_INTERNAL);
+        expect(await deviceCall(keep), _accepted);
         await revoke(account, lost); // повтор — успех без изменений
 
         final stranger = await h.newAccount();
@@ -596,6 +596,79 @@ void main() {
         pb.GetLoginParamsResponse.fromBuffer,
       );
       expect(params.memoryKib, const Argon2Params().memoryKiB);
+    });
+
+    test('режим без копии: переключение в обе стороны (2.4.3)', () async {
+      final owner = await h.newAccount();
+      final device = await h.newKey();
+      Future<void> switchTo(KeyCopy copy) => h.call(
+        'SetKeyBundle',
+        pb.SetKeyBundleRequest(
+          keyBundle: copy.keyBundle,
+          authVerifier: copy.authVerifier,
+        ),
+        pb.SetKeyBundleResponse.fromBuffer,
+        key: owner.accountSign,
+      );
+      Future<pb.GetLoginParamsResponse> params() => h.call(
+        'GetLoginParams',
+        pb.GetLoginParamsRequest(login: 'henry'),
+        pb.GetLoginParamsResponse.fromBuffer,
+      );
+
+      // Регистрация сразу без копии.
+      await h.call(
+        'RegisterAccount',
+        pb.RegisterAccountRequest(
+          deviceCertificate: await h.deviceCert(owner, device),
+          login: 'henry',
+          keyBundle: KeyCopy.none.keyBundle,
+          authVerifier: KeyCopy.none.authVerifier,
+        ),
+        pb.RegisterAccountResponse.fromBuffer,
+        key: owner.accountSign,
+      );
+      final fakeSalt = (await params()).salt;
+      await expectLater(
+        () => h.loginWithPassword('henry', 'пароль один'),
+        failsWith(_unauthenticated),
+      );
+
+      // Включение копии: вход по паролю работает, соль — из KeyBundle.
+      final on = await KeyCopy.create(
+        h.crypto,
+        keys: owner,
+        password: 'пароль один',
+        params: DbHarness.fastParams,
+      );
+      expect(on.enabled, isTrue);
+      await switchTo(on);
+      expect((await params()).salt, isNot(fakeSalt));
+      final unlocked = await (await h.loginWithPassword(
+        'henry',
+        'пароль один',
+      )).unlock(h.crypto, 'пароль один');
+      expect(unlocked.accountId, owner.accountId);
+
+      // Выключение: копии нет, ответ — как для несуществующего имени.
+      expect(KeyCopy.none.enabled, isFalse);
+      await switchTo(KeyCopy.none);
+      expect((await params()).salt, fakeSalt);
+      await expectLater(
+        () => h.loginWithPassword('henry', 'пароль один'),
+        failsWith(_unauthenticated),
+      );
+
+      // И снова включение, уже с другим паролем.
+      await switchTo(
+        await KeyCopy.create(
+          h.crypto,
+          keys: owner,
+          password: 'пароль два',
+          params: DbHarness.fastParams,
+        ),
+      );
+      await h.loginWithPassword('henry', 'пароль два');
     });
 
     test('предел частоты входа по IP', () async {

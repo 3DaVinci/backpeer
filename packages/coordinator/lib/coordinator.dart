@@ -4,6 +4,9 @@
 ///
 /// - `rpc/` — HTTP-обработчик API, таблица методов, ошибки, сервис на базе;
 /// - `accounts/` — учётные записи, устройства, вход по паролю;
+/// - `objects/` — снимки и индексы;
+/// - `nodes/` — реестр узлов, heartbeat, доступность;
+/// - `placement/` — выбор узлов для фрагментов сегмента;
 /// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
 ///   ключей;
 /// - `limits/` — ограничение частоты запросов;
@@ -24,6 +27,12 @@ export 'src/db/migrations.dart';
 export 'src/db/postgres_key_directory.dart';
 export 'src/limits/rate_limiter.dart';
 export 'src/log.dart';
+export 'src/nodes/node_address.dart';
+export 'src/nodes/node_policy.dart';
+export 'src/nodes/node_service.dart';
+export 'src/nodes/uptime.dart';
+export 'src/objects/object_service.dart';
+export 'src/placement/placement.dart';
 export 'src/rpc/api_handler.dart';
 export 'src/rpc/call_context.dart';
 export 'src/rpc/database_service.dart';

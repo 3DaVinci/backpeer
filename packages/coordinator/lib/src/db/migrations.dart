@@ -167,6 +167,59 @@ const List<Migration> schemaMigrations = [
       ADD COLUMN fragment_bytes bigint NOT NULL DEFAULT 0
         CHECK (fragment_bytes >= 0)''',
   ]),
+  Migration(7, 'администрирование', [
+    // Блокировка учётной записи оператором (задача 2.10.3): данные не
+    // удаляются, любой подписанный запрос её ключей — PERMISSION_DENIED.
+    '''
+    ALTER TABLE accounts
+      ADD COLUMN blocked_at timestamptz,
+      ADD COLUMN blocked_reason text,
+      ADD CONSTRAINT accounts_blocked_pair
+        CHECK ((blocked_at IS NULL) = (blocked_reason IS NULL))''',
+    // Узел, исключённый из размещения (задача 2.10.4): новых фрагментов не
+    // получает, сохранённые остаются.
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN excluded_at timestamptz,
+      ADD COLUMN excluded_reason text,
+      ADD CONSTRAINT nodes_excluded_pair
+        CHECK ((excluded_at IS NULL) = (excluded_reason IS NULL))''',
+    // Журнал действий администратора (задача 2.10.2): только добавление.
+    // Роль администратора получает лишь INSERT и SELECT (AdminAccess), а
+    // триггер отклоняет UPDATE, DELETE и TRUNCATE от любой роли, кроме
+    // снявшего его владельца схемы.
+    '''
+    CREATE TABLE admin_audit (
+      id bigserial PRIMARY KEY,
+      at timestamptz NOT NULL DEFAULT now(),
+      os_user text NOT NULL,
+      db_user text NOT NULL DEFAULT current_user,
+      command text NOT NULL,
+      arguments jsonb NOT NULL,
+      reason text,
+      result text NOT NULL
+    )''',
+    r'''
+    CREATE FUNCTION admin_audit_append_only() RETURNS trigger
+      LANGUAGE plpgsql AS $$
+    BEGIN
+      RAISE EXCEPTION 'admin_audit: журнал только на добавление'
+        USING ERRCODE = 'insufficient_privilege';
+    END
+    $$''',
+    '''
+    CREATE TRIGGER admin_audit_append_only
+      BEFORE UPDATE OR DELETE OR TRUNCATE ON admin_audit
+      FOR EACH STATEMENT EXECUTE FUNCTION admin_audit_append_only()''',
+    // Учётные записи для администратора — без KeyBundle и auth_verifier:
+    // их роль администратора не читает (модель угроз, К-2).
+    '''
+    CREATE VIEW admin_accounts AS
+      SELECT account_id, login, created_at,
+             key_bundle IS NOT NULL AS key_copy, key_bundle_updated_at,
+             object_bytes, fragment_bytes, blocked_at, blocked_reason
+        FROM accounts''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

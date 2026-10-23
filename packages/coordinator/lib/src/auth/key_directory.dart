@@ -11,6 +11,7 @@ final class KeyInfo {
     required this.kind,
     required this.accountId,
     this.revoked = false,
+    this.blocked = false,
   });
 
   final KeyKind kind;
@@ -21,6 +22,10 @@ final class KeyInfo {
 
   /// Устройство отозвано или узел удалён.
   final bool revoked;
+
+  /// Учётная запись заблокирована оператором (`coordinator admin account
+  /// block`): любой подписанный запрос её ключей — `PERMISSION_DENIED`.
+  final bool blocked;
 }
 
 /// Источник сведений о ключах для проверки `FS-Auth`.

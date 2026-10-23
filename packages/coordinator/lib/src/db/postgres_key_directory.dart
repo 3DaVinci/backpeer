@@ -18,13 +18,16 @@ final class PostgresKeyDirectory implements KeyDirectory {
   ];
 
   static final Sql _query = Sql.named('''
-    SELECT 0, account_id, false FROM accounts WHERE account_id = @k:bytea
+    SELECT 0, account_id, false, blocked_at IS NOT NULL
+      FROM accounts WHERE account_id = @k:bytea
     UNION ALL
-    SELECT 1, account_id, revoked_at IS NOT NULL
-      FROM devices WHERE device_sign = @k:bytea
+    SELECT 1, d.account_id, d.revoked_at IS NOT NULL, a.blocked_at IS NOT NULL
+      FROM devices d JOIN accounts a USING (account_id)
+      WHERE d.device_sign = @k:bytea
     UNION ALL
-    SELECT 2, account_id, removed_at IS NOT NULL
-      FROM nodes WHERE node_id = @k:bytea
+    SELECT 2, n.account_id, n.removed_at IS NOT NULL, a.blocked_at IS NOT NULL
+      FROM nodes n JOIN accounts a USING (account_id)
+      WHERE n.node_id = @k:bytea
     LIMIT 1''');
 
   @override
@@ -33,11 +36,17 @@ final class PostgresKeyDirectory implements KeyDirectory {
       (s) => s.execute(_query, parameters: {'k': publicKey}),
     );
     if (rows.isEmpty) return null;
-    final [kind as int, accountId as List<int>, revoked as bool] = rows.single;
+    final [
+      kind as int,
+      accountId as List<int>,
+      revoked as bool,
+      blocked as bool,
+    ] = rows.single;
     return KeyInfo(
       kind: _kinds[kind],
       accountId: Uint8List.fromList(accountId),
       revoked: revoked,
+      blocked: blocked,
     );
   }
 }

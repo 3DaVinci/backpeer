@@ -77,6 +77,13 @@ final class RequestVerifier {
     if (!await auth.verify(crypto, path: path, body: body)) {
       throw _unauthenticated('подпись неверна');
     }
+    // После подписи: состояние учётной записи узнаёт только её владелец.
+    if (info != null && info.blocked) {
+      throw const RpcException(
+        pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED,
+        'учётная запись заблокирована',
+      );
+    }
 
     try {
       final fresh = _replay.remember(

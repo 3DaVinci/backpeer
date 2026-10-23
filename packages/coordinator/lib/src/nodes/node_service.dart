@@ -81,7 +81,8 @@ final class NodeService {
       // предел узлов.
       final account = await tx.execute(
         Sql.named(
-          'SELECT 1 FROM accounts WHERE account_id = @a:bytea FOR UPDATE',
+          'SELECT blocked_at IS NOT NULL FROM accounts '
+          'WHERE account_id = @a:bytea FOR UPDATE',
         ),
         parameters: {'a': owner},
       );
@@ -89,6 +90,12 @@ final class NodeService {
         throw const RpcException(
           pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED,
           'владелец узла не зарегистрирован',
+        );
+      }
+      if (account.single.single! as bool) {
+        throw const RpcException(
+          pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED,
+          'учётная запись владельца заблокирована',
         );
       }
       final count = await tx.execute(
@@ -238,6 +245,9 @@ final class NodeService {
              availability, endpoints, registered_at > @probation:timestamptz
         FROM nodes
         WHERE removed_at IS NULL
+          AND excluded_at IS NULL
+          AND account_id NOT IN (
+            SELECT account_id FROM accounts WHERE blocked_at IS NOT NULL)
           AND last_heartbeat_at >= @online:timestamptz
           AND subnet IS NOT NULL
           AND capacity_bytes - greatest(used_bytes, assigned_bytes)

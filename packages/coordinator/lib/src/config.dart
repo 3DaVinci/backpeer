@@ -81,6 +81,7 @@ final class CoordinatorConfig {
     this.nodes = const NodePolicy(),
     this.placement = const PlacementPolicy(),
     this.signerSocket,
+    this.adminRole = 'fs_admin',
     this.logLevel = Level.INFO,
   });
 
@@ -161,6 +162,7 @@ final class CoordinatorConfig {
     'placement.ticket_minutes',
     'placement.distinct_subnets',
     'signer.socket',
+    'admin.role',
     'log.level',
   };
 
@@ -192,6 +194,10 @@ final class CoordinatorConfig {
   /// Unix-сокет подписанта талонов; без него методы размещения отвечают
   /// `UNAVAILABLE`.
   final String? signerSocket;
+
+  /// Роль PostgreSQL администратора (`coordinator admin`, ADR-007): права
+  /// ей выдаёт `coordinator migrate`.
+  final String adminRole;
 
   final Level logLevel;
 }
@@ -297,6 +303,7 @@ final class _Reader {
             _bool('placement.distinct_subnets') ?? pp.distinctSubnets,
       ),
       signerSocket: _string('signer.socket'),
+      adminRole: _role('admin.role') ?? d.adminRole,
       logLevel:
           _enum('log.level', {
             'fine': Level.FINE,
@@ -306,6 +313,14 @@ final class _Reader {
           }) ??
           d.logLevel,
     );
+  }
+
+  String? _role(String key) {
+    final v = _string(key);
+    if (v != null && !RegExp(r'^[a-z_][a-z0-9_]{0,62}$').hasMatch(v)) {
+      throw ConfigException('$key: имя роли PostgreSQL из a–z, 0–9, «_»');
+    }
+    return v;
   }
 
   String? _string(String key) {

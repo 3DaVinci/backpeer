@@ -58,8 +58,31 @@ final class TestDatabase {
   final Connection _admin;
   final String _name;
 
+  final List<String> _roles = [];
+
+  /// Роль кластера с входом по паролю [password]; удаляется в [drop].
+  /// Пользователю тестов нужно право `CREATEROLE`, иначе
+  /// `ServerException` с кодом 42501.
+  Future<void> createRole(String role, String password) async {
+    await _admin.execute("CREATE ROLE $role LOGIN PASSWORD '$password'");
+    _roles.add(role);
+  }
+
+  /// Настройки подключения к базе теста от имени [role].
+  DatabaseConfig as(String role, String password) => DatabaseConfig(
+    host: config.host,
+    port: config.port,
+    name: config.name,
+    user: role,
+    password: password,
+    maxConnections: 2,
+  );
+
   Future<void> drop() async {
     await _admin.execute('DROP DATABASE IF EXISTS $_name WITH (FORCE)');
+    for (final role in _roles) {
+      await _admin.execute('DROP ROLE IF EXISTS $role');
+    }
     await _admin.close();
   }
 }

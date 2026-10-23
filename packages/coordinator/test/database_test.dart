@@ -53,6 +53,7 @@ void main() {
       expect(await migrator.currentVersion(), schemaMigrations.length);
       expect(await tables(), [
         'accounts',
+        'admin_audit',
         'devices',
         'fragments',
         'login_attempts',

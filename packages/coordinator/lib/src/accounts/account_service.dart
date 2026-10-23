@@ -169,7 +169,7 @@ final class AccountService {
       );
       final rows = await tx.execute(
         Sql.named('''
-          SELECT revoked_at IS NOT NULL FROM devices
+          SELECT revocation IS NOT NULL FROM devices
             WHERE device_sign = @d:bytea AND account_id = @a:bytea
             FOR UPDATE'''),
         parameters: {'d': revocation.deviceSign, 'a': accountId},
@@ -180,10 +180,12 @@ final class AccountService {
           'устройство не найдено',
         );
       }
+      // Отзыв без подписи учётной записи (оператор, `coordinator admin
+      // device revoke`) дополняется подписанным: его получат узлы.
       if (rows.single.single! as bool) return false;
       await tx.execute(
         Sql.named('''
-          UPDATE devices SET revoked_at = @t:timestamptz,
+          UPDATE devices SET revoked_at = coalesce(revoked_at, @t:timestamptz),
                  revocation = @r:bytea,
                  revocation_seq = nextval('device_revocation_seq')
             WHERE device_sign = @d:bytea'''),

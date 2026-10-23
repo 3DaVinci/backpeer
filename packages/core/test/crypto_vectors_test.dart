@@ -198,7 +198,7 @@ Future<String> _openBlob(List<int> key, Uint8List blob) async {
     return 'format';
   }
   if (blob[4] != 1) return 'format';
-  if (blob[5] < 1 || blob[5] > 5) return 'format';
+  if (blob[5] < 1 || blob[5] > 6) return 'format';
   if (blob[6] != 0 || blob[7] != 0) return 'format';
   try {
     await const DartXchacha20.poly1305Aead().decrypt(

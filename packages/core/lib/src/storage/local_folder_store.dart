@@ -54,15 +54,23 @@ final class FaultPlan {
 /// временные файлы после сбоя не видны и удаляются при открытии.
 final class LocalFolderStore implements FragmentStore {
   new(
-    this.root,
-    this._crypto, {
+    Directory root,
+    CryptoProvider crypto, {
     required int nodeCount,
-    this.faults = FaultPlan.none,
-  }) : nodes = List.unmodifiable([
+    FaultPlan faults = FaultPlan.none,
+  }) : this.named(root, crypto, [
          for (var i = 0; i < nodeCount; i++)
            'node-${i.toString().padLeft(2, '0')}',
-       ]) {
-    for (final node in nodes) {
+       ], faults: faults);
+
+  /// Папки с заданными именами [nodes].
+  new named(
+    this.root,
+    this._crypto,
+    List<String> nodes, {
+    this.faults = FaultPlan.none,
+  }) : nodes = List.unmodifiable(nodes) {
+    for (final node in this.nodes) {
       final dir = Directory('${root.path}/$node')..createSync(recursive: true);
       for (final entity in dir.listSync(recursive: true)) {
         if (entity is File && entity.path.contains('.tmp-')) {

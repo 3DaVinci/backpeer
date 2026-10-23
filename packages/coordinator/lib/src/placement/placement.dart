@@ -93,7 +93,9 @@ final class Placement {
       (segmentOwner == null || !constantTimeEquals(node.ownerId, segmentOwner));
 
   /// [n] узлов из [candidates], по порядку выбора; узлов на испытательном
-  /// сроке — не больше [maxProbation] (по умолчанию без предела). Не хватает
+  /// сроке — не больше [maxProbation] (по умолчанию без предела); без
+  /// [distinctSubnets] подсети могут повторяться (только локальный стенд,
+  /// `PlacementPolicy.distinctSubnets`). Не хватает
   /// подходящих — [PlacementException].
   List<NodeCandidate> choose(
     List<NodeCandidate> candidates, {
@@ -101,6 +103,7 @@ final class Placement {
     required int fragmentSize,
     Uint8List? segmentOwner,
     int? maxProbation,
+    bool distinctSubnets = true,
   }) {
     RangeError.checkValueInInterval(n, 1, 255, 'n');
     final keyed = <(double, NodeCandidate)>[];
@@ -127,7 +130,10 @@ final class Placement {
     for (final (_, node) in keyed) {
       if (!nodes.add(bytesToHex(node.nodeId))) continue;
       final owner = bytesToHex(node.ownerId);
-      if (owners.contains(owner) || subnets.contains(node.subnet)) continue;
+      if (owners.contains(owner) ||
+          (distinctSubnets && subnets.contains(node.subnet))) {
+        continue;
+      }
       if (node.onProbation) {
         if (maxProbation != null && probation >= maxProbation) continue;
         probation++;

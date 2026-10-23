@@ -2,7 +2,10 @@ import 'dart:typed_data';
 
 import 'package:core/src/crypto/account_keys.dart';
 import 'package:core/src/crypto/crypto_provider.dart';
+import 'package:core/src/crypto/device_keys.dart';
 import 'package:core/src/crypto/signed_message.dart';
+import 'package:core/src/errors.dart';
+import 'package:core/src/util/bytes.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:protocol/protocol.dart' as pb;
 
@@ -33,6 +36,87 @@ abstract final class NodeCertificates {
         nodeId: nodeId,
         nodeDh: nodeDh,
         issuedAtUnixMs: Int64(issuedAt.millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  /// Проверяет сертификат узла, как его проверит клиент после рукопожатия
+  /// (protocol.md, раздел 5, «Проверка размещения клиентом»): подписан
+  /// ключом владельца из самого сертификата, ключи по 32 байта, и, если
+  /// задан, это сертификат узла [nodeId]. Битые поля и чужой узел —
+  /// [DataFormatException], подпись — [IntegrityException].
+  static Future<pb.NodeCertificate> open(
+    CryptoProvider crypto,
+    pb.Signed signed, {
+    Uint8List? nodeId,
+  }) async {
+    final cert = await SignedMessages.open(
+      crypto,
+      signed,
+      context: signingContext,
+      object: signingContext,
+      parse: pb.NodeCertificate.fromBuffer,
+    );
+    if (!constantTimeEquals(cert.accountId, signed.signer)) {
+      throw const IntegrityException(
+        object: signingContext,
+        check: IntegrityCheck.signature,
+      );
+    }
+    if (cert.nodeId.length != CryptoProvider.keyLength ||
+        cert.nodeDh.length != CryptoProvider.keyLength ||
+        (nodeId != null && !constantTimeEquals(cert.nodeId, nodeId))) {
+      throw const DataFormatException(
+        object: signingContext,
+        problem: FormatProblem.invalidField,
+        detail: 'ключи узла или сертификат другого узла',
+      );
+    }
+    return cert;
+  }
+}
+
+/// Сертификат и отзыв устройства (protocol.md, разделы 4.7, 6):
+/// `DeviceCertificate` в контексте `device-cert` и `DeviceRevocation` в
+/// контексте `device-revoke`, оба подписаны ключом учётной записи.
+abstract final class DeviceCertificates {
+  static const signingContext = 'device-cert';
+  static const revocationContext = 'device-revoke';
+
+  static Future<pb.Signed> issue(
+    CryptoProvider crypto,
+    AccountKeys account,
+    DeviceKeys device, {
+    required DateTime issuedAt,
+  }) => SignedMessages.sign(
+    crypto,
+    account.accountSign,
+    signingContext,
+    pb.DeviceCertificate(
+      accountId: account.accountId,
+      deviceSign: device.sign.publicKey,
+      deviceDh: device.dh.publicKey,
+      issuedAtUnixMs: Int64(issuedAt.millisecondsSinceEpoch),
+    ),
+  );
+
+  static Future<pb.Signed> revoke(
+    CryptoProvider crypto,
+    AccountKeys account, {
+    required Uint8List deviceSign,
+    required DateTime revokedAt,
+  }) {
+    if (deviceSign.length != CryptoProvider.keyLength) {
+      throw ArgumentError('device_sign — 32 байта');
+    }
+    return SignedMessages.sign(
+      crypto,
+      account.accountSign,
+      revocationContext,
+      pb.DeviceRevocation(
+        accountId: account.accountId,
+        deviceSign: deviceSign,
+        revokedAtUnixMs: Int64(revokedAt.millisecondsSinceEpoch),
       ),
     );
   }

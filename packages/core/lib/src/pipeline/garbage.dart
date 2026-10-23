@@ -12,6 +12,7 @@ import 'package:core/src/storage/fragment_store.dart';
 import 'package:core/src/storage/index_recovery.dart';
 import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
+import 'package:core/src/storage/placement.dart';
 import 'package:core/src/util/bytes.dart';
 import 'package:protocol/protocol.dart' as pb;
 
@@ -103,6 +104,7 @@ Future<GarbageReport> collectGarbage({
   required FragmentStore fragments,
   required ObjectStore objects,
   required SegmentReleaser releaser,
+  SegmentLocator? locator,
   bool dryRun = false,
 }) async {
   if (index.pendingSegments().isNotEmpty ||
@@ -144,6 +146,7 @@ Future<GarbageReport> collectGarbage({
     keys: keys,
     index: index,
     store: fragments,
+    locator: locator,
   );
   final referenced = <ChunkId>{};
   final visited = <String>{};

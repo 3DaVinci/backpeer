@@ -26,4 +26,7 @@ dependencies:
   yaml: ^3.1.4
 
 dev_dependencies:
+  # Сквозные тесты CLI и узлов-заглушек против настоящего координатора.
+  cli: any
+  node: any
   test: ^1.31.1

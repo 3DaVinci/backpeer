@@ -16,6 +16,7 @@ import 'package:core/src/snapshot/walker.dart';
 import 'package:core/src/storage/fragment_store.dart';
 import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
+import 'package:core/src/storage/placement.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Итог восстановления.
@@ -54,6 +55,7 @@ Future<RestoreResult> runRestore({
   required ObjectStore objects,
   required Uint8List snapshotId,
   required Directory target,
+  SegmentLocator? locator,
   List<String> paths = const [],
   bool overwrite = false,
   CancellationToken? cancel,
@@ -72,6 +74,7 @@ Future<RestoreResult> runRestore({
       keys: keys,
       index: index,
       store: fragments,
+      locator: locator,
     ),
     writer: writer ?? FileSystemWriter.forPlatform(),
     fs: TreeWalker.defaultFileSystem(),

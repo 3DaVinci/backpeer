@@ -7,6 +7,7 @@ import 'package:args/command_runner.dart';
 import 'package:cli/src/app_config.dart';
 import 'package:cli/src/commands/account.dart';
 import 'package:cli/src/commands/data.dart';
+import 'package:cli/src/commands/devices.dart';
 import 'package:cli/src/console.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
@@ -33,7 +34,7 @@ Future<int> runCli(
       _Runner(
           console,
           'cli',
-          'Зашифрованный бэкап с резервированием (этап 1: хранители — '
+          'Зашифрованный бэкап с резервированием (хранители пока — '
               'локальные папки).',
         )
         ..argParser.addOption(
@@ -54,7 +55,13 @@ Future<int> runCli(
               'result или error (docs/cli.md)',
         )
         ..addCommand(InitCommand(ctx))
+        ..addCommand(RegisterCommand(ctx))
+        ..addCommand(LoginCommand(ctx))
         ..addCommand(RecoverCommand(ctx))
+        ..addCommand(DevicesCommand(ctx))
+        ..addCommand(RevokeCommand(ctx))
+        ..addCommand(PasswdCommand(ctx))
+        ..addCommand(KeyCopyCommand(ctx))
         ..addCommand(BackupCommand(ctx))
         ..addCommand(SnapshotsCommand(ctx))
         ..addCommand(RestoreCommand(ctx))

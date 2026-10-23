@@ -142,5 +142,31 @@ void main() {
         reason: 'места не хватает',
       );
     });
+
+    test('без distinctSubnets подсеть может повторяться', () {
+      final nodes = [
+        for (var i = 0; i < 20; i++)
+          NodeCandidate(
+            nodeId: _id(i),
+            ownerId: _id(i, 1),
+            subnet: '127.0.0.0/24',
+            freeBytes: 1 << 30,
+            availability: 1,
+          ),
+      ];
+      expect(
+        () => Placement().choose(nodes, n: 20, fragmentSize: 1),
+        throwsA(isA<PlacementException>().having((e) => e.found, 'found', 1)),
+      );
+      expect(
+        Placement().choose(
+          nodes,
+          n: 20,
+          fragmentSize: 1,
+          distinctSubnets: false,
+        ),
+        hasLength(20),
+      );
+    });
   });
 }

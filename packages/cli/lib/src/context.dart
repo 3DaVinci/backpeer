@@ -139,12 +139,15 @@ final class CliContext {
 
   /// Новый пароль: дважды, по требованиям `PasswordPolicy` (crypto.md,
   /// раздел 4.3): слабый отклоняется, средний — только с подтверждением.
-  /// Из `FS_PASSWORD` средний принимается без вопроса: это для скриптов.
+  /// Из `FS_NEW_PASSWORD` (иначе `FS_PASSWORD`) средний принимается без
+  /// вопроса: это для скриптов.
   String newPassword() {
-    if (env['FS_PASSWORD'] case final String p) {
+    for (final name in ['FS_NEW_PASSWORD', 'FS_PASSWORD']) {
+      final p = env[name];
+      if (p == null) continue;
       final a = PasswordPolicy.assess(p);
       if (a.verdict == PasswordVerdict.rejected) {
-        throw CliException('FS_PASSWORD не принят: ${passwordProblems(a)}');
+        throw CliException('$name не принят: ${passwordProblems(a)}');
       }
       return p;
     }
@@ -195,16 +198,117 @@ final class CliContext {
     }
   }
 
-  /// Хранилища этапа 1: папки-«узлы» и папка объектов.
-  Future<LocalFolderStore> fragments(AppConfig config) async =>
-      LocalFolderStore(
+  /// Ключи учётной записи и устройства по паролю.
+  Future<(AccountKeys, DeviceKeys?)> unlockWithDevice() async {
+    final store = await keyStore();
+    if (!store.exists) {
+      throw CliException(
+        'Нет ключей в ${home.dir.path}; сначала init, register, login '
+        'или recover',
+      );
+    }
+    try {
+      return await store.unlockWithDevice(password());
+    } on IntegrityException {
+      throw const CliException('Неверный пароль');
+    }
+  }
+
+  /// Клиент координатора по адресу [url]; [device] подписывает запросы.
+  Future<CoordinatorClient> client(
+    String url, {
+    String? ca,
+    DeviceKeys? device,
+  }) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasAuthority) {
+      throw CliException('Неверный адрес координатора: $url', ExitCode.usage);
+    }
+    SecurityContext? trusted;
+    if (ca != null) {
+      try {
+        trusted = SecurityContext()..setTrustedCertificates(ca);
+      } on TlsException catch (e) {
+        throw CliException('Сертификат УЦ $ca не загружен: ${e.message}');
+      }
+    }
+    const local = {'localhost', '127.0.0.1', '::1', '[::1]'};
+    if (!uri.isScheme('https') &&
+        !(uri.isScheme('http') && local.contains(uri.host))) {
+      throw CliException(
+        'Адрес координатора $url: нужен https (http — только к localhost)',
+        ExitCode.usage,
+      );
+    }
+    return CoordinatorClient(
+      baseUri: uri,
+      crypto: await crypto(),
+      deviceKey: device?.sign,
+      trustedCertificates: trusted,
+      userAgent: 'cli/$appVersion',
+    );
+  }
+
+  /// Ключи, локальный индекс и хранилища для команды с данными.
+  Future<Session> session(AppConfig config) async {
+    final crypto = await this.crypto();
+    final (keys, device) = await unlockWithDevice();
+    final LocalIndex index;
+    try {
+      index = this.index();
+    } on Object {
+      keys.dispose();
+      device?.dispose();
+      rethrow;
+    }
+    final url = config.coordinator;
+    if (url == null) {
+      final fragments = LocalFolderStore(
         Directory(config.nodes),
-        await crypto(),
+        crypto,
         nodeCount: config.nodeCount,
       );
-
-  LocalObjectStore objects(AppConfig config) =>
-      LocalObjectStore(Directory(config.objects));
+      return Session._(
+        keys: keys,
+        device: device,
+        index: index,
+        fragments: fragments,
+        objects: LocalObjectStore(Directory(config.objects)),
+        releaser: LocalSegmentReleaser(index, fragments),
+      );
+    }
+    if (device == null) {
+      index.close();
+      keys.dispose();
+      throw const CliException(
+        'На этом устройстве нет ключей устройства для координатора',
+      );
+    }
+    final client = await this.client(
+      url,
+      ca: config.coordinatorCa,
+      device: device,
+    );
+    final folders = NodeFolders(Directory(config.nodes), crypto);
+    final segments = CoordinatorSegments(
+      client: client,
+      crypto: crypto,
+      nodes: folders,
+      accountId: keys.accountId,
+      fallbackReleaser: LocalSegmentReleaser(index, folders),
+    );
+    return Session._(
+      keys: keys,
+      device: device,
+      index: index,
+      fragments: folders,
+      objects: CoordinatorObjectStore(client),
+      placer: segments,
+      locator: segments,
+      releaser: segments,
+      client: client,
+    );
+  }
 
   /// Локальный индекс. Если библиотека SQLite не загружается (например,
   /// слишком старая glibc), — понятная ошибка вместо трассировки.
@@ -219,6 +323,40 @@ final class CliContext {
   }
 
   final Random random = Random.secure();
+}
+
+/// Ключи и хранилища одной команды: без координатора — папки-«узлы» и папка
+/// объектов, с координатором — объекты и размещение на нём, фрагменты в
+/// папках-«узлах», зарегистрированных на координаторе.
+final class Session {
+  new _({
+    required this.keys,
+    required this.device,
+    required this.index,
+    required this.fragments,
+    required this.objects,
+    required this.releaser,
+    this.placer,
+    this.locator,
+    this.client,
+  });
+
+  final AccountKeys keys;
+  final DeviceKeys? device;
+  final LocalIndex index;
+  final FragmentStore fragments;
+  final ObjectStore objects;
+  final SegmentReleaser releaser;
+  final SegmentPlacer? placer;
+  final SegmentLocator? locator;
+  final CoordinatorClient? client;
+
+  void close() {
+    index.close();
+    keys.dispose();
+    device?.dispose();
+    client?.close();
+  }
 }
 
 /// Команда CLI: справка печатается в [Console], а не через `print`.

@@ -85,7 +85,13 @@ void main() {
   test('help у каждой команды', () async {
     for (final command in [
       'init',
+      'register',
+      'login',
       'recover',
+      'devices',
+      'revoke',
+      'passwd',
+      'key-copy',
       'backup',
       'snapshots',
       'restore',

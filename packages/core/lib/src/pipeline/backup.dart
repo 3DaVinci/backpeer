@@ -18,6 +18,7 @@ import 'package:core/src/storage/fragment_store.dart';
 import 'package:core/src/storage/index_recovery.dart';
 import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
+import 'package:core/src/storage/placement.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:protocol/protocol.dart' as pb;
 
@@ -91,6 +92,7 @@ Future<BackupResult> runBackup({
   ExcludeRules excludes = ExcludeRules.none,
   DurabilityParameters? params,
   SegmentEncoder? encoder,
+  SegmentPlacer? placer,
   int maxInFlight = 2,
   String? hostname,
   List<String> tags = const [],
@@ -119,6 +121,7 @@ Future<BackupResult> runBackup({
     store: fragments,
     encoder: codec,
     params: durability,
+    placer: placer,
     maxInFlight: maxInFlight,
     cancel: token,
   );

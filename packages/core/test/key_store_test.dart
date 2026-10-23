@@ -233,6 +233,36 @@ void main() {
       );
     });
 
+    test('ключи устройства: под паролем, переживают смену пароля', () async {
+      final device = await DeviceKeys.generate(crypto);
+      final store = open();
+      await store.create(keys, 'old', device: device);
+      expect(store.hasDevice, isTrue);
+      var (unlocked, opened) = await store.unlockWithDevice('old');
+      expect(unlocked.accountId, keys.accountId);
+      expect(opened!.deviceId, device.deviceId);
+      expect(opened.dh.publicKey, device.dh.publicKey);
+      await store.changePassword('old', 'new');
+      (unlocked, opened) = await store.unlockWithDevice('new');
+      expect(opened!.sign.seed.bytes, device.sign.seed.bytes);
+      expect(opened.dh.secretKey.bytes, device.dh.secretKey.bytes);
+      if (!Platform.isWindows) {
+        expect(store.deviceFile.statSync().mode & 0x1FF, 0x180);
+      }
+      await expectLater(
+        store.unlockWithDevice('old'),
+        throwsA(isA<IntegrityException>()),
+      );
+    });
+
+    test('без ключей устройства — null', () async {
+      final store = open();
+      await store.create(keys, 'pw');
+      expect(store.hasDevice, isFalse);
+      final (_, device) = await store.unlockWithDevice('pw');
+      expect(device, isNull);
+    });
+
     test('повреждённый файл — ошибка формата', () async {
       final store = open();
       await store.create(keys, 'pw');

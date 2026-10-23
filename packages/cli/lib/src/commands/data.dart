@@ -48,9 +48,8 @@ final class BackupCommand extends CliCommand {
     final paths = argResults!.rest;
     if (paths.isEmpty) throw UsageException('Укажите папки', usage);
     final config = ctx.config();
-    final keys = await ctx.unlock();
     final crypto = await ctx.crypto();
-    final index = ctx.index();
+    final session = await ctx.session(config);
     // Пул из 2 isolate: ~71 МБ/с и ~350 МиБ памяти (docs/benchmarks.md,
     // раздел 1.6.3).
     final encoder = await IsolateSegmentEncoder.start(2);
@@ -62,10 +61,11 @@ final class BackupCommand extends CliCommand {
     try {
       final result = await runBackup(
         crypto: crypto,
-        keys: keys,
-        index: index,
-        fragments: await ctx.fragments(config),
-        objects: ctx.objects(config),
+        keys: session.keys,
+        index: session.index,
+        fragments: session.fragments,
+        objects: session.objects,
+        placer: session.placer,
         paths: [for (final p in paths) Directory(p).absolute.path],
         deviceId: config.deviceId,
         excludes: ExcludeRules([
@@ -127,8 +127,7 @@ final class BackupCommand extends CliCommand {
     } finally {
       await encoder.close();
       await sigint.cancel();
-      index.close();
-      keys.dispose();
+      session.close();
     }
   }
 }
@@ -144,15 +143,13 @@ final class SnapshotsCommand extends CliCommand {
 
   @override
   Future<int> run() async {
-    final config = ctx.config();
-    final keys = await ctx.unlock();
-    final index = ctx.index();
+    final session = await ctx.session(ctx.config());
     try {
       final listing = await SnapshotCatalog(
         crypto: await ctx.crypto(),
-        manifestKey: keys.manifestKey,
-        store: ctx.objects(config),
-        index: index,
+        manifestKey: session.keys.manifestKey,
+        store: session.objects,
+        index: session.index,
       ).list();
       if (listing.snapshots.isEmpty) ctx.report.info('Снимков нет.');
       final rows = <Map<String, Object?>>[];
@@ -193,8 +190,7 @@ final class SnapshotsCommand extends CliCommand {
       ctx.report.result({'snapshots': rows}, exitCode: code);
       return code;
     } finally {
-      index.close();
-      keys.dispose();
+      session.close();
     }
   }
 }
@@ -224,25 +220,23 @@ final class RestoreCommand extends CliCommand {
   Future<int> run() async {
     final rest = argResults!.rest;
     if (rest.isEmpty) throw UsageException('Укажите снимок', usage);
-    final config = ctx.config();
-    final keys = await ctx.unlock();
     final crypto = await ctx.crypto();
-    final index = ctx.index();
+    final session = await ctx.session(ctx.config());
     try {
-      final objects = ctx.objects(config);
       final catalog = SnapshotCatalog(
         crypto: crypto,
-        manifestKey: keys.manifestKey,
-        store: objects,
-        index: index,
+        manifestKey: session.keys.manifestKey,
+        store: session.objects,
+        index: session.index,
       );
       final id = await _resolve(catalog, rest.first);
       final result = await runRestore(
         crypto: crypto,
-        keys: keys,
-        index: index,
-        fragments: await ctx.fragments(config),
-        objects: objects,
+        keys: session.keys,
+        index: session.index,
+        fragments: session.fragments,
+        objects: session.objects,
+        locator: session.locator,
         snapshotId: id,
         target: Directory(argResults!.option('to')!),
         paths: rest.skip(1).toList(),
@@ -281,8 +275,7 @@ final class RestoreCommand extends CliCommand {
       }, exitCode: code);
       return code;
     } finally {
-      index.close();
-      keys.dispose();
+      session.close();
     }
   }
 }
@@ -307,14 +300,14 @@ final class VerifyCommand extends CliCommand {
   @override
   Future<int> run() async {
     final config = ctx.config();
-    final keys = await ctx.unlock();
-    final index = ctx.index();
+    final session = await ctx.session(config);
     try {
       final report = await runVerify(
         crypto: await ctx.crypto(),
-        keys: keys,
-        index: index,
-        fragments: await ctx.fragments(config),
+        keys: session.keys,
+        index: session.index,
+        fragments: session.fragments,
+        locator: session.locator,
         full: argResults!.flag('full'),
         params: config.durability,
       );
@@ -357,8 +350,7 @@ final class VerifyCommand extends CliCommand {
       }, exitCode: code);
       return code;
     } finally {
-      index.close();
-      keys.dispose();
+      session.close();
     }
   }
 }
@@ -380,15 +372,13 @@ final class ForgetCommand extends CliCommand {
   Future<int> run() async {
     final rest = argResults!.rest;
     if (rest.length != 1) throw UsageException('Укажите один снимок', usage);
-    final config = ctx.config();
-    final keys = await ctx.unlock();
-    final index = ctx.index();
+    final session = await ctx.session(ctx.config());
     try {
       final catalog = SnapshotCatalog(
         crypto: await ctx.crypto(),
-        manifestKey: keys.manifestKey,
-        store: ctx.objects(config),
-        index: index,
+        manifestKey: session.keys.manifestKey,
+        store: session.objects,
+        index: session.index,
       );
       final id = await _resolve(catalog, rest.single);
       await catalog.forget(id);
@@ -397,8 +387,7 @@ final class ForgetCommand extends CliCommand {
         ..result({'snapshotId': bytesToHex(id)});
       return ExitCode.ok;
     } finally {
-      index.close();
-      keys.dispose();
+      session.close();
     }
   }
 }
@@ -425,18 +414,16 @@ final class GcCommand extends CliCommand {
   @override
   Future<int> run() async {
     final dryRun = argResults!.flag('dry-run');
-    final config = ctx.config();
-    final keys = await ctx.unlock();
-    final index = ctx.index();
+    final session = await ctx.session(ctx.config());
     try {
-      final fragments = await ctx.fragments(config);
       final report = await collectGarbage(
         crypto: await ctx.crypto(),
-        keys: keys,
-        index: index,
-        fragments: fragments,
-        objects: ctx.objects(config),
-        releaser: LocalSegmentReleaser(index, fragments),
+        keys: session.keys,
+        index: session.index,
+        fragments: session.fragments,
+        objects: session.objects,
+        releaser: session.releaser,
+        locator: session.locator,
         dryRun: dryRun,
       );
       for (final (location, e) in report.fragmentErrors) {
@@ -470,8 +457,7 @@ final class GcCommand extends CliCommand {
       }, exitCode: code);
       return code;
     } finally {
-      index.close();
-      keys.dispose();
+      session.close();
     }
   }
 }

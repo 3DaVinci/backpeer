@@ -159,6 +159,7 @@ final class CoordinatorConfig {
     'placement.probation_hours',
     'placement.max_probation_share',
     'placement.ticket_minutes',
+    'placement.distinct_subnets',
     'signer.socket',
     'log.level',
   };
@@ -292,6 +293,8 @@ final class _Reader {
               _int('placement.ticket_minutes', 1, 60) ??
               pp.ticketLifetime.inMinutes,
         ),
+        distinctSubnets:
+            _bool('placement.distinct_subnets') ?? pp.distinctSubnets,
       ),
       signerSocket: _string('signer.socket'),
       logLevel:

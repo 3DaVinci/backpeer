@@ -5,6 +5,7 @@ final class PlacementPolicy {
     this.probation = const Duration(hours: 72),
     this.maxProbationShare = 0.25,
     this.ticketLifetime = const Duration(minutes: 30),
+    this.distinctSubnets = true,
   });
 
   /// Порог доступности хранителя (`mvp-scope.md`).
@@ -20,6 +21,12 @@ final class PlacementPolicy {
   /// Срок жизни талонов: не больше часа (`FragmentTickets.maxLifetime`) и
   /// не больше предела подписанта.
   final Duration ticketLifetime;
+
+  /// Подсети узлов сегмента различны. Выключается только на локальном
+  /// стенде, где все узлы-заглушки приходят с одного адреса
+  /// (`docs/ops/coordinator.md`, раздел «Docker»); координатор тогда
+  /// предупреждает в журнале при запуске.
+  final bool distinctSubnets;
 
   /// Узлов на испытательном сроке в сегменте из [n] фрагментов.
   int maxProbation(int n) => (n * maxProbationShare).floor();

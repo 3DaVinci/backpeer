@@ -8,6 +8,7 @@ import 'package:core/src/pipeline/segment_packer.dart';
 import 'package:core/src/pipeline/segment_reader.dart';
 import 'package:core/src/storage/fragment_store.dart';
 import 'package:core/src/storage/local_index.dart';
+import 'package:core/src/storage/placement.dart';
 
 /// Итог проверки.
 final class VerifyReport {
@@ -39,6 +40,7 @@ Future<VerifyReport> runVerify({
   required AccountKeys keys,
   required LocalIndex index,
   required FragmentStore fragments,
+  SegmentLocator? locator,
   bool full = false,
   DurabilityParameters? params,
   CancellationToken? cancel,
@@ -51,6 +53,7 @@ Future<VerifyReport> runVerify({
     keys: keys,
     index: index,
     store: fragments,
+    locator: locator,
     cacheSize: 0,
   );
   for (final segmentId in index.storedSegments()) {
@@ -59,6 +62,7 @@ Future<VerifyReport> runVerify({
     report.segments++;
     var alive = 0;
     final before = reader.problems.length;
+    await reader.resolveNodes(segmentId);
     if (full) {
       for (final f in index.fragments(segmentId)) {
         report.fragments++;

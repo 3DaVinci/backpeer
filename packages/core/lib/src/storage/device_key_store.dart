@@ -3,9 +3,11 @@ import 'dart:typed_data';
 
 import 'package:core/src/crypto/account_keys.dart';
 import 'package:core/src/crypto/crypto_provider.dart';
+import 'package:core/src/crypto/device_keys.dart';
 import 'package:core/src/crypto/encrypted_blob.dart';
 import 'package:core/src/crypto/key_bundle.dart';
 import 'package:core/src/crypto/recovery_phrase.dart';
+import 'package:core/src/crypto/secret_bytes.dart';
 import 'package:core/src/errors.dart';
 import 'package:core/src/storage/private_file.dart';
 import 'package:core/src/util/bytes.dart';
@@ -13,8 +15,8 @@ import 'package:core/src/util/bytes.dart';
 /// Локальное хранилище ключей устройства (crypto.md, разделы 4, 4.1, 4.2):
 /// KeyBundle с копией мастер-ключа под паролем в [file] и, если задана,
 /// локальная копия фразы восстановления в `<file>.phrase` под тем же
-/// `KEK`. Файлы доступны только владельцу и пишутся атомарно. Копия
-/// KeyBundle на координаторе — этап 2.
+/// `KEK`, и ключи устройства в `<file>.device` (блоб типа 6, crypto.md,
+/// раздел 3.4). Файлы доступны только владельцу и пишутся атомарно.
 final class DeviceKeyStore {
   new(this.file, this._crypto, {this.params = const Argon2Params()});
 
@@ -26,14 +28,18 @@ final class DeviceKeyStore {
 
   File get phraseFile => File('${file.path}.phrase');
 
+  File get deviceFile => File('${file.path}.device');
+
   bool get exists => file.existsSync();
 
   /// Сохраняет ключи под паролем; с [phrase] — и копию фразы для
-  /// `show-phrase`. Существующее хранилище не перезаписывает.
+  /// `show-phrase`, с [device] — ключи устройства. Существующее хранилище
+  /// не перезаписывает.
   Future<void> create(
     AccountKeys keys,
     String password, {
     RecoveryPhrase? phrase,
+    DeviceKeys? device,
   }) async {
     if (exists) {
       throw StorageException(
@@ -43,7 +49,7 @@ final class DeviceKeyStore {
         cause: 'хранилище ключей уже существует',
       );
     }
-    await _write(keys, password, phrase);
+    await _write(keys, password, phrase, device);
   }
 
   /// Ключи учётной записи по паролю. Неверный пароль —
@@ -52,6 +58,51 @@ final class DeviceKeyStore {
       await _read().unlock(_crypto, password);
 
   bool get hasPhrase => phraseFile.existsSync();
+
+  bool get hasDevice => deviceFile.existsSync();
+
+  /// Ключи учётной записи и, если есть, ключи устройства — одним выводом
+  /// `KEK`. Неверный пароль — [IntegrityException].
+  Future<(AccountKeys, DeviceKeys?)> unlockWithDevice(String password) async {
+    final bundle = _read();
+    final derived = await bundle.deriveKeys(_crypto, password);
+    try {
+      final keys = await bundle.unlockWith(_crypto, derived);
+      if (!hasDevice) return (keys, null);
+      try {
+        return (keys, await _openDevice(derived.kek, bundle.accountId));
+      } on Object {
+        keys.dispose();
+        rethrow;
+      }
+    } finally {
+      derived.dispose();
+    }
+  }
+
+  Future<DeviceKeys> _openDevice(SecretBytes kek, Uint8List accountId) async {
+    final secret = SecretBytes.adopt(
+      EncryptedBlob.open(
+        _crypto,
+        _readBytes(deviceFile),
+        key: kek,
+        expectedType: BlobType.localDeviceKeys,
+        expectedObjectId: accountId,
+      ),
+    );
+    try {
+      if (secret.length != DeviceKeys.secretLength) {
+        throw const DataFormatException(
+          object: 'device-keys',
+          problem: FormatProblem.invalidField,
+          detail: 'нужно 64 байта',
+        );
+      }
+      return await DeviceKeys.fromSecret(_crypto, secret);
+    } finally {
+      secret.dispose();
+    }
+  }
 
   /// Фраза восстановления по паролю (модель угроз, У-2). Фраза
   /// проверяется: она обязана давать ту же учётную запись.
@@ -88,16 +139,17 @@ final class DeviceKeyStore {
     }
   }
 
-  /// Перешифровывает копию мастер-ключа (и фразы, если есть) новым
-  /// паролем, с новой солью и текущими [params]. Ключи учётной записи не
-  /// меняются.
+  /// Перешифровывает копию мастер-ключа (фразы и ключей устройства, если
+  /// есть) новым паролем, с новой солью и текущими [params]. Ключи учётной
+  /// записи и устройства не меняются.
   Future<void> changePassword(String oldPassword, String newPassword) async {
-    final keys = await unlock(oldPassword);
+    final (keys, device) = await unlockWithDevice(oldPassword);
     final phrase = hasPhrase ? await unlockPhrase(oldPassword) : null;
     try {
-      await _write(keys, newPassword, phrase);
+      await _write(keys, newPassword, phrase, device);
     } finally {
       keys.dispose();
+      device?.dispose();
       phrase?.dispose();
     }
   }
@@ -128,6 +180,7 @@ final class DeviceKeyStore {
     AccountKeys keys,
     String password,
     RecoveryPhrase? phrase,
+    DeviceKeys? device,
   ) async {
     final (bundle, derived) = await KeyBundle.createDerived(
       _crypto,
@@ -136,8 +189,26 @@ final class DeviceKeyStore {
       params: params,
     );
     try {
-      // Сначала фраза: если запись KeyBundle потом упадёт, старый KeyBundle
-      // не сможет открыть новую фразу, но и не потеряется.
+      // Сначала фраза и ключи устройства: если запись KeyBundle потом
+      // упадёт, старый KeyBundle не сможет открыть новые копии, но и не
+      // потеряется.
+      if (device != null) {
+        final secret = device.toSecret();
+        try {
+          _writeFile(
+            deviceFile,
+            EncryptedBlob.seal(
+              _crypto,
+              type: BlobType.localDeviceKeys,
+              objectId: keys.accountId,
+              key: derived.kek,
+              plaintext: secret.bytes,
+            ),
+          );
+        } finally {
+          secret.dispose();
+        }
+      }
       if (phrase != null) {
         _writeFile(
           phraseFile,

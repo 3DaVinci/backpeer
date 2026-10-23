@@ -28,6 +28,7 @@ placement:
   probation_hours: 24
   max_probation_share: 0.1
   ticket_minutes: 15
+  distinct_subnets: false
 signer:
   socket: /run/fs-signer/signer.sock
 ''', {});
@@ -35,6 +36,8 @@ signer:
     expect(c.placement.probation, const Duration(hours: 24));
     expect(c.placement.maxProbation(20), 2);
     expect(c.placement.ticketLifetime, const Duration(minutes: 15));
+    expect(c.placement.distinctSubnets, isFalse);
+    expect(const PlacementPolicy().distinctSubnets, isTrue);
     expect(c.signerSocket, '/run/fs-signer/signer.sock');
     expect(const CoordinatorConfig().signerSocket, isNull);
     for (final bad in [

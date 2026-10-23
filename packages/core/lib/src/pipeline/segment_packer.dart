@@ -6,6 +6,7 @@ import 'package:core/src/crypto/account_keys.dart';
 import 'package:core/src/crypto/crypto_provider.dart';
 import 'package:core/src/errors.dart';
 import 'package:core/src/format/durability.dart';
+import 'package:core/src/format/fragment.dart';
 import 'package:core/src/format/segment.dart';
 import 'package:core/src/pipeline/segment_encoder.dart';
 import 'package:core/src/snapshot/chunk_sink.dart';
@@ -29,9 +30,11 @@ final class CancellationToken {
 
 /// [ChunkSink] конвейера бэкапа (задача 1.6.3): дедупликация по локальному
 /// индексу, упаковка новых чанков в сегменты до 16 МиБ, шифрование и
-/// кодирование ([SegmentEncoder]), запись n фрагментов на узлы по
-/// [placeFragments]. Сегмент сохранён, если записано не меньше
-/// `minStoredFragments` (t + 1, durability.md); иначе бэкап падает.
+/// кодирование ([SegmentEncoder]), запись n фрагментов на узлы, которые
+/// выбрал [placer] (координатор или [placeFragments]), и подтверждение
+/// загрузки. Сегмент сохранён, если записано не меньше
+/// `minStoredFragments` (t + 1, durability.md); иначе бэкап падает и
+/// сегмент не подтверждается.
 ///
 /// Память ограничена: одновременно обрабатывается не больше
 /// [maxInFlight] сегментов, следующий [add] ждёт — это обратное давление
@@ -44,9 +47,11 @@ final class SegmentPacker implements ChunkSink {
     required this.store,
     required this.encoder,
     required this.params,
+    SegmentPlacer? placer,
     this.maxInFlight = 2,
     CancellationToken? cancel,
-  }) : cancel = cancel ?? CancellationToken() {
+  }) : placer = placer ?? LocalPlacer(store),
+       cancel = cancel ?? CancellationToken() {
     if (maxInFlight < 1) throw ArgumentError.value(maxInFlight, 'maxInFlight');
   }
 
@@ -56,6 +61,7 @@ final class SegmentPacker implements ChunkSink {
   final FragmentStore store;
   final SegmentEncoder encoder;
   final DurabilityParameters params;
+  final SegmentPlacer placer;
   final int maxInFlight;
   final CancellationToken cancel;
 
@@ -173,16 +179,31 @@ final class SegmentPacker implements ChunkSink {
     );
     _flying.removeAll(chunks.map((c) => c.id));
 
-    final nodes = placeFragments(segmentId, store.nodes, params.n);
+    final targets = await placer.allocate(
+      SegmentAllocation(
+        segmentId: segmentId,
+        k: params.k,
+        n: params.n,
+        repairThreshold: params.repairThreshold,
+        fragmentSize: encoded.fragments.first.length,
+        fragmentIds: encoded.fragmentIds,
+        bodyRoots: [
+          for (final f in encoded.fragments) Fragment.parse(f).header.bodyRoot,
+        ],
+      ),
+    );
     final written = await Future.wait([
       for (var i = 0; i < params.n; i++)
-        store
-            .put(
-              nodes[i],
-              encoded.fragments[i],
-              expectedFragmentId: encoded.fragmentIds[i],
-            )
-            .then((_) => true, onError: (Object _) => false),
+        if (targets[i] case final FragmentTarget target)
+          store
+              .put(
+                target.node,
+                encoded.fragments[i],
+                expectedFragmentId: encoded.fragmentIds[i],
+              )
+              .then((_) => true, onError: (Object _) => false)
+        else
+          Future.value(false),
     ]);
     final ok = written.where((w) => w).length;
     if (ok < params.minStoredFragments) {
@@ -192,9 +213,13 @@ final class SegmentPacker implements ChunkSink {
         segmentId: segmentId,
       );
     }
+    await placer.commit(segmentId, [
+      for (var i = 0; i < params.n; i++)
+        if (written[i]) i,
+    ]);
     index.transaction(() {
       for (var i = 0; i < params.n; i++) {
-        if (written[i]) index.setFragmentNode(segmentId, i, nodes[i]);
+        if (written[i]) index.setFragmentNode(segmentId, i, targets[i]!.node);
       }
       index.markSegmentStored(segmentId);
     });

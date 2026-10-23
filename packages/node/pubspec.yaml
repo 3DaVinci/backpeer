@@ -8,7 +8,11 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
+  # Команды узла-заглушки (BSD-3-Clause, как в cli).
+  args: ^2.7.0
   core: any
+  # Int64 полей Protobuf (BSD-3-Clause, уже в core).
+  fixnum: ^1.1.1
   protocol: any
 
 dev_dependencies:

@@ -88,6 +88,13 @@ final class CoordinatorServer {
           'signer': signer != null,
         }),
       );
+      if (!config.placement.distinctSubnets) {
+        _log.warning(
+          const LogEvent('placement_subnets_not_distinct', {
+            'note': 'только для локального стенда',
+          }),
+        );
+      }
       return CoordinatorServer._(http, db, signer);
     } on Object {
       await signer?.close();

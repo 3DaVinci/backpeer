@@ -8,6 +8,7 @@ import 'package:core/src/format/fragment.dart';
 import 'package:core/src/format/segment.dart';
 import 'package:core/src/storage/fragment_store.dart';
 import 'package:core/src/storage/local_index.dart';
+import 'package:core/src/storage/placement.dart';
 import 'package:core/src/util/bytes.dart';
 
 /// Проблема с отдельным фрагментом: не найден, недоступен или испорчен.
@@ -35,13 +36,16 @@ final class FragmentProblem {
 /// Чтение сегментов с узлов (data-format.md, раздел 5, «Восстановление
 /// сегмента»): любые k фрагментов, каждый проверяется по `fragment_id` из
 /// индекса; сегмент расшифровывается, разбирается, каждый чанк сверяется
-/// со своим `chunk_id`. Последние [cacheSize] сегментов кешируются.
+/// со своим `chunk_id`. Последние [cacheSize] сегментов кешируются. Узлы
+/// фрагментов, которых не знает локальный индекс, спрашиваются у
+/// [locator] (`LocateSegment`), а без него ищутся на всех узлах.
 final class SegmentReader {
   new({
     required this.crypto,
     required this.keys,
     required this.index,
     required this.store,
+    this.locator,
     this.cacheSize = 2,
   }) : _hasher = ChunkIdHasher(crypto, keys.chunkIdKey);
 
@@ -49,6 +53,7 @@ final class SegmentReader {
   final AccountKeys keys;
   final LocalIndex index;
   final FragmentStore store;
+  final SegmentLocator? locator;
   final int cacheSize;
   final ChunkIdHasher _hasher;
 
@@ -126,6 +131,7 @@ final class SegmentReader {
         operation: 'restore',
       );
     }
+    await resolveNodes(segmentId);
     final candidates = index.fragments(segmentId);
     final valid = <Fragment>[];
     var next = 0;
@@ -152,6 +158,27 @@ final class SegmentReader {
       segmentId: segmentId,
       verified: true,
     );
+  }
+
+  /// Записывает в локальный индекс узлы фрагментов сегмента, которых он
+  /// не знает, по ответу [locator]; без него или если все узлы известны —
+  /// ничего не делает.
+  Future<void> resolveNodes(Uint8List segmentId) async {
+    final locator = this.locator;
+    if (locator == null) return;
+    final unknown = [
+      for (final f in index.fragments(segmentId))
+        if (f.node == null) f.number,
+    ];
+    if (unknown.isEmpty) return;
+    final nodes = await locator.locate(segmentId);
+    index.transaction(() {
+      for (final number in unknown) {
+        if (nodes[number] case final String node) {
+          index.setFragmentNode(segmentId, number, node);
+        }
+      }
+    });
   }
 
   /// Один фрагмент с проверкой; ошибка — `null` и запись в [problems].
@@ -189,9 +216,11 @@ final class SegmentReader {
     }
   }
 
-  /// Узел, где лежит фрагмент, если индекс его не знает (например, после
-  /// восстановления индекса на новом устройстве; в сети — `LocateSegment`).
+  /// Узел, где лежит фрагмент, если его не знают ни индекс, ни [locator]
+  /// (без координатора — после восстановления индекса на новом
+  /// устройстве): обход всех узлов.
   Future<String?> _locate(Uint8List fragmentId) async {
+    if (locator != null) return null;
     for (final node in store.nodes) {
       try {
         if ((await store.has(node, [fragmentId])).single) return node;

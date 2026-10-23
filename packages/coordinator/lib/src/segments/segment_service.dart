@@ -96,6 +96,7 @@ final class SegmentService {
         fragmentSize: size,
         segmentOwner: accountId,
         maxProbation: policy.maxProbation(n),
+        distinctSubnets: policy.distinctSubnets,
       );
     } on PlacementException catch (e) {
       throw RpcException(

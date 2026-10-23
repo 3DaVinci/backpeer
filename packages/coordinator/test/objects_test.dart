@@ -19,8 +19,9 @@ import 'support/postgres.dart';
 const pb.ErrorCode _badRequest = pb.ErrorCode.ERROR_CODE_BAD_REQUEST;
 const pb.ErrorCode _notFound = pb.ErrorCode.ERROR_CODE_NOT_FOUND;
 
-/// [ObjectStore] поверх API координатора — набросок клиента 2.8.2 для
-/// проверки контракта.
+/// [ObjectStore] поверх обработчика API без HTTP — для тестов с подменой
+/// содержимого базы. Клиент по HTTP — `CoordinatorObjectStore` в core
+/// (`storage_test.dart`).
 final class _ApiObjects implements ObjectStore {
   new(this.h, this.device, {this.pageSize = 0});
 

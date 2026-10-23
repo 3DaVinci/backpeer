@@ -119,7 +119,7 @@ final class KeyBundle {
       iterations: r.u32le(),
       parallelism: r.u32le(),
     );
-    _checkParams(params);
+    checkParams(params);
     final salt = Uint8List.fromList(r.bytes(saltLength));
     final blob = Uint8List.fromList(r.bytes(r.remaining));
     final header = BlobHeader.parse(blob);
@@ -187,7 +187,7 @@ final class KeyBundle {
     Uint8List? salt,
     Uint8List? nonce,
   }) async {
-    _checkParams(params);
+    checkParams(params);
     final s = salt ?? crypto.randomBytes(saltLength);
     if (s.length != saltLength) throw ArgumentError('Соль — $saltLength байт');
     final derived = await PasswordKeys.derive(
@@ -284,7 +284,9 @@ final class KeyBundle {
             ..bytes(blob))
           .toBytes();
 
-  static void _checkParams(Argon2Params p) {
+  /// Пределы параметров Argon2id из чужих рук (crypto.md, раздел 4.1):
+  /// KeyBundle и ответ `GetLoginParams`. Нарушение — [DataFormatException].
+  static void checkParams(Argon2Params p) {
     if (p.memoryKiB < minMemoryKiB ||
         p.memoryKiB > maxMemoryKiB ||
         p.iterations < 1 ||

@@ -192,6 +192,21 @@ final class PreconditionException extends CoreException {
   String get message => 'операция невозможна: $reason';
 }
 
+/// Координатор дважды подряд предложил размещение, нарушающее правила
+/// (protocol.md, раздел 5, «Проверка размещения клиентом»; угроза К-5).
+final class PlacementRejectedException extends CoreException {
+  const new(this.reason, {this.segmentId});
+
+  final String reason;
+  final Uint8List? segmentId;
+
+  @override
+  String get message {
+    final id = segmentId == null ? '' : ' ${_shortId(segmentId!)}';
+    return 'размещение сегмента$id отклонено: $reason';
+  }
+}
+
 /// Операция отменена пользователем.
 final class CancelledException extends CoreException {
   const new();

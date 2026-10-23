@@ -57,6 +57,7 @@ void main() {
       CancelledException() => 'cancelled',
       CoordinatorException() => 'coordinator',
       PreconditionException() => 'precondition',
+      PlacementRejectedException() => 'placement',
     };
     expect(
       kind(const InsufficientShardsException(available: 3, required: 4)),

@@ -34,8 +34,11 @@ final class AppHome {
   bool get initialized => keysFile.existsSync() && configFile.existsSync();
 }
 
-/// Настройки (`config.json`). Пока сети нет, хранители — папки-«узлы»,
-/// координатор — папка объектов.
+/// Настройки (`config.json`). Без координатора хранители — папки-«узлы»,
+/// координатор — папка объектов. С координатором ([coordinator]) объекты и
+/// размещение — на нём, а фрагменты пишутся в папки-«узлы»,
+/// зарегистрированные на координаторе (`node stub`), пока нет сети
+/// (этап 3).
 final class AppConfig {
   new({
     required this.nodes,
@@ -44,6 +47,10 @@ final class AppConfig {
     required this.durability,
     required this.deviceId,
     this.excludes = const [],
+    this.coordinator,
+    this.coordinatorCa,
+    this.login,
+    this.keyCopy,
   });
 
   /// Чтение с проверкой; ошибки — [ConfigException].
@@ -69,6 +76,14 @@ final class AppConfig {
       return value;
     }
 
+    T? optional<T extends Object>(String key) {
+      final value = map[key];
+      if (value != null && value is! T) {
+        throw ConfigException(key: key, reason: 'неверный тип');
+      }
+      return value as T?;
+    }
+
     final config = AppConfig(
       nodes: field<String>('nodes'),
       nodeCount: field<int>('nodeCount'),
@@ -85,6 +100,10 @@ final class AppConfig {
               reason: 'нужны строки',
             ),
       ],
+      coordinator: optional<String>('coordinator'),
+      coordinatorCa: optional<String>('coordinatorCa'),
+      login: optional<String>('login'),
+      keyCopy: optional<bool>('keyCopy'),
     )..check();
     return config;
   }
@@ -104,11 +123,37 @@ final class AppConfig {
   int nodeCount;
   String objects;
   DurabilityParameters durability;
-  final Uint8List deviceId;
+  Uint8List deviceId;
   List<String> excludes;
 
-  /// Узлов должно хватать на n разных (placeFragments).
+  /// Адрес координатора (`https://…`; `http` — только localhost); `null` —
+  /// без координатора.
+  String? coordinator;
+
+  /// Сертификат УЦ координатора в PEM — для тестового стенда со своим УЦ.
+  String? coordinatorCa;
+
+  /// Имя для входа по паролю.
+  String? login;
+
+  /// Есть ли копия мастер-ключа на координаторе (вход по паролю);
+  /// `null` — неизвестно (устройство восстановлено по фразе).
+  bool? keyCopy;
+
+  bool get usesCoordinator => coordinator != null;
+
+  /// Без координатора узлов должно хватать на n разных (placeFragments).
   void check() {
+    if (coordinator case final String url) {
+      final uri = Uri.tryParse(url);
+      if (uri == null || !(uri.isScheme('https') || uri.isScheme('http'))) {
+        throw const ConfigException(
+          key: 'coordinator',
+          reason: 'нужен адрес https',
+        );
+      }
+      return;
+    }
     if (nodeCount < durability.n) {
       throw ConfigException(
         key: 'nodeCount',
@@ -124,6 +169,10 @@ final class AppConfig {
     ...durability.toConfig(),
     'deviceId': bytesToHex(deviceId),
     'excludes': excludes,
+    'coordinator': ?coordinator,
+    'coordinatorCa': ?coordinatorCa,
+    'login': ?login,
+    'keyCopy': ?keyCopy,
   };
 
   void save(AppHome home) {

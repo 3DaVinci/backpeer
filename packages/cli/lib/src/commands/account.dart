@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:cli/src/app_config.dart';
@@ -299,5 +302,80 @@ final class ConfigCommand extends CliCommand {
       )
       ..result({'home': ctx.home.dir.path, ...config.toJson()});
     return ExitCode.ok;
+  }
+}
+
+/// Сертификат узла-хранителя (задача 2.6.1; protocol.md, разделы 4.9, 6):
+/// владелец подписывает открытые ключи узла ключом учётной записи. Узел
+/// предъявляет сертификат координатору в `RegisterNode`.
+final class NodeCertCommand extends CliCommand {
+  new(super.ctx) {
+    argParser
+      ..addOption(
+        'node-id',
+        help: 'Открытый ключ Ed25519 узла, 64 hex-символа',
+        mandatory: true,
+      )
+      ..addOption(
+        'node-dh',
+        help: 'Открытый ключ X25519 узла, 64 hex-символа',
+        mandatory: true,
+      )
+      ..addOption(
+        'out',
+        help: 'Файл для сертификата (fs.v1.Signed в Protobuf)',
+        mandatory: true,
+      );
+  }
+
+  @override
+  String get name => 'node-cert';
+
+  @override
+  String get description =>
+      'Выпустить сертификат узла-хранителя ключом учётной записи.';
+
+  @override
+  Future<int> run() async {
+    final a = argResults!;
+    final nodeId = _key(a, 'node-id');
+    final nodeDh = _key(a, 'node-dh');
+    final out = File(a.option('out')!);
+    if (out.existsSync()) throw CliException('Файл ${out.path} уже есть');
+    final crypto = await ctx.crypto();
+    final keys = await ctx.unlock();
+    try {
+      final signed = await NodeCertificates.issue(
+        crypto,
+        keys,
+        nodeId: nodeId,
+        nodeDh: nodeDh,
+        issuedAt: DateTime.now(),
+      );
+      out.writeAsBytesSync(signed.writeToBuffer(), flush: true);
+      ctx.report
+        ..info(
+          'Сертификат узла ${bytesToHex(nodeId).substring(0, 16)}… '
+          'записан в ${out.path}.',
+        )
+        ..result({
+          'nodeId': bytesToHex(nodeId),
+          'accountId': bytesToHex(keys.accountId),
+          'file': out.path,
+        });
+      return ExitCode.ok;
+    } finally {
+      keys.dispose();
+    }
+  }
+
+  static Uint8List _key(ArgResults args, String name) {
+    try {
+      final bytes = hexToBytes(args.option(name)!);
+      if (bytes.length == 32) return bytes;
+    } on FormatException {
+      // ниже — общая ошибка
+    }
+    throw UsageException('--$name: нужно 32 байта в hex', '');
   }
 }

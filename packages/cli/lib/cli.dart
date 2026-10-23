@@ -61,6 +61,7 @@ Future<int> runCli(
         ..addCommand(VerifyCommand(ctx))
         ..addCommand(ForgetCommand(ctx))
         ..addCommand(ShowPhraseCommand(ctx))
+        ..addCommand(NodeCertCommand(ctx))
         ..addCommand(ConfigCommand(ctx));
   try {
     final top = runner.parse(arguments);

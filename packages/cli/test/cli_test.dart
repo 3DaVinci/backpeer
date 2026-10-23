@@ -3,7 +3,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'dart:typed_data';
+
 import 'package:cli/cli.dart';
+import 'package:core/core.dart';
+import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
 
 /// Консоль для тестов: отвечает на вопросы функцией, копит вывод.
@@ -88,6 +92,7 @@ void main() {
       'verify',
       'forget',
       'show-phrase',
+      'node-cert',
       'config',
     ]) {
       final (code, console) = await cli([command, '--help']);
@@ -246,6 +251,61 @@ void main() {
       ExitCode.ok,
     );
     expect(File('$target${data.path}/a.txt').readAsStringSync(), 'данные');
+  });
+
+  test('node-cert: сертификат узла подписан ключом учётной записи', () async {
+    await init();
+    final nodeId = '11' * 32;
+    final out = '${dir.path}/node.cert';
+    final (code, console) = await cli([
+      '--json',
+      'node-cert',
+      '--node-id',
+      nodeId,
+      '--node-dh',
+      '22' * 32,
+      '--out',
+      out,
+    ]);
+    expect(code, ExitCode.ok, reason: console.errors.join('\n'));
+    final result = jsonDecode(console.lines.last) as Map<String, Object?>;
+    expect(result['nodeId'], nodeId);
+    final crypto = await SodiumCryptoProvider.load();
+    final cert = await SignedMessages.open(
+      crypto,
+      pb.Signed.fromBuffer(File(out).readAsBytesSync()),
+      context: 'node-cert',
+      object: 'node-cert',
+      parse: pb.NodeCertificate.fromBuffer,
+    );
+    expect(bytesToHex(Uint8List.fromList(cert.nodeId)), nodeId);
+    expect(bytesToHex(Uint8List.fromList(cert.accountId)), result['accountId']);
+
+    expect(
+      (await cli([
+        'node-cert',
+        '--node-id',
+        nodeId,
+        '--node-dh',
+        '22' * 32,
+        '--out',
+        out,
+      ])).$1,
+      ExitCode.error,
+      reason: 'файл уже есть',
+    );
+    expect(
+      (await cli([
+        'node-cert',
+        '--node-id',
+        'abc',
+        '--node-dh',
+        '22' * 32,
+        '--out',
+        '$out.2',
+      ])).$1,
+      ExitCode.usage,
+    );
   });
 
   test('config: показ и изменение исключений', () async {

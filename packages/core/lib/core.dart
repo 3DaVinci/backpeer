@@ -18,6 +18,7 @@ export 'src/chunking/chunk_id.dart';
 export 'src/chunking/fastcdc.dart';
 export 'src/chunking/file_chunker.dart';
 export 'src/crypto/account_keys.dart';
+export 'src/crypto/certificates.dart';
 export 'src/crypto/crypto_provider.dart';
 export 'src/crypto/dart_crypto_provider.dart';
 export 'src/crypto/encrypted_blob.dart';

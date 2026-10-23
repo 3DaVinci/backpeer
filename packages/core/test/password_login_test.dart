@@ -4,6 +4,7 @@
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
 import 'package:test_vectors/test_vectors.dart';
 
@@ -98,4 +99,86 @@ void main() {
       }
     });
   }
+
+  group('KeyCopy', () {
+    test('копия открывается паролем, verifier — ключ входа из AUTH', () async {
+      final crypto = await SodiumCryptoProvider.load();
+      final keys = await AccountKeys.fromMasterKey(
+        SecretBytes(Uint8List(32)..[0] = 5),
+        crypto,
+      );
+      const params = Argon2Params(memoryKiB: 1024, iterations: 1);
+      final copy = await KeyCopy.create(
+        crypto,
+        keys: keys,
+        password: 'пароль',
+        params: params,
+      );
+      expect(copy.enabled, isTrue);
+      expect(copy.authVerifier, hasLength(32));
+      final bundle = KeyBundle.parse(copy.keyBundle);
+      expect(bundle.accountId, keys.accountId);
+      final derived = await bundle.deriveKeys(crypto, 'пароль');
+      final loginKey = await PasswordLogin.loginKey(crypto, derived);
+      expect(loginKey.publicKey, copy.authVerifier);
+      expect(
+        (await bundle.unlockWith(crypto, derived)).accountId,
+        keys.accountId,
+      );
+
+      expect(KeyCopy.none.enabled, isFalse);
+      expect(KeyCopy.none.keyBundle, isEmpty);
+      expect(KeyCopy.none.authVerifier, isEmpty);
+    });
+  });
+
+  test(
+    'NodeCertificates: подпись ключом учётной записи, контекст node-cert',
+    () async {
+      final crypto = await SodiumCryptoProvider.load();
+      final owner = await AccountKeys.fromMasterKey(
+        SecretBytes(Uint8List(32)..[0] = 6),
+        crypto,
+      );
+      final nodeId = Uint8List(32)..[0] = 1;
+      final signed = await NodeCertificates.issue(
+        crypto,
+        owner,
+        nodeId: nodeId,
+        nodeDh: Uint8List(32)..[0] = 2,
+        issuedAt: DateTime.utc(2026, 10, 23),
+      );
+      expect(signed.signer, owner.accountId);
+      final cert = await SignedMessages.open(
+        crypto,
+        signed,
+        context: 'node-cert',
+        object: 'node-cert',
+        parse: pb.NodeCertificate.fromBuffer,
+      );
+      expect(cert.nodeId, nodeId);
+      expect(cert.accountId, owner.accountId);
+      await expectLater(
+        SignedMessages.open(
+          crypto,
+          signed,
+          context: 'device-cert',
+          object: 'device-cert',
+          parse: pb.NodeCertificate.fromBuffer,
+        ),
+        throwsA(isA<IntegrityException>()),
+        reason: 'другой контекст',
+      );
+      expect(
+        () => NodeCertificates.issue(
+          crypto,
+          owner,
+          nodeId: Uint8List(31),
+          nodeDh: Uint8List(32),
+          issuedAt: DateTime.utc(2026),
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
 }

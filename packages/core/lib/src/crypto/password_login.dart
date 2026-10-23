@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:core/src/crypto/account_keys.dart';
 import 'package:core/src/crypto/crypto_provider.dart';
 import 'package:core/src/crypto/key_bundle.dart';
 import 'package:core/src/crypto/secret_bytes.dart';
@@ -83,4 +84,48 @@ abstract final class PasswordLogin {
       signature: proof,
     );
   }
+}
+
+/// Копия мастер-ключа на координаторе (crypto.md, разделы 4.1, 4.4;
+/// модель угроз, К-3): поля `key_bundle` и `auth_verifier` запросов
+/// `RegisterAccount` и `SetKeyBundle`. [KeyCopy.none] — режим без копии:
+/// оба поля пусты, координатор удаляет KeyBundle и `auth_verifier`, и
+/// войти на новом устройстве можно только по фразе. Переключение в обе
+/// стороны — `SetKeyBundle` с [create] или [none] (задача 2.4.3).
+final class KeyCopy {
+  const new _(this.keyBundle, this.authVerifier);
+
+  /// Режим без копии мастер-ключа на координаторе.
+  static final KeyCopy none = KeyCopy._(Uint8List(0), Uint8List(0));
+
+  /// Копия ключей [keys] под [password]: новый KeyBundle со случайной
+  /// солью и открытый ключ входа из его `AUTH`.
+  static Future<KeyCopy> create(
+    CryptoProvider crypto, {
+    required AccountKeys keys,
+    required String password,
+    Argon2Params params = const Argon2Params(),
+  }) async {
+    final (bundle, derived) = await KeyBundle.createDerived(
+      crypto,
+      keys: keys,
+      password: password,
+      params: params,
+    );
+    try {
+      final loginKey = await PasswordLogin.loginKey(crypto, derived);
+      return KeyCopy._(bundle.toBytes(), loginKey.publicKey);
+    } finally {
+      derived.dispose();
+    }
+  }
+
+  /// Сериализованный KeyBundle или пусто.
+  final Uint8List keyBundle;
+
+  /// Открытый ключ входа (32 байта) или пусто.
+  final Uint8List authVerifier;
+
+  /// Копия есть: вход по паролю на новом устройстве возможен.
+  bool get enabled => keyBundle.isNotEmpty;
 }

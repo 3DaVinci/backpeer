@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
 
 void main() {
@@ -36,6 +37,15 @@ void main() {
     expect(e.message, '/nodes/03 (put): недоступно');
   });
 
+  test('сообщение ошибки координатора', () {
+    const e = CoordinatorException(
+      pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+      'объект не найден',
+      httpStatus: 404,
+    );
+    expect(e.message, 'координатор: NOT_FOUND: объект не найден');
+  });
+
   test('все ошибки core — подтипы CoreException', () {
     String kind(CoreException e) => switch (e) {
       DataFormatException() => 'format',
@@ -45,6 +55,8 @@ void main() {
       SourceChangedException() => 'changed',
       ConfigException() => 'config',
       CancelledException() => 'cancelled',
+      CoordinatorException() => 'coordinator',
+      PreconditionException() => 'precondition',
     };
     expect(
       kind(const InsufficientShardsException(available: 3, required: 4)),

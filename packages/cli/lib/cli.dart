@@ -60,6 +60,7 @@ Future<int> runCli(
         ..addCommand(RestoreCommand(ctx))
         ..addCommand(VerifyCommand(ctx))
         ..addCommand(ForgetCommand(ctx))
+        ..addCommand(GcCommand(ctx))
         ..addCommand(ShowPhraseCommand(ctx))
         ..addCommand(NodeCertCommand(ctx))
         ..addCommand(ConfigCommand(ctx));

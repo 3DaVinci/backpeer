@@ -91,6 +91,7 @@ void main() {
       'restore',
       'verify',
       'forget',
+      'gc',
       'show-phrase',
       'node-cert',
       'config',
@@ -107,7 +108,7 @@ void main() {
   });
 
   test(
-    'полный цикл: init, backup, snapshots, restore, verify, forget',
+    'полный цикл: init, backup, snapshots, restore, verify, forget, gc',
     () async {
       final words = await init();
       expect(
@@ -161,6 +162,20 @@ void main() {
 
       expect((await cli(['forget', snapshotId])).$1, ExitCode.ok);
       expect((await cli(['snapshots'])).$2.lines.single, 'Снимков нет.');
+
+      int nodeBytes() =>
+          Directory('${dir.path}/home/nodes')
+              .listSync(recursive: true)
+              .whereType<File>()
+              .fold(0, (sum, f) => sum + f.lengthSync());
+      final before = nodeBytes();
+      final (gcCode, gc) = await cli(['--json', 'gc']);
+      expect(gcCode, ExitCode.ok, reason: gc.errors.join('\n'));
+      final gcResult = jsonDecode(gc.lines.last) as Map<String, Object?>;
+      expect(gcResult['segmentsDeleted'], greaterThan(0));
+      expect(gcResult['segmentsLive'], 0);
+      expect(nodeBytes(), before - (gcResult['bytesFreed']! as int));
+      expect(nodeBytes(), lessThan(before));
     },
   );
 

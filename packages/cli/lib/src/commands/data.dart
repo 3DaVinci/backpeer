@@ -371,7 +371,7 @@ final class ForgetCommand extends CliCommand {
 
   @override
   String get description =>
-      'Удалить снимок (место освободит сборка мусора — позже).';
+      'Удалить снимок (место освободит сборка мусора: cli gc).';
 
   @override
   String get invocation => 'cli forget <снимок>';
@@ -396,6 +396,79 @@ final class ForgetCommand extends CliCommand {
         ..info('Снимок ${_shortId(id)} удалён.')
         ..result({'snapshotId': bytesToHex(id)});
       return ExitCode.ok;
+    } finally {
+      index.close();
+      keys.dispose();
+    }
+  }
+}
+
+/// Сборка мусора (задача 2.7.4; manifest.md, раздел 7): удаляет сегменты,
+/// на которые не ссылается ни один снимок.
+final class GcCommand extends CliCommand {
+  new(super.ctx) {
+    argParser.addFlag(
+      'dry-run',
+      negatable: false,
+      help: 'Только посчитать, ничего не удалять',
+    );
+  }
+
+  @override
+  String get name => 'gc';
+
+  @override
+  String get description =>
+      'Сборка мусора: удалить сегменты, не нужные ни одному снимку. '
+      'Не запускайте одновременно с бэкапом на другом устройстве.';
+
+  @override
+  Future<int> run() async {
+    final dryRun = argResults!.flag('dry-run');
+    final config = ctx.config();
+    final keys = await ctx.unlock();
+    final index = ctx.index();
+    try {
+      final fragments = await ctx.fragments(config);
+      final report = await collectGarbage(
+        crypto: await ctx.crypto(),
+        keys: keys,
+        index: index,
+        fragments: fragments,
+        objects: ctx.objects(config),
+        releaser: LocalSegmentReleaser(index, fragments),
+        dryRun: dryRun,
+      );
+      for (final (location, e) in report.fragmentErrors) {
+        ctx.report.warn(
+          'Фрагмент ${_shortId(location.fragmentId)} на ${location.node} '
+          'не удалён: ${e.message}',
+          {'fragment': bytesToHex(location.fragmentId)},
+        );
+      }
+      ctx.report.info(
+        dryRun
+            ? 'Снимков ${report.snapshots}; можно удалить сегментов: '
+                  '${report.segmentsDeleted}, останется ${report.segmentsLive}.'
+            : 'Снимков ${report.snapshots}; удалено сегментов '
+                  '${report.segmentsDeleted}, фрагментов '
+                  '${report.fragmentsDeleted} (${report.bytesFreed} байт); '
+                  'осталось сегментов ${report.segmentsLive}.',
+      );
+      final code = report.fragmentErrors.isEmpty
+          ? ExitCode.ok
+          : ExitCode.partial;
+      ctx.report.result({
+        'dryRun': dryRun,
+        'snapshots': report.snapshots,
+        'segmentsDeleted': report.segmentsDeleted,
+        'segmentsLive': report.segmentsLive,
+        'fragmentsDeleted': report.fragmentsDeleted,
+        'bytesFreed': report.bytesFreed,
+        'indexesRewritten': report.indexesRewritten,
+        'fragmentErrors': report.fragmentErrors.length,
+      }, exitCode: code);
+      return code;
     } finally {
       index.close();
       keys.dispose();

@@ -1,5 +1,5 @@
 // Правила талона FragmentTicket (protocol.md, раздел 5). Векторы талонов
-// с подписью — задача 2.7.2.
+// с подписью — ticket_vectors_test.dart.
 
 import 'dart:typed_data';
 

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:core/src/util/bytes.dart';
+import 'package:protocol/protocol.dart' as pb;
 
 /// Ошибки данных и окружения, которые `core` сообщает вызывающему: CLI
 /// показывает их пользователю, конвейер решает, повторять ли операцию.
@@ -180,6 +181,17 @@ final class ConfigException extends CoreException {
   String get message => 'конфигурация, $key: $reason';
 }
 
+/// Операцию сейчас выполнять нельзя: состояние небезопасно (например,
+/// сборка мусора при недописанном бэкапе или признаках отката).
+final class PreconditionException extends CoreException {
+  const new(this.reason);
+
+  final String reason;
+
+  @override
+  String get message => 'операция невозможна: $reason';
+}
+
 /// Операция отменена пользователем.
 final class CancelledException extends CoreException {
   const new();
@@ -187,6 +199,44 @@ final class CancelledException extends CoreException {
   @override
   String get message => 'операция отменена';
 }
+
+/// Координатор ответил ошибкой или недоступен (protocol.md, раздел 4.4).
+final class CoordinatorException extends CoreException {
+  const new(this.code, this.detail, {this.retryAfter, this.httpStatus});
+
+  final pb.ErrorCode code;
+
+  /// `Error.message` координатора или описание сбоя связи: для журнала.
+  final String detail;
+
+  /// Для `RATE_LIMITED` и `UNAVAILABLE`.
+  final Duration? retryAfter;
+
+  /// HTTP-статус ответа; `null` — ответа не было (сбой связи).
+  final int? httpStatus;
+
+  @override
+  String get message => 'координатор: ${errorCodeName(code)}: $detail';
+}
+
+/// Имя кода для журнала: `BAD_REQUEST`. Не зависит от того, сохранены ли
+/// в сборке имена значений enum Protobuf.
+String errorCodeName(pb.ErrorCode code) => switch (code) {
+  pb.ErrorCode.ERROR_CODE_UNSPECIFIED => 'UNSPECIFIED',
+  pb.ErrorCode.ERROR_CODE_VERSION_UNSUPPORTED => 'VERSION_UNSUPPORTED',
+  pb.ErrorCode.ERROR_CODE_BAD_REQUEST => 'BAD_REQUEST',
+  pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED => 'UNAUTHENTICATED',
+  pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED => 'PERMISSION_DENIED',
+  pb.ErrorCode.ERROR_CODE_NOT_FOUND => 'NOT_FOUND',
+  pb.ErrorCode.ERROR_CODE_ALREADY_EXISTS => 'ALREADY_EXISTS',
+  pb.ErrorCode.ERROR_CODE_QUOTA_EXCEEDED => 'QUOTA_EXCEEDED',
+  pb.ErrorCode.ERROR_CODE_INTEGRITY_FAILED => 'INTEGRITY_FAILED',
+  pb.ErrorCode.ERROR_CODE_TICKET_EXPIRED => 'TICKET_EXPIRED',
+  pb.ErrorCode.ERROR_CODE_RATE_LIMITED => 'RATE_LIMITED',
+  pb.ErrorCode.ERROR_CODE_UNAVAILABLE => 'UNAVAILABLE',
+  pb.ErrorCode.ERROR_CODE_INTERNAL => 'INTERNAL',
+  _ => 'CODE_${code.value}',
+};
 
 String _shortId(Uint8List id) =>
     bytesToHex(id.length > 8 ? Uint8List.sublistView(id, 0, 8) : id);

@@ -3,6 +3,7 @@
 /// Публичный API — только этот файл. Устройство `lib/src/`:
 ///
 /// - `util/` — общие утилиты: целые little/big-endian, varint, hex;
+/// - `coordinator/` — клиент API координатора;
 /// - `crypto/` — `CryptoProvider`, ключи, зашифрованный блоб, KeyBundle;
 /// - `chunking/` — FastCDC и идентификаторы чанков;
 /// - `erasure/` — `ErasureCoder` и Reed–Solomon;
@@ -17,6 +18,7 @@ export 'src/build_info.dart';
 export 'src/chunking/chunk_id.dart';
 export 'src/chunking/fastcdc.dart';
 export 'src/chunking/file_chunker.dart';
+export 'src/coordinator/coordinator_client.dart';
 export 'src/crypto/account_keys.dart';
 export 'src/crypto/certificates.dart';
 export 'src/crypto/crypto_provider.dart';
@@ -42,6 +44,7 @@ export 'src/format/ticket.dart';
 export 'src/password/estimator.dart';
 export 'src/password/policy.dart';
 export 'src/pipeline/backup.dart';
+export 'src/pipeline/garbage.dart';
 export 'src/pipeline/restore.dart';
 export 'src/pipeline/segment_encoder.dart';
 export 'src/pipeline/segment_packer.dart';

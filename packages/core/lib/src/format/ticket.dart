@@ -18,6 +18,38 @@ enum TicketTimeProblem {
   tooLong,
 }
 
+/// Почему узел отклоняет талон ([FragmentTickets.authorize]).
+enum TicketRejection {
+  /// Подписавший не входит во вшитый список ключей координатора.
+  untrusted,
+
+  /// Подпись не сходится.
+  signature,
+
+  /// Поля или каноническая сериализация.
+  format,
+  expired,
+  tooLong,
+
+  /// Талон на другую операцию, другой узел, другое устройство или другой
+  /// фрагмент.
+  mismatch,
+}
+
+/// Талон не разрешает операцию.
+final class TicketRejectedException implements Exception {
+  const new(this.reason, [this.detail]);
+
+  final TicketRejection reason;
+  final String? detail;
+
+  @override
+  String toString() {
+    final suffix = detail == null ? '' : ': $detail';
+    return 'TicketRejectedException(${reason.name}$suffix)';
+  }
+}
+
 /// Правила талона `FragmentTicket` (protocol.md, раздел 5): общие для
 /// подписанта координатора и узла.
 abstract final class FragmentTickets {
@@ -86,6 +118,60 @@ abstract final class FragmentTickets {
       object: 'fragment-ticket',
       parse: (body) => parse(Uint8List.fromList(body)),
     );
+  }
+
+  /// Полная проверка талона узлом перед операцией (protocol.md, раздел 5):
+  /// подпись ключом из [trusted], поля, срок на момент [now] с допуском
+  /// [clockSkew], операция, этот узел [nodeId], собеседник по Noise
+  /// [deviceSign], фрагмент [fragmentId] и, если известен, его размер
+  /// [fragmentSize] (для PUT — после приёма). Повторное использование
+  /// `ticket_id` узел проверяет сам: это его состояние. Отказ —
+  /// [TicketRejectedException].
+  static Future<pb.FragmentTicket> authorize(
+    CryptoProvider crypto,
+    pb.Signed signed,
+    CoordinatorKeySet trusted, {
+    required DateTime now,
+    required pb.TicketOperation operation,
+    required List<int> nodeId,
+    required List<int> deviceSign,
+    required List<int> fragmentId,
+    int? fragmentSize,
+  }) async {
+    if (!trusted.trusts(signed.signer)) {
+      throw const TicketRejectedException(TicketRejection.untrusted);
+    }
+    final pb.FragmentTicket ticket;
+    try {
+      ticket = await open(crypto, signed, trusted);
+    } on IntegrityException {
+      throw const TicketRejectedException(TicketRejection.signature);
+    } on DataFormatException catch (e) {
+      throw TicketRejectedException(TicketRejection.format, e.detail);
+    }
+    switch (checkTime(ticket, now)) {
+      case TicketTimeProblem.expired:
+        throw const TicketRejectedException(TicketRejection.expired);
+      case TicketTimeProblem.tooLong:
+        throw const TicketRejectedException(TicketRejection.tooLong);
+      case null:
+    }
+    String? mismatch;
+    if (ticket.operation != operation) {
+      mismatch = 'operation';
+    } else if (!constantTimeEquals(ticket.nodeId, nodeId)) {
+      mismatch = 'node_id';
+    } else if (!constantTimeEquals(ticket.deviceSign, deviceSign)) {
+      mismatch = 'device_sign';
+    } else if (!constantTimeEquals(ticket.fragmentId, fragmentId)) {
+      mismatch = 'fragment_id';
+    } else if (fragmentSize != null && ticket.fragmentSize != fragmentSize) {
+      mismatch = 'fragment_size';
+    }
+    if (mismatch != null) {
+      throw TicketRejectedException(TicketRejection.mismatch, mismatch);
+    }
+    return ticket;
   }
 
   /// Проверяет поля уже построенного талона (protocol.md, раздел 5).

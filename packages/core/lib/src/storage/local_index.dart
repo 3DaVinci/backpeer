@@ -244,6 +244,12 @@ final class LocalIndex {
     return _db.updatedRows;
   });
 
+  /// Удаляет сегмент с фрагментами и чанками (сборка мусора). Чанк,
+  /// который лежит и в другом сегменте, следующий бэкап при надобности
+  /// упакует заново.
+  void removeSegment(Uint8List segmentId) =>
+      _db.execute('DELETE FROM segments WHERE segment_id = ?', [segmentId]);
+
   /// Сохранённые сегменты, ещё не попавшие ни в один объект-индекс.
   List<SegmentEntry> segmentsNotInIndex() => [
     for (final row in _db.select(

@@ -10,7 +10,8 @@ import 'package:protocol/protocol.dart' as pb;
 /// Кадр: `u32be длина || тело`, длина от 1 до [maxFrameLength].
 ///
 /// Запрос: `u8 версия = 1 || u8 n || n × (u16be длина || FragmentTicket)`,
-/// n от 1 до [maxBatch].
+/// n от 0 до [maxBatch]; n = 0 — запрос открытого ключа подписанта (ответ
+/// без подписей).
 ///
 /// Ответ: `u8 0 || ключ подписанта (32) || n × подпись (64)` — подписи в
 /// порядке талонов; или `u8 код ErrorCode || u32be retry_after_ms ||
@@ -33,8 +34,8 @@ abstract final class SignerWire {
   }
 
   static Uint8List encodeRequest(List<Uint8List> tickets) {
-    if (tickets.isEmpty || tickets.length > maxBatch) {
-      throw ArgumentError('талонов ${tickets.length}, нужно 1…$maxBatch');
+    if (tickets.length > maxBatch) {
+      throw ArgumentError('талонов ${tickets.length}, нужно 0…$maxBatch');
     }
     final b = BytesBuilder(copy: false)
       ..addByte(version)
@@ -55,7 +56,7 @@ abstract final class SignerWire {
   static List<Uint8List>? decodeRequest(Uint8List body) {
     if (body.length < 2 || body[0] != version) return null;
     final count = body[1];
-    if (count < 1 || count > maxBatch) return null;
+    if (count > maxBatch) return null;
     final view = ByteData.sublistView(body);
     final tickets = <Uint8List>[];
     var offset = 2;

@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:coordinator/src/accounts/account_service.dart';
 import 'package:coordinator/src/accounts/certificates.dart';
 import 'package:coordinator/src/accounts/login_service.dart';
@@ -8,33 +6,42 @@ import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/objects/object_service.dart';
+import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/service.dart';
+import 'package:coordinator/src/segments/segment_service.dart';
+import 'package:coordinator/src/signer/ticket_signer.dart';
 import 'package:core/core.dart';
 import 'package:protocol/protocol.dart' as pb;
 
-/// Методы координатора поверх PostgreSQL. Реализованные группы — по мере
-/// задач этапа 2; остальные методы отвечают `INTERNAL` «не реализован».
+/// Методы координатора поверх PostgreSQL. Талоны подписывает [TicketSigner]
+/// (в бою — отдельный процесс, `SocketTicketSigner`); без него методы
+/// размещения отвечают `UNAVAILABLE`.
 final class DatabaseCoordinatorService extends CoordinatorService {
   new({
     required Database db,
     required CryptoProvider crypto,
     CoordinatorConfig config = const CoordinatorConfig(),
-    List<Uint8List> coordinatorKeys = const [],
+    TicketSigner? signer,
+    Placement? placement,
     DateTime Function()? clock,
   }) : this._parts(
          db,
+         crypto,
          CertificateChecks(crypto, clock: clock),
          config,
-         coordinatorKeys,
+         signer,
+         placement,
          clock,
        );
 
   new _parts(
     Database db,
+    CryptoProvider crypto,
     CertificateChecks checks,
     CoordinatorConfig config,
-    List<Uint8List> coordinatorKeys,
+    TicketSigner? signer,
+    Placement? placement,
     DateTime Function()? clock,
   ) : accounts = AccountService(
         db,
@@ -61,14 +68,27 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         db,
         checks,
         policy: config.nodes,
-        coordinatorKeys: coordinatorKeys,
+        coordinatorKeys: signer == null
+            ? null
+            : () async => [await signer.publicKey()],
         clock: clock,
-      );
+      ) {
+    segments = SegmentService(
+      db,
+      nodes,
+      crypto: crypto,
+      signer: signer,
+      policy: config.placement,
+      placement: placement,
+      clock: clock,
+    );
+  }
 
   final AccountService accounts;
   final LoginService login;
   final ObjectService objects;
   final NodeService nodes;
+  late final SegmentService segments;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(
@@ -153,4 +173,28 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.HeartbeatRequest request,
   ) => nodes.heartbeat(context, request);
+
+  @override
+  Future<pb.AllocateSegmentResponse> allocateSegment(
+    CallContext context,
+    pb.AllocateSegmentRequest request,
+  ) => segments.allocate(context, request);
+
+  @override
+  Future<pb.CommitSegmentResponse> commitSegment(
+    CallContext context,
+    pb.CommitSegmentRequest request,
+  ) => segments.commit(context, request);
+
+  @override
+  Future<pb.LocateSegmentResponse> locateSegment(
+    CallContext context,
+    pb.LocateSegmentRequest request,
+  ) => segments.locate(context, request);
+
+  @override
+  Future<pb.DeleteSegmentResponse> deleteSegment(
+    CallContext context,
+    pb.DeleteSegmentRequest request,
+  ) => segments.delete(context, request);
 }

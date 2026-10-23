@@ -54,11 +54,13 @@ void main() {
       expect(await tables(), [
         'accounts',
         'devices',
+        'fragments',
         'login_attempts',
         'node_uptime',
         'nodes',
         'objects',
         'schema_migrations',
+        'segments',
         'server_secrets',
       ]);
       // Повторный запуск ничего не меняет.
@@ -243,7 +245,7 @@ void main() {
         );
       });
       Future<(int, pb.Error)> call(Ed25519KeyPair signer) async {
-        // Метод ещё не реализован (2.7.3): подпись принята — «не реализован».
+        // Подпись принята — до обработчика доходит пустой запрос.
         final body = pb.LocateSegmentRequest().writeToBuffer();
         final auth = await RequestAuth.sign(
           crypto,
@@ -267,8 +269,8 @@ void main() {
       }
 
       final (status, error) = await call(key);
-      expect(status, 500);
-      expect(error.message, contains('не реализован'));
+      expect(status, 400);
+      expect(error.message, contains('segment_id'));
 
       final stranger = await crypto.ed25519FromSeed(
         SecretBytes(Uint8List(32)..[0] = 9),

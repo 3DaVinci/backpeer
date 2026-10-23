@@ -50,5 +50,19 @@ nodes:
   # Период heartbeat; узел вне сети, если молчит три периода.
   heartbeat_seconds: 300
 
+placement:
+  # Доступность узла за 30 дней, не ниже которой он получает фрагменты.
+  min_availability: 0.6
+  # Испытательный срок нового узла и доля сегмента для таких узлов.
+  probation_hours: 72
+  max_probation_share: 0.25
+  # Срок жизни талонов, минут (не больше 60 и предела подписанта).
+  ticket_minutes: 30
+
+# Подписант талонов (docs/ops/coordinator.md, раздел «Подписант»). Без него
+# размещение сегментов недоступно.
+signer:
+  socket: /run/fs-signer/signer.sock
+
 log:
   level: info

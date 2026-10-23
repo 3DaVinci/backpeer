@@ -2,7 +2,6 @@ import 'dart:typed_data';
 
 import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
-import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/signer/signer_wire.dart';
 import 'package:core/core.dart';
 import 'package:logging/logging.dart';
@@ -57,6 +56,8 @@ final class TicketSigningService {
         'запрос не по формату',
       );
     }
+    // Запрос ключа: веб-сервер сообщает его узлам (protocol.md, раздел 5.1).
+    if (bodies.isEmpty) return SignerWire.encodeSigned(key.publicKey, const []);
     final now = _clock();
     final counts = <pb.TicketOperation, int>{};
     for (var i = 0; i < bodies.length; i++) {

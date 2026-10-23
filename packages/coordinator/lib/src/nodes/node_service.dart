@@ -22,7 +22,7 @@ final class NodeService {
     this._db,
     this._checks, {
     this.policy = const NodePolicy(),
-    this.coordinatorKeys = const [],
+    this._coordinatorKeys,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -30,9 +30,9 @@ final class NodeService {
   final CertificateChecks _checks;
   final NodePolicy policy;
 
-  /// Ключи, которыми подписант подписывает талоны сейчас; подключение
-  /// к подписанту — задача 2.7.2.
-  final List<Uint8List> coordinatorKeys;
+  /// Ключи, которыми подписант подписывает талоны сейчас (protocol.md,
+  /// раздел 5.1); `null` — подписант не настроен.
+  final Future<List<Uint8List>> Function()? _coordinatorKeys;
   final DateTime Function() _clock;
 
   /// Версии протокола, которые знает координатор (protocol.md, раздел 2).
@@ -149,7 +149,20 @@ final class NodeService {
         'rid': context.requestId,
       }),
     );
-    return pb.RegisterNodeResponse(coordinatorKeys: coordinatorKeys);
+    return pb.RegisterNodeResponse(coordinatorKeys: await _keys());
+  }
+
+  /// Ключи подписанта; недоступен — пустой список: регистрация узла от
+  /// подписанта не зависит, узел доверяет только вшитому списку.
+  Future<List<Uint8List>> _keys() async {
+    final keys = _coordinatorKeys;
+    if (keys == null) return const [];
+    try {
+      return await keys();
+    } on RpcException catch (e) {
+      _log.warning(LogEvent('signer_key_unavailable', {'code': e.code.value}));
+      return const [];
+    }
   }
 
   Future<pb.HeartbeatResponse> heartbeat(
@@ -206,34 +219,41 @@ final class NodeService {
 
   /// Узлы, подходящие для размещения фрагментов размера [fragmentSize]
   /// (задача 2.7.1): в сети, не удалены, свободного места хватает,
-  /// доступность не ниже [minAvailability], адрес известен. Узлы владельца
-  /// сегмента [exceptOwner] исключаются. Разнообразие владельцев и
-  /// подсетей обеспечивает [Placement].
+  /// доступность не ниже [minAvailability], подсеть известна. Свободное
+  /// место — ёмкость минус большее из занятого по словам узла и выданного
+  /// координатором под фрагменты. Узлы владельца сегмента [exceptOwner]
+  /// исключаются; узлы моложе [probation] помечаются. Разнообразие
+  /// владельцев и подсетей обеспечивает [Placement].
   Future<List<NodeCandidate>> candidates({
     required int fragmentSize,
     required double minAvailability,
     Uint8List? exceptOwner,
+    Duration probation = Duration.zero,
+    Session? session,
   }) async {
-    final rows = await _db.run(
-      (s) => s.execute(
-        Sql.named('''
-          SELECT node_id, account_id, subnet, capacity_bytes - used_bytes,
-                 availability
-            FROM nodes
-            WHERE removed_at IS NULL
-              AND last_heartbeat_at >= @online:timestamptz
-              AND subnet IS NOT NULL
-              AND capacity_bytes - used_bytes >= @size:int8
-              AND availability >= @min:float8
-              AND account_id <> @owner:bytea'''),
-        parameters: {
-          'online': _clock().subtract(policy.onlineWindow),
-          'size': fragmentSize,
-          'min': minAvailability,
-          'owner': exceptOwner ?? Uint8List(0),
-        },
-      ),
-    );
+    final now = _clock();
+    final query = Sql.named('''
+      SELECT node_id, account_id, subnet,
+             capacity_bytes - greatest(used_bytes, assigned_bytes),
+             availability, endpoints, registered_at > @probation:timestamptz
+        FROM nodes
+        WHERE removed_at IS NULL
+          AND last_heartbeat_at >= @online:timestamptz
+          AND subnet IS NOT NULL
+          AND capacity_bytes - greatest(used_bytes, assigned_bytes)
+              >= @size:int8
+          AND availability >= @min:float8
+          AND account_id <> @owner:bytea''');
+    final parameters = {
+      'online': now.subtract(policy.onlineWindow),
+      'probation': now.subtract(probation),
+      'size': fragmentSize,
+      'min': minAvailability,
+      'owner': exceptOwner ?? Uint8List(0),
+    };
+    final rows = session != null
+        ? await session.execute(query, parameters: parameters)
+        : await _db.run((s) => s.execute(query, parameters: parameters));
     return [
       for (final [
             id as List<int>,
@@ -241,6 +261,8 @@ final class NodeService {
             subnet as String,
             free as int,
             availability as double,
+            endpoints as List<Object?>,
+            onProbation as bool,
           ]
           in rows)
         NodeCandidate(
@@ -249,6 +271,8 @@ final class NodeService {
           subnet: subnet,
           freeBytes: free,
           availability: availability,
+          endpoints: [for (final e in endpoints) e! as String],
+          onProbation: onProbation,
         ),
     ];
   }

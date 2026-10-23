@@ -134,13 +134,30 @@ void main() {
       }
     });
 
+    test('пустая пачка — открытый ключ без подписей', () async {
+      final s = service();
+      final reply = SignerReply.decode(
+        await s.handle(SignerWire.encodeRequest(const [])),
+        0,
+      );
+      expect(
+        reply,
+        isA<SignerSigned>()
+            .having((r) => r.signer, 'signer', s.publicKey)
+            .having((r) => r.signatures, 'signatures', isEmpty),
+      );
+      final local = InProcessTicketSigner(s);
+      expect(await local.publicKey(), s.publicKey);
+      final [signed] = await local.sign([ticket()]);
+      expect(signed.signer, s.publicKey);
+    });
+
     test('запрос не по формату', () async {
       final s = service();
       final good = SignerWire.encodeRequest([ticket().writeToBuffer()]);
       final requests = [
         Uint8List(0),
         Uint8List.fromList([2, ...good.sublist(1)]), // версия
-        Uint8List.fromList([1, 0]), // ноль талонов
         Uint8List.fromList([1, 65]), // больше предела
         good.sublist(0, good.length - 1), // обрезан
         Uint8List.fromList([...good, 0]), // хвост
@@ -251,6 +268,7 @@ void main() {
       server = await SignerServer.bind(path, service());
       expect(FileStat.statSync(path).mode & 511, 432, reason: 'сокет 0660');
       client = SocketTicketSigner(path);
+      expect(await client!.publicKey(), key.publicKey, reason: 'до талонов');
       // Больше одной пачки: клиент делит запрос.
       final tickets = [for (var i = 0; i < 150; i++) ticket(index: i)];
       final signed = await client!.sign(tickets);

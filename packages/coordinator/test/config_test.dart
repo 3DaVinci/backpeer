@@ -21,6 +21,33 @@ void main() {
     expect(c.logLevel, Level.INFO);
   });
 
+  test('размещение и подписант (2.7)', () {
+    final c = CoordinatorConfig.parse('''
+placement:
+  min_availability: 0.7
+  probation_hours: 24
+  max_probation_share: 0.1
+  ticket_minutes: 15
+signer:
+  socket: /run/fs-signer/signer.sock
+''', {});
+    expect(c.placement.minAvailability, 0.7);
+    expect(c.placement.probation, const Duration(hours: 24));
+    expect(c.placement.maxProbation(20), 2);
+    expect(c.placement.ticketLifetime, const Duration(minutes: 15));
+    expect(c.signerSocket, '/run/fs-signer/signer.sock');
+    expect(const CoordinatorConfig().signerSocket, isNull);
+    for (final bad in [
+      'placement:\n  min_availability: 1.5\n',
+      'placement:\n  ticket_minutes: 61\n',
+    ]) {
+      expect(
+        () => CoordinatorConfig.parse(bad, {}),
+        throwsA(isA<ConfigException>()),
+      );
+    }
+  });
+
   test('объекты и реестр узлов (2.5, 2.6)', () {
     final c = CoordinatorConfig.parse(
       '''

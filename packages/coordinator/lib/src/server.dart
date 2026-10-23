@@ -11,13 +11,14 @@ import 'package:coordinator/src/rpc/api_handler.dart';
 import 'package:coordinator/src/rpc/database_service.dart';
 import 'package:coordinator/src/rpc/methods.dart';
 import 'package:coordinator/src/rpc/service.dart';
+import 'package:coordinator/src/signer/ticket_signer.dart';
 import 'package:core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 /// Запущенный координатор: HTTP-сервер поверх базы.
 final class CoordinatorServer {
-  new _(this._http, this._db);
+  new _(this._http, this._db, this._signer);
 
   /// Открывает базу, проверяет версию схемы и начинает слушать порт.
   /// Схема должна быть актуальной (`coordinator migrate`), если не задан
@@ -29,6 +30,8 @@ final class CoordinatorServer {
     bool migrate = false,
   }) async {
     final db = Database.open(config.database);
+    final socket = config.signerSocket;
+    final signer = socket == null ? null : SocketTicketSigner(socket);
     try {
       final migrator = Migrator(db);
       final version = migrate
@@ -48,6 +51,7 @@ final class CoordinatorServer {
                 db: db,
                 crypto: crypto,
                 config: config,
+                signer: signer,
               ),
         ),
         verifier: RequestVerifier(
@@ -81,10 +85,12 @@ final class CoordinatorServer {
           'port': http.port,
           'tls': config.tlsCertificate != null,
           'schema': version,
+          'signer': signer != null,
         }),
       );
-      return CoordinatorServer._(http, db);
+      return CoordinatorServer._(http, db, signer);
     } on Object {
+      await signer?.close();
       await db.close();
       rethrow;
     }
@@ -94,11 +100,13 @@ final class CoordinatorServer {
 
   final HttpServer _http;
   final Database _db;
+  final TicketSigner? _signer;
 
   int get port => _http.port;
 
   Future<void> close() async {
     await _http.close();
+    await _signer?.close();
     await _db.close();
     _log.info(const LogEvent('stopped'));
   }

@@ -11,6 +11,8 @@ final class NodeCandidate {
     required this.subnet,
     required this.freeBytes,
     required this.availability,
+    this.endpoints = const [],
+    this.onProbation = false,
   });
 
   final Uint8List nodeId;
@@ -25,6 +27,12 @@ final class NodeCandidate {
 
   /// Доля интервалов в сети за 30 дней (`Uptime`).
   final double availability;
+
+  /// Адреса `хост:порт`; пусто — узел за NAT.
+  final List<String> endpoints;
+
+  /// Узел зарегистрирован недавно (испытательный срок, модель угроз, С-6).
+  final bool onProbation;
 }
 
 /// Подходящих узлов меньше n.
@@ -47,7 +55,9 @@ final class PlacementException implements Exception {
 /// Ограничения, которые не нарушаются никогда: узлы различны, их владельцы
 /// различны, подсети различны, владелец сегмента своих фрагментов не
 /// хранит, свободного места хватает на фрагмент, доступность не ниже
-/// [minAvailability]. Среди подходящих узлов выбор случайный со весом
+/// [minAvailability], узлов на испытательном сроке не больше заданного
+/// (модель угроз, С-6: свежие подставные узлы не соберут много фрагментов
+/// одного сегмента). Среди подходящих узлов выбор случайный со весом
 /// [weight]: узлы с высокой доступностью получают фрагменты чаще, а
 /// нагрузка расходится по всей сети, а не по нескольким лучшим узлам.
 ///
@@ -82,13 +92,15 @@ final class Placement {
       node.freeBytes >= fragmentSize &&
       (segmentOwner == null || !constantTimeEquals(node.ownerId, segmentOwner));
 
-  /// [n] узлов из [candidates], по порядку выбора. Не хватает подходящих —
-  /// [PlacementException].
+  /// [n] узлов из [candidates], по порядку выбора; узлов на испытательном
+  /// сроке — не больше [maxProbation] (по умолчанию без предела). Не хватает
+  /// подходящих — [PlacementException].
   List<NodeCandidate> choose(
     List<NodeCandidate> candidates, {
     required int n,
     required int fragmentSize,
     Uint8List? segmentOwner,
+    int? maxProbation,
   }) {
     RangeError.checkValueInInterval(n, 1, 255, 'n');
     final keyed = <(double, NodeCandidate)>[];
@@ -111,10 +123,15 @@ final class Placement {
     final nodes = <String>{};
     final owners = <String>{};
     final subnets = <String>{};
+    var probation = 0;
     for (final (_, node) in keyed) {
       if (!nodes.add(bytesToHex(node.nodeId))) continue;
       final owner = bytesToHex(node.ownerId);
       if (owners.contains(owner) || subnets.contains(node.subnet)) continue;
+      if (node.onProbation) {
+        if (maxProbation != null && probation >= maxProbation) continue;
+        probation++;
+      }
       owners.add(owner);
       subnets.add(node.subnet);
       chosen.add(node);

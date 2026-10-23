@@ -86,6 +86,11 @@ abstract base class CoordinatorService {
     pb.LocateSegmentRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.DeleteSegmentResponse> deleteSegment(
+    CallContext context,
+    pb.DeleteSegmentRequest request,
+  ) => _unimplemented(context);
+
   Future<pb.RegisterNodeResponse> registerNode(
     CallContext context,
     pb.RegisterNodeRequest request,

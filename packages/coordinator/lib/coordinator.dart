@@ -7,6 +7,7 @@
 /// - `objects/` — снимки и индексы;
 /// - `nodes/` — реестр узлов, heartbeat, доступность;
 /// - `placement/` — выбор узлов для фрагментов сегмента;
+/// - `segments/` — размещение сегментов, талоны, сборка мусора;
 /// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
 ///   ключей;
 /// - `limits/` — ограничение частоты запросов;
@@ -33,12 +34,14 @@ export 'src/nodes/node_service.dart';
 export 'src/nodes/uptime.dart';
 export 'src/objects/object_service.dart';
 export 'src/placement/placement.dart';
+export 'src/placement/placement_policy.dart';
 export 'src/rpc/api_handler.dart';
 export 'src/rpc/call_context.dart';
 export 'src/rpc/database_service.dart';
 export 'src/rpc/errors.dart';
 export 'src/rpc/methods.dart';
 export 'src/rpc/service.dart';
+export 'src/segments/segment_service.dart';
 export 'src/server.dart';
 export 'src/signer/signer_key.dart';
 export 'src/signer/signer_server.dart';

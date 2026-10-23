@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:coordinator/src/nodes/node_policy.dart';
+import 'package:coordinator/src/placement/placement_policy.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
@@ -78,6 +79,8 @@ final class CoordinatorConfig {
     this.maxDevicesPerAccount = 5,
     this.maxObjectBytesPerAccount = 1 << 30,
     this.nodes = const NodePolicy(),
+    this.placement = const PlacementPolicy(),
+    this.signerSocket,
     this.logLevel = Level.INFO,
   });
 
@@ -152,6 +155,11 @@ final class CoordinatorConfig {
     'nodes.min_capacity_bytes',
     'nodes.max_per_account',
     'nodes.heartbeat_seconds',
+    'placement.min_availability',
+    'placement.probation_hours',
+    'placement.max_probation_share',
+    'placement.ticket_minutes',
+    'signer.socket',
     'log.level',
   };
 
@@ -177,6 +185,13 @@ final class CoordinatorConfig {
   /// Реестр узлов: минимум места, предел узлов, период heartbeat.
   final NodePolicy nodes;
 
+  /// Размещение: порог доступности, испытательный срок, срок талонов.
+  final PlacementPolicy placement;
+
+  /// Unix-сокет подписанта талонов; без него методы размещения отвечают
+  /// `UNAVAILABLE`.
+  final String? signerSocket;
+
   final Level logLevel;
 }
 
@@ -190,6 +205,7 @@ final class _Reader {
     const db = DatabaseConfig();
     const lim = RateLimits();
     const np = NodePolicy();
+    const pp = PlacementPolicy();
     final cert = _string('tls.certificate');
     final key = _string('tls.private_key');
     if ((cert == null) != (key == null)) {
@@ -261,6 +277,23 @@ final class _Reader {
               np.heartbeatInterval.inSeconds,
         ),
       ),
+      placement: PlacementPolicy(
+        minAvailability:
+            _fraction('placement.min_availability') ?? pp.minAvailability,
+        probation: Duration(
+          hours:
+              _int('placement.probation_hours', 0, 24 * 365) ??
+              pp.probation.inHours,
+        ),
+        maxProbationShare:
+            _fraction('placement.max_probation_share') ?? pp.maxProbationShare,
+        ticketLifetime: Duration(
+          minutes:
+              _int('placement.ticket_minutes', 1, 60) ??
+              pp.ticketLifetime.inMinutes,
+        ),
+      ),
+      signerSocket: _string('signer.socket'),
       logLevel:
           _enum('log.level', {
             'fine': Level.FINE,
@@ -295,6 +328,17 @@ final class _Reader {
     final n = v is num ? v.toDouble() : double.tryParse('$v');
     if (n == null || !n.isFinite || n <= 0) {
       throw ConfigException('$key: ожидается положительное число');
+    }
+    return n;
+  }
+
+  /// Доля от 0 до 1 включительно.
+  double? _fraction(String key) {
+    final v = _values[key];
+    if (v == null) return null;
+    final n = v is num ? v.toDouble() : double.tryParse('$v');
+    if (n == null || n < 0 || n > 1) {
+      throw ConfigException('$key: ожидается число от 0 до 1');
     }
     return n;
   }

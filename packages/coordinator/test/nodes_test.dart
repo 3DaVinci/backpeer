@@ -51,7 +51,7 @@ void main() {
     test('регистрирует узел и обновляет сведения при повторе', () async {
       final node = await h.newKey();
       final response = await h.registerNode(owner, node);
-      expect(response.coordinatorKeys, isEmpty, reason: 'подписант — 2.7.2');
+      expect(response.coordinatorKeys, [h.signerKey.publicKey]);
       var row = await nodeRow(node);
       expect(row[0], owner.accountId);
       expect(row[1], 1 << 40);

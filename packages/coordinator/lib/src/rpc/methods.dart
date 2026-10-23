@@ -145,6 +145,12 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.LocateSegmentRequest.fromBuffer,
     handle: s.locateSegment,
   ),
+  RpcMethod<pb.DeleteSegmentRequest, pb.DeleteSegmentResponse>(
+    name: 'DeleteSegment',
+    auth: AuthRequirement.device,
+    parse: pb.DeleteSegmentRequest.fromBuffer,
+    handle: s.deleteSegment,
+  ),
   RpcMethod<pb.RegisterNodeRequest, pb.RegisterNodeResponse>(
     name: 'RegisterNode',
     auth: AuthRequirement.registering,

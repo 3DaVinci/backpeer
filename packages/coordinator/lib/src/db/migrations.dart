@@ -122,6 +122,51 @@ const List<Migration> schemaMigrations = [
     CREATE INDEX nodes_online ON nodes (last_heartbeat_at)
       WHERE removed_at IS NULL''',
   ]),
+  Migration(6, 'сегменты и фрагменты', [
+    // Сегменты — в пространстве учётной записи, как объекты. Состояние:
+    // 0 — размещён, ждёт CommitSegment; 1 — сохранён; 2 — сохранён, но
+    // фрагментов не больше порога ремонта (ремонт — этап 4).
+    '''
+    CREATE TABLE segments (
+      account_id bytea NOT NULL REFERENCES accounts (account_id),
+      segment_id bytea NOT NULL CHECK (length(segment_id) = 32),
+      k smallint NOT NULL,
+      n smallint NOT NULL,
+      repair_threshold smallint NOT NULL,
+      fragment_size integer NOT NULL CHECK (fragment_size > 0),
+      state smallint NOT NULL CHECK (state IN (0, 1, 2)),
+      allocated_at timestamptz NOT NULL,
+      committed_at timestamptz,
+      PRIMARY KEY (account_id, segment_id),
+      CHECK (1 <= k AND k <= repair_threshold AND repair_threshold < n
+             AND n <= 255)
+    )''',
+    'CREATE INDEX segments_repair ON segments (state) WHERE state = 2',
+    '''
+    CREATE TABLE fragments (
+      account_id bytea NOT NULL,
+      segment_id bytea NOT NULL,
+      idx smallint NOT NULL,
+      fragment_id bytea NOT NULL CHECK (length(fragment_id) = 32),
+      body_root bytea NOT NULL CHECK (length(body_root) = 32),
+      node_id bytea NOT NULL REFERENCES nodes (node_id),
+      stored boolean NOT NULL DEFAULT false,
+      PRIMARY KEY (account_id, segment_id, idx),
+      FOREIGN KEY (account_id, segment_id)
+        REFERENCES segments (account_id, segment_id) ON DELETE CASCADE
+    )''',
+    'CREATE INDEX fragments_node ON fragments (node_id)',
+    // Место под фрагменты, которое координатор отдал узлу и учётной
+    // записи: фрагменты размещённых сегментов и сохранённые фрагменты.
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN assigned_bytes bigint NOT NULL DEFAULT 0
+        CHECK (assigned_bytes >= 0)''',
+    '''
+    ALTER TABLE accounts
+      ADD COLUMN fragment_bytes bigint NOT NULL DEFAULT 0
+        CHECK (fragment_bytes >= 0)''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

@@ -14,22 +14,50 @@ import 'postgres.dart';
 /// Обработчик API поверх временной базы PostgreSQL с сервисом
 /// [DatabaseCoordinatorService] и подменяемыми часами.
 final class DbHarness {
-  new _(this.crypto, this.clock, this.testDb, this.db, this.handler);
+  new _(
+    this.crypto,
+    this.clock,
+    this.testDb,
+    this.db,
+    this.handler,
+    this.signerKey,
+  );
 
+  /// [withSigner] — талоны подписывает [InProcessTicketSigner] ключом
+  /// [signerKey]; иначе подписанта нет.
   static Future<DbHarness> create({
     CoordinatorConfig config = testConfig,
+    bool withSigner = true,
   }) async {
     final crypto = await SodiumCryptoProvider.load();
     final clock = FakeClock();
     final testDb = await TestDatabase.create();
     final db = Database.open(testDb.config);
     await Migrator(db).migrate();
+    final signerKey = await crypto.ed25519FromSeed(
+      SecretBytes(Uint8List(32)..fillRange(0, 32, 0xC0)),
+    );
+    final signer = withSigner
+        ? InProcessTicketSigner(
+            TicketSigningService(
+              crypto: crypto,
+              key: signerKey,
+              limiter: RateLimiter(
+                perSecond: 1000000,
+                burst: 1 << 20,
+                clock: clock.call,
+              ),
+              clock: clock.call,
+            ),
+          )
+        : null;
     final handler = ApiHandler(
       methods: coordinatorMethods(
         DatabaseCoordinatorService(
           db: db,
           crypto: crypto,
           config: config,
+          signer: signer,
           clock: clock.call,
         ),
       ),
@@ -43,12 +71,13 @@ final class DbHarness {
       healthCheck: db.ping,
       trustForwardedFor: true,
     );
-    return DbHarness._(crypto, clock, testDb, db, handler);
+    return DbHarness._(crypto, clock, testDb, db, handler, signerKey);
   }
 
-  /// Настройки тестов: узлы с любой ёмкостью.
+  /// Настройки тестов: узлы с любой ёмкостью, без испытательного срока.
   static const testConfig = CoordinatorConfig(
     nodes: NodePolicy(minCapacityBytes: 0),
+    placement: PlacementPolicy(probation: Duration.zero),
   );
 
   /// Время [FakeClock] по умолчанию.
@@ -59,6 +88,9 @@ final class DbHarness {
   final TestDatabase testDb;
   final Database db;
   final ApiHandler handler;
+
+  /// Ключ подписанта талонов.
+  final Ed25519KeyPair signerKey;
 
   Future<void> close() async {
     await db.close();

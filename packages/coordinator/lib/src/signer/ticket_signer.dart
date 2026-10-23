@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/signer/signer_wire.dart';
+import 'package:coordinator/src/signer/ticket_signing_service.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Подпись талонов для веб-сервера координатора: ключа у него нет, он
@@ -14,7 +15,79 @@ abstract interface class TicketSigner {
   /// собрал сам координатор, значит, ошибка в его коде).
   Future<List<pb.Signed>> sign(List<pb.FragmentTicket> tickets);
 
+  /// Открытый ключ, которым подписант подписывает сейчас. Ошибки — как у
+  /// [sign].
+  Future<Uint8List> publicKey();
+
   Future<void> close();
+}
+
+/// Ответ подписанта на [count] талонов (общая часть [SocketTicketSigner] и
+/// [InProcessTicketSigner]): подписи, отказ — [RpcException], ответ не по
+/// формату — `null`.
+SignerSigned? _signedOrThrow(Uint8List response, int count) {
+  final reply = SignerReply.decode(response, count);
+  switch (reply) {
+    case SignerSigned():
+      return reply;
+    case SignerRefused(code: pb.ErrorCode.ERROR_CODE_RATE_LIMITED):
+      throw RpcException(
+        pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+        'подписант: предел частоты',
+        retryAfter: reply.retryAfter ?? const Duration(seconds: 1),
+      );
+    case SignerRefused(:final code, :final index):
+      throw RpcException(
+        pb.ErrorCode.ERROR_CODE_INTERNAL,
+        'подписант отклонил талон'
+        '${index == null ? '' : ' $index'}: ${errorCodeName(code)}',
+      );
+    case null:
+      return null;
+  }
+}
+
+List<pb.Signed> _toSigned(List<Uint8List> bodies, SignerSigned signed) => [
+  for (var i = 0; i < bodies.length; i++)
+    pb.Signed(
+      body: bodies[i],
+      signer: signed.signer,
+      signature: signed.signatures[i],
+    ),
+];
+
+/// [TicketSigner] в том же процессе — для тестов и стенда без отдельного
+/// пользователя ОС. Талоны проходят те же проверки [TicketSigningService],
+/// что и через сокет, но ключ лежит в памяти веб-сервера: в бою — только
+/// [SocketTicketSigner] (модель угроз, К-8).
+final class InProcessTicketSigner implements TicketSigner {
+  new(this.service);
+
+  final TicketSigningService service;
+
+  @override
+  Future<List<pb.Signed>> sign(List<pb.FragmentTicket> tickets) async {
+    final bodies = [for (final t in tickets) t.writeToBuffer()];
+    final out = <pb.Signed>[];
+    for (var i = 0; i < bodies.length; i += SignerWire.maxBatch) {
+      final batch = bodies.sublist(
+        i,
+        (i + SignerWire.maxBatch).clamp(0, bodies.length),
+      );
+      final reply = _signedOrThrow(
+        await service.handle(SignerWire.encodeRequest(batch)),
+        batch.length,
+      );
+      out.addAll(_toSigned(batch, reply!));
+    }
+    return out;
+  }
+
+  @override
+  Future<Uint8List> publicKey() async => service.publicKey;
+
+  @override
+  Future<void> close() async {}
 }
 
 /// [TicketSigner] через Unix-сокет подписанта [path]. Одно соединение,
@@ -31,6 +104,7 @@ final class SocketTicketSigner implements TicketSigner {
   _Connection? _connection;
   Future<void> _queue = Future.value();
   bool _closed = false;
+  Uint8List? _publicKey;
 
   @override
   Future<List<pb.Signed>> sign(List<pb.FragmentTicket> tickets) async {
@@ -41,10 +115,16 @@ final class SocketTicketSigner implements TicketSigner {
         i,
         (i + SignerWire.maxBatch).clamp(0, bodies.length),
       );
-      out.addAll(await _serialized(() => _signBatch(batch)));
+      out.addAll(_toSigned(batch, await _serialized(() => _signBatch(batch))));
     }
     return out;
   }
+
+  /// Ключ запрашивается у подписанта и запоминается; меняется он только
+  /// с перезапуском подписанта — тогда его обновит следующая пачка талонов.
+  @override
+  Future<Uint8List> publicKey() async =>
+      _publicKey ?? (await _serialized(() => _signBatch(const []))).signer;
 
   @override
   Future<void> close() async {
@@ -60,7 +140,7 @@ final class SocketTicketSigner implements TicketSigner {
     return result;
   }
 
-  Future<List<pb.Signed>> _signBatch(List<Uint8List> bodies) async {
+  Future<SignerSigned> _signBatch(List<Uint8List> bodies) async {
     if (_closed) throw StateError('SocketTicketSigner закрыт');
     final request = SignerWire.frame(SignerWire.encodeRequest(bodies));
     final Uint8List response;
@@ -76,38 +156,18 @@ final class SocketTicketSigner implements TicketSigner {
         retryAfter: Duration(seconds: 1),
       );
     }
-    final reply = SignerReply.decode(response, bodies.length);
-    switch (reply) {
-      case SignerSigned(:final signer, :final signatures):
-        return [
-          for (var i = 0; i < bodies.length; i++)
-            pb.Signed(
-              body: bodies[i],
-              signer: signer,
-              signature: signatures[i],
-            ),
-        ];
-      case SignerRefused(code: pb.ErrorCode.ERROR_CODE_RATE_LIMITED):
-        throw RpcException(
-          pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
-          'подписант: предел частоты',
-          retryAfter: reply.retryAfter ?? const Duration(seconds: 1),
-        );
-      case SignerRefused(:final code, :final index):
-        throw RpcException(
-          pb.ErrorCode.ERROR_CODE_INTERNAL,
-          'подписант отклонил талон'
-          '${index == null ? '' : ' $index'}: ${errorCodeName(code)}',
-        );
-      case null:
-        _connection?.destroy();
-        _connection = null;
-        throw const RpcException(
-          pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
-          'подписант: ответ не по формату',
-          retryAfter: Duration(seconds: 1),
-        );
+    final signed = _signedOrThrow(response, bodies.length);
+    if (signed == null) {
+      _connection?.destroy();
+      _connection = null;
+      throw const RpcException(
+        pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+        'подписант: ответ не по формату',
+        retryAfter: Duration(seconds: 1),
+      );
     }
+    _publicKey = signed.signer;
+    return signed;
   }
 }
 

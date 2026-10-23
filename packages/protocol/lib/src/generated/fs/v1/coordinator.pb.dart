@@ -1817,6 +1817,7 @@ class AllocateSegmentRequest extends $pb.GeneratedMessage {
     $core.int? fragmentSize,
     $core.Iterable<$core.List<$core.int>>? fragmentIds,
     $core.Iterable<$core.List<$core.int>>? bodyRoots,
+    $core.int? repairThreshold,
   }) {
     final result = AllocateSegmentRequest._();
     if (segmentId != null) result.segmentId = segmentId;
@@ -1825,6 +1826,7 @@ class AllocateSegmentRequest extends $pb.GeneratedMessage {
     if (fragmentSize != null) result.fragmentSize = fragmentSize;
     if (fragmentIds != null) result.fragmentIds.addAll(fragmentIds);
     if (bodyRoots != null) result.bodyRoots.addAll(bodyRoots);
+    if (repairThreshold != null) result.repairThreshold = repairThreshold;
     return result;
   }
 
@@ -1851,6 +1853,8 @@ class AllocateSegmentRequest extends $pb.GeneratedMessage {
         5, _omitFieldNames ? '' : 'fragmentIds', $pb.PbFieldType.PY)
     ..p<$core.List<$core.int>>(
         6, _omitFieldNames ? '' : 'bodyRoots', $pb.PbFieldType.PY)
+    ..aI(7, _omitFieldNames ? '' : 'repairThreshold',
+        fieldType: $pb.PbFieldType.OU3)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -1918,6 +1922,15 @@ class AllocateSegmentRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(6)
   $pb.PbList<$core.List<$core.int>> get bodyRoots => $_getList(5);
+
+  @$pb.TagNumber(7)
+  $core.int get repairThreshold => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set repairThreshold($core.int value) => $_setUnsignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRepairThreshold() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRepairThreshold() => $_clearField(7);
 }
 
 class AllocateSegmentResponse extends $pb.GeneratedMessage {
@@ -2354,6 +2367,122 @@ class LocateSegmentResponse extends $pb.GeneratedMessage {
       $pb.GeneratedMessage.$_defaultFor<LocateSegmentResponse>(
           LocateSegmentResponse.$_createMessage);
   static LocateSegmentResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<Placement> get placements => $_getList(0);
+}
+
+/// Сборка мусора (manifest.md, раздел 7): сегмент больше не нужен.
+/// Координатор забывает его и выдаёт талоны DELETE на фрагменты; удаляет их
+/// с узлов клиент.
+class DeleteSegmentRequest extends $pb.GeneratedMessage {
+  factory DeleteSegmentRequest({
+    $core.List<$core.int>? segmentId,
+  }) {
+    final result = DeleteSegmentRequest._();
+    if (segmentId != null) result.segmentId = segmentId;
+    return result;
+  }
+
+  DeleteSegmentRequest._();
+
+  factory DeleteSegmentRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteSegmentRequest()..mergeFromBuffer(data, registry);
+  factory DeleteSegmentRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteSegmentRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteSegmentRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: DeleteSegmentRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'segmentId', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSegmentRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSegmentRequest copyWith(void Function(DeleteSegmentRequest) updates) =>
+      super.copyWith((message) => updates(message as DeleteSegmentRequest))
+          as DeleteSegmentRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DeleteSegmentRequest() / DeleteSegmentRequest.new instead')
+  static DeleteSegmentRequest create() => DeleteSegmentRequest._();
+  static $pb.GeneratedMessage $_createMessage() => DeleteSegmentRequest._();
+  @$core.override
+  DeleteSegmentRequest createEmptyInstance() => DeleteSegmentRequest._();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSegmentRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteSegmentRequest>(
+          DeleteSegmentRequest.$_createMessage);
+  static DeleteSegmentRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get segmentId => $_getN(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+}
+
+class DeleteSegmentResponse extends $pb.GeneratedMessage {
+  factory DeleteSegmentResponse({
+    $core.Iterable<Placement>? placements,
+  }) {
+    final result = DeleteSegmentResponse._();
+    if (placements != null) result.placements.addAll(placements);
+    return result;
+  }
+
+  DeleteSegmentResponse._();
+
+  factory DeleteSegmentResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteSegmentResponse()..mergeFromBuffer(data, registry);
+  factory DeleteSegmentResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      DeleteSegmentResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'DeleteSegmentResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: DeleteSegmentResponse.$_createMessage)
+    ..pPM<Placement>(1, _omitFieldNames ? '' : 'placements',
+        subBuilder: Placement.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSegmentResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  DeleteSegmentResponse copyWith(
+          void Function(DeleteSegmentResponse) updates) =>
+      super.copyWith((message) => updates(message as DeleteSegmentResponse))
+          as DeleteSegmentResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use DeleteSegmentResponse() / DeleteSegmentResponse.new instead')
+  static DeleteSegmentResponse create() => DeleteSegmentResponse._();
+  static $pb.GeneratedMessage $_createMessage() => DeleteSegmentResponse._();
+  @$core.override
+  DeleteSegmentResponse createEmptyInstance() => DeleteSegmentResponse._();
+  @$core.pragma('dart2js:noInline')
+  static DeleteSegmentResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<DeleteSegmentResponse>(
+          DeleteSegmentResponse.$_createMessage);
+  static DeleteSegmentResponse? _defaultInstance;
 
   @$pb.TagNumber(1)
   $pb.PbList<Placement> get placements => $_getList(0);

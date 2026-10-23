@@ -489,6 +489,7 @@ const AllocateSegmentRequest$json = {
     {'1': 'fragment_size', '3': 4, '4': 1, '5': 13, '10': 'fragmentSize'},
     {'1': 'fragment_ids', '3': 5, '4': 3, '5': 12, '10': 'fragmentIds'},
     {'1': 'body_roots', '3': 6, '4': 3, '5': 12, '10': 'bodyRoots'},
+    {'1': 'repair_threshold', '3': 7, '4': 1, '5': 13, '10': 'repairThreshold'},
   ],
 };
 
@@ -497,7 +498,8 @@ final $typed_data.Uint8List allocateSegmentRequestDescriptor = $convert.base64De
     'ChZBbGxvY2F0ZVNlZ21lbnRSZXF1ZXN0Eh0KCnNlZ21lbnRfaWQYASABKAxSCXNlZ21lbnRJZB'
     'IMCgFrGAIgASgNUgFrEgwKAW4YAyABKA1SAW4SIwoNZnJhZ21lbnRfc2l6ZRgEIAEoDVIMZnJh'
     'Z21lbnRTaXplEiEKDGZyYWdtZW50X2lkcxgFIAMoDFILZnJhZ21lbnRJZHMSHQoKYm9keV9yb2'
-    '90cxgGIAMoDFIJYm9keVJvb3Rz');
+    '90cxgGIAMoDFIJYm9keVJvb3RzEikKEHJlcGFpcl90aHJlc2hvbGQYByABKA1SD3JlcGFpclRo'
+    'cmVzaG9sZA==');
 
 @$core.Deprecated('Use allocateSegmentResponseDescriptor instead')
 const AllocateSegmentResponse$json = {
@@ -618,6 +620,38 @@ const LocateSegmentResponse$json = {
 /// Descriptor for `LocateSegmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List locateSegmentResponseDescriptor = $convert.base64Decode(
     'ChVMb2NhdGVTZWdtZW50UmVzcG9uc2USMAoKcGxhY2VtZW50cxgBIAMoCzIQLmZzLnYxLlBsYW'
+    'NlbWVudFIKcGxhY2VtZW50cw==');
+
+@$core.Deprecated('Use deleteSegmentRequestDescriptor instead')
+const DeleteSegmentRequest$json = {
+  '1': 'DeleteSegmentRequest',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 12, '10': 'segmentId'},
+  ],
+};
+
+/// Descriptor for `DeleteSegmentRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteSegmentRequestDescriptor = $convert.base64Decode(
+    'ChREZWxldGVTZWdtZW50UmVxdWVzdBIdCgpzZWdtZW50X2lkGAEgASgMUglzZWdtZW50SWQ=');
+
+@$core.Deprecated('Use deleteSegmentResponseDescriptor instead')
+const DeleteSegmentResponse$json = {
+  '1': 'DeleteSegmentResponse',
+  '2': [
+    {
+      '1': 'placements',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.Placement',
+      '10': 'placements'
+    },
+  ],
+};
+
+/// Descriptor for `DeleteSegmentResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List deleteSegmentResponseDescriptor = $convert.base64Decode(
+    'ChVEZWxldGVTZWdtZW50UmVzcG9uc2USMAoKcGxhY2VtZW50cxgBIAMoCzIQLmZzLnYxLlBsYW'
     'NlbWVudFIKcGxhY2VtZW50cw==');
 
 @$core.Deprecated('Use registerNodeRequestDescriptor instead')

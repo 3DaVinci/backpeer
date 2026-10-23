@@ -248,7 +248,162 @@ def login_cases() -> list:
     return cases
 
 
+# --- Талоны (protocol.md, раздел 5) -----------------------------------------
+
+TICKET_CONTEXT = b"fs/v1/sign/ticket\x00"
+TICKET_MAX_LIFETIME_MS = 3600_000
+TICKET_SKEW_MS = 300_000
+FRAGMENT_HEADER = 96
+MAX_FRAGMENT = 16 * 1024 * 1024 + 4096
+
+
+def varint(n: int) -> bytes:
+    if n < 0:
+        n += 1 << 64
+    out = bytearray()
+    while True:
+        b = n & 0x7F
+        n >>= 7
+        if n:
+            out.append(b | 0x80)
+        else:
+            out.append(b)
+            return bytes(out)
+
+
+def pb_varint(field: int, value: int) -> bytes:
+    return b"" if value == 0 else varint(field << 3) + varint(value)
+
+
+def pb_bytes(field: int, value: bytes) -> bytes:
+    if not value:
+        return b""
+    return varint(field << 3 | 2) + varint(len(value)) + value
+
+
+def ticket_body(t: dict) -> bytes:
+    """Каноническая сериализация FragmentTicket: поля по возрастанию номера,
+    без полей со значением по умолчанию."""
+    return (
+        pb_varint(1, t["operation"])
+        + pb_bytes(2, t["node_id"])
+        + pb_bytes(3, t["device_sign"])
+        + pb_bytes(4, t["fragment_id"])
+        + pb_varint(5, t["fragment_size"])
+        + pb_varint(6, t["expires_at_unix_ms"])
+        + pb_bytes(7, t["ticket_id"])
+    )
+
+
+def ticket_check(t: dict, body: bytes, now_ms: int):
+    """Ошибка по правилам раздела 5 или None (проверка узлом, допуск 5 минут)."""
+    if body != ticket_body(t):
+        return "format"
+    if t["operation"] not in (1, 2, 3):
+        return "format"
+    for field, length in (("node_id", 32), ("device_sign", 32),
+                          ("fragment_id", 32), ("ticket_id", 16)):
+        if len(t[field]) != length:
+            return "format"
+    if not FRAGMENT_HEADER < t["fragment_size"] <= MAX_FRAGMENT:
+        return "format"
+    if t["expires_at_unix_ms"] <= 0:
+        return "format"
+    expires = t["expires_at_unix_ms"]
+    if expires + TICKET_SKEW_MS <= now_ms:
+        return "expired"
+    if expires > now_ms + TICKET_MAX_LIFETIME_MS + TICKET_SKEW_MS:
+        return "too-long"
+    return None
+
+
+def ticket_cases() -> list:
+    coordinator = bytes([0xC0] + list(range(1, 32)))
+    stranger = bytes([0x5E] * 32)
+    now = 1_790_000_000_000
+    base = {
+        "operation": 1,
+        "node_id": bytes([0x11] * 32),
+        "device_sign": bytes([0x22] * 32),
+        "fragment_id": bytes([0x33] * 32),
+        "fragment_size": 1_048_673,
+        "expires_at_unix_ms": now + 1_800_000,
+        "ticket_id": bytes(range(16)),
+    }
+
+    def case(name, changes=None, *, seed=coordinator, body=None,
+             context=TICKET_CONTEXT, trusted=None):
+        t = dict(base, **(changes or {}))
+        raw = body if body is not None else ticket_body(t)
+        signature = Ed25519PrivateKey.from_private_bytes(seed).sign(context + raw)
+        trusted_keys = trusted if trusted is not None else [public_key(coordinator)]
+        signer = public_key(seed)
+        if signer not in trusted_keys:
+            expected = {"error": "untrusted"}
+        elif context != TICKET_CONTEXT:
+            expected = {"error": "signature"}
+        else:
+            problem = ticket_check(t, raw, now)
+            expected = {"error": problem} if problem else {
+                "operation": t["operation"],
+                "nodeId": t["node_id"],
+                "deviceSign": t["device_sign"],
+                "fragmentId": t["fragment_id"],
+                "fragmentSize": t["fragment_size"],
+                "expiresAtUnixMs": t["expires_at_unix_ms"],
+                "ticketId": t["ticket_id"],
+            }
+        return {
+            "name": name,
+            "input": {
+                "nowUnixMs": now,
+                "trustedKeys": trusted_keys,
+                "signed": {"body": raw, "signer": signer, "signature": signature},
+            },
+            "expected": expected,
+        }
+
+    reordered = (pb_bytes(2, base["node_id"]) + pb_varint(1, 1)
+                 + ticket_body(base)[2 + 34:])
+    return [
+        case("put"),
+        case("get", {"operation": 2}),
+        case("delete-max-size", {"operation": 3, "fragment_size": MAX_FRAGMENT}),
+        case("min-size", {"fragment_size": FRAGMENT_HEADER + 1}),
+        case("rotation-second-key", seed=stranger,
+             trusted=[public_key(coordinator), public_key(stranger)]),
+        case("expires-within-skew", {"expires_at_unix_ms": now - 60_000}),
+        case("lifetime-with-skew",
+             {"expires_at_unix_ms": now + TICKET_MAX_LIFETIME_MS + TICKET_SKEW_MS}),
+        case("untrusted-signer", seed=stranger),
+        case("wrong-context", context=b"fs/v1/sign/device-cert\x00"),
+        case("expired", {"expires_at_unix_ms": now - TICKET_SKEW_MS}),
+        case("too-long",
+             {"expires_at_unix_ms": now + TICKET_MAX_LIFETIME_MS + TICKET_SKEW_MS + 1}),
+        case("size-header-only", {"fragment_size": FRAGMENT_HEADER}),
+        case("size-too-large", {"fragment_size": MAX_FRAGMENT + 1}),
+        case("no-operation", {"operation": 0}),
+        case("short-ticket-id", {"ticket_id": bytes(15)}),
+        case("short-node-id", {"node_id": bytes(31)}),
+        case("non-canonical-order", body=reordered),
+        case("unknown-field", body=ticket_body(base) + pb_varint(8, 1)),
+    ]
+
+
 def main() -> None:
+    write(
+        "ticket.json",
+        "protocol/ticket",
+        "Талон FragmentTicket (protocol.md, раздел 5): каноническая "
+        "сериализация, подпись ключом координатора (контекст ticket с байтом "
+        "0x00), проверка узлом на момент nowUnixMs с допуском 5 минут на "
+        "часы и сроком жизни не больше часа. trustedKeys — вшитый список "
+        "ключей координатора (раздел 5.1). error: untrusted — подписант не из "
+        "списка, signature — подпись не сходится, format — поля или "
+        "сериализация, expired, too-long — срок. fragmentSize — заголовок и "
+        "тело, от 97 до 16 781 312 байт.",
+        ticket_cases(),
+    )
     write(
         "login.json",
         "protocol/login",

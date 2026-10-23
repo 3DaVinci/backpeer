@@ -147,6 +147,7 @@ message AllocateSegmentRequest {
   uint32 fragment_size = 4;          // заголовок + тело
   repeated bytes fragment_ids = 5;   // n штук
   repeated bytes body_roots = 6;     // n штук, для аудитов
+  uint32 repair_threshold = 7;       // t: k ≤ t < n (durability.md)
 }
 message AllocateSegmentResponse {
   repeated Placement placements = 1; // n штук, по номеру фрагмента
@@ -175,6 +176,16 @@ message LocateSegmentRequest {
 }
 message LocateSegmentResponse {
   repeated Placement placements = 1; // доступные фрагменты, талоны GET
+}
+
+// Сборка мусора (manifest.md, раздел 7): сегмент больше не нужен.
+// Координатор забывает его и выдаёт талоны DELETE на фрагменты; удаляет их
+// с узлов клиент.
+message DeleteSegmentRequest {
+  bytes segment_id = 1;
+}
+message DeleteSegmentResponse {
+  repeated Placement placements = 1; // талоны DELETE
 }
 
 // --- Узел -----------------------------------------------------------------

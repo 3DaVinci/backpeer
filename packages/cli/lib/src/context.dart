@@ -369,6 +369,18 @@ abstract class CliCommand extends Command<int> {
   void printUsage() => ctx.console.out(usage);
 }
 
+/// Размер для человека: `512 Б`, `1.5 МиБ`.
+String formatSize(int bytes) {
+  const units = ['Б', 'КиБ', 'МиБ', 'ГиБ', 'ТиБ'];
+  var value = bytes.toDouble();
+  var unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return unit == 0 ? '$bytes Б' : '${value.toStringAsFixed(1)} ${units[unit]}';
+}
+
 /// Короткое объяснение ошибки загрузки нативной библиотеки.
 String _nativeHint(String error) {
   final glibc = RegExp("version `(GLIBC_[0-9.]+)' not found").firstMatch(error);

@@ -5,17 +5,6 @@ import 'package:args/command_runner.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
 
-String _size(int bytes) {
-  const units = ['Б', 'КиБ', 'МиБ', 'ГиБ', 'ТиБ'];
-  var value = bytes.toDouble();
-  var unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return unit == 0 ? '$bytes Б' : '${value.toStringAsFixed(1)} ${units[unit]}';
-}
-
 String _shortId(List<int> id) => bytesToHex(id).substring(0, 12);
 
 String _warning(RollbackWarning w) => switch (w) {
@@ -83,16 +72,16 @@ final class BackupCommand extends CliCommand {
             'segmentsStored': p.segmentsStored,
             'elapsedMs': p.elapsed.inMilliseconds,
           },
-          'файлов ${p.files}, прочитано ${_size(p.bytesRead)}, '
-          'новых ${_size(p.newBytes)}, сегментов ${p.segmentsStored}, '
-          '${_size(p.readRate.round())}/с',
+          'файлов ${p.files}, прочитано ${formatSize(p.bytesRead)}, '
+          'новых ${formatSize(p.newBytes)}, сегментов ${p.segmentsStored}, '
+          '${formatSize(p.readRate.round())}/с',
         ),
       );
       ctx.console.progress('');
       final st = result.stats;
       ctx.report.info(
         'Снимок ${_shortId(result.snapshot.snapshotId)}: файлов ${st.files}, '
-        '${_size(st.bytes)}, новых ${_size(st.newBytes)} '
+        '${formatSize(st.bytes)}, новых ${formatSize(st.newBytes)} '
         '(${st.newChunks} чанков, ${result.segmentsStored} сегментов).',
       );
       for (final w in result.warnings) {
@@ -161,7 +150,7 @@ final class SnapshotsCommand extends CliCommand {
         ctx.report.info(
           '${_shortId(snap.snapshotId)}  №${snap.sequence}  $date  '
           '${snap.hostname}  ${snap.paths.join(', ')}  '
-          'файлов ${snap.stats.files}, ${_size(snap.stats.bytes.toInt())}',
+          'файлов ${snap.stats.files}, ${formatSize(snap.stats.bytes.toInt())}',
         );
         rows.add({
           'id': bytesToHex(snap.snapshotId),
@@ -243,7 +232,7 @@ final class RestoreCommand extends CliCommand {
         overwrite: argResults!.flag('overwrite'),
       );
       ctx.report.info(
-        'Восстановлено: файлов ${result.files} (${_size(result.bytes)}), '
+        'Восстановлено: файлов ${result.files} (${formatSize(result.bytes)}), '
         'каталогов ${result.directories}, ссылок ${result.symlinks}.',
       );
       if (result.skippedExisting.isNotEmpty) {

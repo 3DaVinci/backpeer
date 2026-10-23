@@ -1,0 +1,243 @@
+import 'package:args/command_runner.dart';
+import 'package:cli/src/context.dart';
+import 'package:node/node.dart';
+
+/// Управление демоном узла-хранителя на этом компьютере через его
+/// локальный API (задача 3.1.3; `docs/ops/node.md`, раздел «Локальный
+/// API»). Подключиться может только пользователь ОС, от которого запущен
+/// демон.
+final class NodeCommand extends CliCommand {
+  new(super.ctx) {
+    addSubcommand(_NodeStatusCommand(ctx));
+    addSubcommand(_NodeStatsCommand(ctx));
+    addSubcommand(_NodeLimitsCommand(ctx));
+    addSubcommand(_NodeStateCommand(ctx, 'pause'));
+    addSubcommand(_NodeStateCommand(ctx, 'resume'));
+    addSubcommand(_NodeStateCommand(ctx, 'stop'));
+  }
+
+  @override
+  String get name => 'node';
+
+  @override
+  String get description =>
+      'Демон узла-хранителя на этом компьютере: состояние, пределы, пауза.';
+}
+
+abstract class _NodeSubcommand extends CliCommand {
+  new(super.ctx) {
+    argParser
+      ..addOption(
+        'node-data',
+        help:
+            'Папка данных узла (по умолчанию FS_NODE_DATA_DIR или '
+            'стандартная для ОС)',
+      )
+      ..addOption(
+        'socket',
+        help: 'Сокет локального API, если задан control.socket',
+      );
+  }
+
+  /// Вызов [method] демона; демон не запущен или отказал — [CliException].
+  Future<Map<String, Object?>> callNode(
+    String method, [
+    Map<String, Object?> params = const {},
+  ]) async {
+    final a = argResults!;
+    final data =
+        a.option('node-data') ??
+        ctx.env[NodeConfig.envName('data.dir')] ??
+        defaultNodeDataDir(ctx.env);
+    final endpoint = ControlEndpoint.forDataDir(
+      data,
+      socketPath:
+          a.option('socket') ?? ctx.env[NodeConfig.envName('control.socket')],
+    );
+    try {
+      final client = await NodeControlClient.connect(endpoint);
+      try {
+        return await client.call(method, params);
+      } finally {
+        await client.close();
+      }
+    } on ControlException catch (e) {
+      throw CliException(
+        e.code == 'unavailable'
+            ? '${e.message} (папка данных $data)'
+            : 'демон узла: ${e.message}',
+      );
+    }
+  }
+}
+
+final class _NodeStatusCommand extends _NodeSubcommand {
+  new(super.ctx);
+
+  @override
+  String get name => 'status';
+
+  @override
+  String get description => 'Состояние демона узла.';
+
+  @override
+  Future<int> run() async {
+    final s = await callNode('status');
+    final limits = s['limits'] as Map<String, Object?>?;
+    final coordinator = s['coordinator'] as Map<String, Object?>?;
+    final nodeId = '${s['nodeId']}';
+    ctx.report
+      ..info(
+        'Узел ${nodeId.substring(0, 16)}… — '
+        '${_state[s['state']] ?? s['state']}',
+      )
+      ..info('Версия ${s['version']}, запущен ${s['startedAt']}')
+      ..info('Папка данных: ${s['dataDir']}')
+      ..info(
+        'Место: ${_size(s['usedBytes'])} из ${_size(s['quotaBytes'])}, '
+        'передач сейчас: ${s['activeTransfers']}',
+      )
+      ..info(
+        'Пределы: отдача ${_rate(limits?['uploadBytesPerSecond'])}, '
+        'приём ${_rate(limits?['downloadBytesPerSecond'])}',
+      )
+      ..info(_coordinator(coordinator))
+      ..result(s);
+    if (coordinator?['unknownCoordinatorKeys'] case final List<Object?> keys
+        when keys.isNotEmpty) {
+      ctx.report.warn(
+        'Координатор подписывает ключами, которых нет у узла '
+        '(${keys.join(', ')}): нужно обновление',
+      );
+    }
+    return ExitCode.ok;
+  }
+
+  static String _coordinator(Map<String, Object?>? c) {
+    if (c == null) return 'Координатор: не задан';
+    final registered = c['registered'] == true
+        ? 'зарегистрирован'
+        : 'не зарегистрирован';
+    final beat = c['lastHeartbeatAt'];
+    final error = c['lastError'];
+    return 'Координатор ${c['url']}: $registered'
+        '${beat == null ? '' : ', связь $beat'}'
+        '${error == null ? '' : '; ошибка: $error'}';
+  }
+
+  static const _state = {
+    'running': 'работает',
+    'paused': 'на паузе',
+    'stopping': 'останавливается',
+  };
+}
+
+final class _NodeStatsCommand extends _NodeSubcommand {
+  new(super.ctx);
+
+  @override
+  String get name => 'stats';
+
+  @override
+  String get description => 'Статистика демона узла с запуска.';
+
+  @override
+  Future<int> run() async {
+    final s = await callNode('stats');
+    ctx.report
+      ..info('С запуска (${s['uptimeSeconds']} с):')
+      ..info(
+        '  принято ${_size(s['bytesReceived'])} '
+        '(фрагментов: ${s['fragmentsReceived']}), '
+        'отдано ${_size(s['bytesSent'])} '
+        '(фрагментов: ${s['fragmentsSent']})',
+      )
+      ..info(
+        '  удалено фрагментов: ${s['fragmentsDeleted']}, '
+        'отклонено запросов: ${s['requestsRejected']}, '
+        'передач сейчас: ${s['activeTransfers']}',
+      )
+      ..result(s);
+    return ExitCode.ok;
+  }
+}
+
+final class _NodeLimitsCommand extends _NodeSubcommand {
+  new(super.ctx) {
+    argParser
+      ..addOption(
+        'upload',
+        help: 'Предел отдачи, байт в секунду (0 — без предела)',
+      )
+      ..addOption(
+        'download',
+        help: 'Предел приёма, байт в секунду (0 — без предела)',
+      );
+  }
+
+  @override
+  String get name => 'limits';
+
+  @override
+  String get description =>
+      'Показать или изменить пределы скорости (до перезапуска демона; '
+      'постоянные — в настройках узла).';
+
+  @override
+  Future<int> run() async {
+    final a = argResults!;
+    final params = <String, Object?>{
+      for (final key in ['upload', 'download'])
+        if (a.option(key) case final String v) key: _parse(key, v),
+    };
+    final s = await callNode('limits', params);
+    ctx.report
+      ..info(
+        'Отдача ${_rate(s['uploadBytesPerSecond'])}, '
+        'приём ${_rate(s['downloadBytesPerSecond'])}',
+      )
+      ..result(s);
+    return ExitCode.ok;
+  }
+
+  static int _parse(String key, String value) {
+    final n = int.tryParse(value);
+    if (n == null || n < 0) {
+      throw UsageException('--$key: целое число байт в секунду', '');
+    }
+    return n;
+  }
+}
+
+/// `pause`, `resume`, `stop`.
+final class _NodeStateCommand extends _NodeSubcommand {
+  new(super.ctx, this.name);
+
+  @override
+  final String name;
+
+  @override
+  String get description => switch (name) {
+    'pause' => 'Пауза: не принимать новые передачи (начатые завершаются).',
+    'resume' => 'Снять паузу.',
+    _ => 'Остановить демон (начатые передачи завершаются).',
+  };
+
+  @override
+  Future<int> run() async {
+    final s = await callNode(name);
+    ctx.report
+      ..info(switch (name) {
+        'pause' => 'Узел на паузе.',
+        'resume' => 'Узел работает.',
+        _ => 'Узел останавливается.',
+      })
+      ..result(s);
+    return ExitCode.ok;
+  }
+}
+
+String _size(Object? bytes) => bytes is int ? formatSize(bytes) : '?';
+
+String _rate(Object? bytesPerSecond) =>
+    bytesPerSecond == 0 ? 'без предела' : '${_size(bytesPerSecond)}/с';

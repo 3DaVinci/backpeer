@@ -11,6 +11,8 @@ dependencies:
   # Разбор команд и флагов (BSD-3-Clause, пакет команды Dart).
   args: ^2.7.0
   core: any
+  # Клиент локального API демона узла (cli node …).
+  node: any
   protocol: any
 
 dev_dependencies:

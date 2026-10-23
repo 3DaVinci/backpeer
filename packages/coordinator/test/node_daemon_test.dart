@@ -1,0 +1,133 @@
+// Демон узла против настоящего координатора (задача 3.1.2): регистрация с
+// сертификатом от учётной записи владельца, heartbeat, узел в реестре,
+// ключ подписанта совпадает со списком узла. Нужен FS_TEST_POSTGRES.
+
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:coordinator/coordinator.dart';
+import 'package:core/core.dart';
+import 'package:node/node.dart';
+import 'package:postgres/postgres.dart';
+import 'package:protocol/protocol.dart' as pb;
+import 'package:test/test.dart';
+
+import 'support/live.dart';
+import 'support/postgres.dart';
+
+void main() {
+  if (testPostgresUrl == null) {
+    test('демон узла через координатор', () {}, skip: skipWithoutPostgres);
+    return;
+  }
+  late LiveCoordinator live;
+  late Directory dir;
+
+  setUp(() async {
+    live = await LiveCoordinator.start();
+    dir = Directory.systemTemp.createTempSync('fs-node-coord-');
+  });
+  tearDown(() async {
+    await live.close();
+    dir.deleteSync(recursive: true);
+  });
+
+  test('узел регистрируется, шлёт heartbeat и виден в реестре', () async {
+    final crypto = live.crypto;
+    // Владелец: учётная запись на координаторе, сертификат узла от неё —
+    // как после cli register и cli node-cert.
+    final owner = await AccountKeys.fromMasterKey(
+      SecretBytes(crypto.randomBytes(32)),
+      crypto,
+    );
+    final device = await DeviceKeys.generate(crypto);
+    final client = live.client();
+    await client.registerAccount(
+      pb.RegisterAccountRequest(
+        deviceCertificate: await DeviceCertificates.issue(
+          crypto,
+          owner,
+          device,
+          issuedAt: DateTime.now(),
+        ),
+        login: 'node-owner',
+      ),
+      accountKey: owner.accountSign,
+    );
+    client.close();
+    await NodeIdentity.ensureKeys(dir, crypto);
+    final identity = await NodeIdentity.load(dir, crypto);
+    await NodeIdentity.importCertificate(
+      dir,
+      crypto,
+      (await NodeCertificates.issue(
+        crypto,
+        owner,
+        nodeId: identity.nodeId,
+        nodeDh: identity.nodeDh,
+        issuedAt: DateTime.now(),
+      )).writeToBuffer(),
+    );
+    final nodeId = identity.nodeId;
+    identity.dispose();
+
+    final signerKey = await crypto.ed25519FromSeed(
+      SecretBytes(Uint8List(32)..fillRange(0, 32, 0xC0)),
+    );
+    final daemon = await NodeDaemon.start(
+      NodeConfig.parse(
+        '''
+storage:
+  quota_bytes: 200000000000
+listen:
+  endpoints: [127.0.0.1:7340]
+coordinator:
+  url: ${live.url}
+  keys: [${bytesToHex(signerKey.publicKey)}]
+''',
+        const {},
+        dataDir: dir.path,
+      ),
+      crypto: crypto,
+      handleSignals: false,
+    );
+    final link = daemon.link!;
+    for (var i = 0; i < 100 && !link.registered; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(link.registered, isTrue, reason: '${link.toJson()}');
+    expect(link.toJson()['unknownCoordinatorKeys'], isEmpty);
+    await link.heartbeat();
+
+    final db = Database.open(live.db.config);
+    final rows = await db.run(
+      (s) => s.execute(
+        Sql.named(
+          'SELECT account_id, capacity_bytes, endpoints, '
+          'last_heartbeat_at IS NOT NULL FROM nodes WHERE node_id = @n:bytea',
+        ),
+        parameters: {'n': nodeId},
+      ),
+    );
+    await db.close();
+    expect(rows, hasLength(1));
+    expect(rows.single[0], owner.accountId);
+    expect(rows.single[1], 200000000000);
+    expect(rows.single[2], ['127.0.0.1:7340']);
+    expect(rows.single[3], isTrue);
+
+    final control = await NodeControlClient.connect(
+      ControlEndpoint.forDataDir(dir.path),
+    );
+    final status = await control.call('status');
+    await control.close();
+    expect(status['owner'], bytesToHex(owner.accountId));
+    expect(
+      (status['coordinator']! as Map<String, Object?>)['registered'],
+      isTrue,
+    );
+    await daemon.stop();
+    owner.dispose();
+    device.dispose();
+  });
+}

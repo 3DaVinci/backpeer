@@ -8,12 +8,16 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
-  # Команды узла-заглушки (BSD-3-Clause, как в cli).
+  # Команды демона и узла-заглушки (BSD-3-Clause, как в cli).
   args: ^2.7.0
   core: any
   # Int64 полей Protobuf (BSD-3-Clause, уже в core).
   fixnum: ^1.1.1
+  # Журнал демона; формат JSON Lines и ротация — свои (BSD-3-Clause).
+  logging: ^1.3.0
   protocol: any
+  # Файл настроек демона (MIT), как у координатора.
+  yaml: ^3.1.4
 
 dev_dependencies:
   test: ^1.31.1

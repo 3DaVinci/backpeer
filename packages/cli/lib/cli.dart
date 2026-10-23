@@ -8,6 +8,7 @@ import 'package:cli/src/app_config.dart';
 import 'package:cli/src/commands/account.dart';
 import 'package:cli/src/commands/data.dart';
 import 'package:cli/src/commands/devices.dart';
+import 'package:cli/src/commands/node.dart';
 import 'package:cli/src/console.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
@@ -70,6 +71,7 @@ Future<int> runCli(
         ..addCommand(GcCommand(ctx))
         ..addCommand(ShowPhraseCommand(ctx))
         ..addCommand(NodeCertCommand(ctx))
+        ..addCommand(NodeCommand(ctx))
         ..addCommand(ConfigCommand(ctx));
   try {
     final top = runner.parse(arguments);

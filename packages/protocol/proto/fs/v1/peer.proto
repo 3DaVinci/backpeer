@@ -40,6 +40,7 @@ message PeerMessage {
     DeleteFragmentResult delete_fragment_result = 11;
     Ping ping = 12;
     Pong pong = 13;
+    Cancel cancel = 14;
   }
 }
 
@@ -83,6 +84,12 @@ message DeleteFragment {
 }
 
 message DeleteFragmentResult {}
+
+// Отмена запроса с тем же request_id (protocol.md, раздел 3.4): загрузка
+// или выдача фрагмента прекращается, ответа на отмену нет. Сообщения
+// отменённого запроса, уже отправленные собеседником, получатель
+// пропускает.
+message Cancel {}
 
 message Ping {
   uint64 nonce = 1;

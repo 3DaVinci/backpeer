@@ -174,6 +174,15 @@ const PeerMessage$json = {
       '9': 0,
       '10': 'pong'
     },
+    {
+      '1': 'cancel',
+      '3': 14,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Cancel',
+      '9': 0,
+      '10': 'cancel'
+    },
   ],
   '8': [
     {'1': 'body'},
@@ -195,7 +204,8 @@ final $typed_data.Uint8List peerMessageDescriptor = $convert.base64Decode(
     'dGVfZnJhZ21lbnQYCiABKAsyFS5mcy52MS5EZWxldGVGcmFnbWVudEgAUg5kZWxldGVGcmFnbW'
     'VudBJTChZkZWxldGVfZnJhZ21lbnRfcmVzdWx0GAsgASgLMhsuZnMudjEuRGVsZXRlRnJhZ21l'
     'bnRSZXN1bHRIAFIUZGVsZXRlRnJhZ21lbnRSZXN1bHQSIQoEcGluZxgMIAEoCzILLmZzLnYxLl'
-    'BpbmdIAFIEcGluZxIhCgRwb25nGA0gASgLMgsuZnMudjEuUG9uZ0gAUgRwb25nQgYKBGJvZHk=');
+    'BpbmdIAFIEcGluZxIhCgRwb25nGA0gASgLMgsuZnMudjEuUG9uZ0gAUgRwb25nEicKBmNhbmNl'
+    'bBgOIAEoCzINLmZzLnYxLkNhbmNlbEgAUgZjYW5jZWxCBgoEYm9keQ==');
 
 @$core.Deprecated('Use putFragmentDescriptor instead')
 const PutFragment$json = {
@@ -326,6 +336,15 @@ const DeleteFragmentResult$json = {
 /// Descriptor for `DeleteFragmentResult`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List deleteFragmentResultDescriptor =
     $convert.base64Decode('ChREZWxldGVGcmFnbWVudFJlc3VsdA==');
+
+@$core.Deprecated('Use cancelDescriptor instead')
+const Cancel$json = {
+  '1': 'Cancel',
+};
+
+/// Descriptor for `Cancel`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List cancelDescriptor =
+    $convert.base64Decode('CgZDYW5jZWw=');
 
 @$core.Deprecated('Use pingDescriptor instead')
 const Ping$json = {

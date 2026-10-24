@@ -333,6 +333,9 @@ final class FragmentStorage implements DamagedFragments {
     forgetBefore: _clock().subtract(FragmentTickets.clockSkew),
   );
 
+  /// Талон уже использован ([useTicket]).
+  bool isTicketUsed(List<int> ticketId) => index.isTicketUsed(ticketId);
+
   /// Фрагмент прошёл фоновую проверку.
   void markChecked(List<int> fragmentId) =>
       index.markChecked(fragmentId, _clock());

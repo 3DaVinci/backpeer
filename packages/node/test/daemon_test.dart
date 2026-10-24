@@ -75,6 +75,8 @@ void main() {
     expect(await client.call('limits', {'upload': 1000, 'download': 0}), {
       'uploadBytesPerSecond': 1000,
       'downloadBytesPerSecond': 0,
+      'effective': {'uploadBytesPerSecond': 1000, 'downloadBytesPerSecond': 0},
+      'schedule': <Object?>[],
     });
     expect(daemon.limits.uploadBytesPerSecond, 1000);
     await expectLater(

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:logging/logging.dart';
+import 'package:node/src/peers/speed_schedule.dart';
 import 'package:yaml/yaml.dart';
 
 /// Ошибка в настройках узла: сообщение для владельца.
@@ -14,7 +15,7 @@ final class NodeConfigException implements Exception {
 }
 
 /// Пределы скорости, байт в секунду; 0 — без предела. Расписание
-/// («днём медленнее») — задача 3.4.3.
+/// («днём медленнее») — [SpeedSchedule].
 final class SpeedLimits {
   const new({this.uploadBytesPerSecond = 0, this.downloadBytesPerSecond = 0});
 
@@ -28,6 +29,42 @@ final class SpeedLimits {
     'uploadBytesPerSecond': uploadBytesPerSecond,
     'downloadBytesPerSecond': downloadBytesPerSecond,
   };
+}
+
+/// Пределы для собеседников по каналу Noise (задачи 3.4.2, 3.4.3).
+final class PeerLimits {
+  const new({
+    this.maxConnections = 256,
+    this.maxConnectionsPerPeer = 8,
+    this.maxRequestsPerPeer = 32,
+    this.requestsPerSecond = 100,
+    this.transferTimeout = const Duration(seconds: 30),
+    this.idleTimeout = const Duration(minutes: 5),
+    this.bufferBytes = 1 << 20,
+  });
+
+  /// Одновременных соединений всего, вместе с идущими рукопожатиями.
+  final int maxConnections;
+
+  /// Одновременных соединений одного собеседника (ключ из сертификата).
+  final int maxConnectionsPerPeer;
+
+  /// Одновременных запросов одного собеседника по всем его соединениям.
+  final int maxRequestsPerPeer;
+
+  /// Новых запросов собеседника в секунду (в среднем; запас — вдвое).
+  final int requestsPerSecond;
+
+  /// Сколько ждать очередной части загрузки или приёма отправленной
+  /// части выдачи.
+  final Duration transferTimeout;
+
+  /// Соединение без запросов дольше этого закрывается.
+  final Duration idleTimeout;
+
+  /// Сколько принятых частей загрузок соединения может ждать записи на
+  /// диск, байт: больше — чтение из соединения встаёт на паузу.
+  final int bufferBytes;
 }
 
 /// Журнал: уровень и файл с ротацией по размеру.
@@ -64,6 +101,8 @@ final class NodeConfig {
     this.listenPort = 7340,
     this.endpoints = const [],
     this.limits = const SpeedLimits(),
+    this.schedule = const SpeedSchedule(),
+    this.peers = const PeerLimits(),
     this.coordinatorUrl,
     this.coordinatorCa,
     this.coordinatorKeys = const [],
@@ -127,6 +166,13 @@ final class NodeConfig {
     'listen.endpoints',
     'limits.upload_bytes_per_second',
     'limits.download_bytes_per_second',
+    'limits.schedule',
+    'peers.max_connections',
+    'peers.max_connections_per_peer',
+    'peers.max_requests_per_peer',
+    'peers.requests_per_second',
+    'peers.transfer_timeout_seconds',
+    'peers.idle_timeout_seconds',
     'coordinator.url',
     'coordinator.ca',
     'coordinator.keys',
@@ -163,7 +209,13 @@ final class NodeConfig {
   /// без прямого адреса (определение адреса — задача 3.5.1).
   final List<String> endpoints;
 
+  /// Основные пределы скорости.
   final SpeedLimits limits;
+
+  /// Пределы скорости по времени суток и дням недели поверх [limits].
+  final SpeedSchedule schedule;
+
+  final PeerLimits peers;
 
   /// Адрес координатора; без него узел не регистрируется.
   final String? coordinatorUrl;
@@ -193,6 +245,7 @@ final class _Reader {
   NodeConfig build() {
     const d = NodeConfig(dataDir: '');
     const l = LogConfig();
+    const p = PeerLimits();
     final url = _string('coordinator.url');
     if (url != null) {
       final uri = Uri.tryParse(url);
@@ -235,6 +288,30 @@ final class _Reader {
         downloadBytesPerSecond:
             _int('limits.download_bytes_per_second', 0, 1 << 40) ?? 0,
       ),
+      schedule: SpeedSchedule.parse(_list('limits.schedule', separator: ';')),
+      peers: PeerLimits(
+        maxConnections:
+            _int('peers.max_connections', 1, 100000) ?? p.maxConnections,
+        maxConnectionsPerPeer:
+            _int('peers.max_connections_per_peer', 1, 1000) ??
+            p.maxConnectionsPerPeer,
+        maxRequestsPerPeer:
+            _int('peers.max_requests_per_peer', 1, 10000) ??
+            p.maxRequestsPerPeer,
+        requestsPerSecond:
+            _int('peers.requests_per_second', 1, 1000000) ??
+            p.requestsPerSecond,
+        transferTimeout: Duration(
+          seconds:
+              _int('peers.transfer_timeout_seconds', 1, 3600) ??
+              p.transferTimeout.inSeconds,
+        ),
+        idleTimeout: Duration(
+          seconds:
+              _int('peers.idle_timeout_seconds', 1, 86400) ??
+              p.idleTimeout.inSeconds,
+        ),
+      ),
       coordinatorUrl: url,
       coordinatorCa: _string('coordinator.ca'),
       coordinatorKeys: keys,
@@ -267,14 +344,14 @@ final class _Reader {
     throw NodeConfigException('$key: ожидается строка');
   }
 
-  /// Список строк: YAML-список или строка через запятую (окружение).
-  List<String> _list(String key) {
+  /// Список строк: YAML-список или строка через [separator] (окружение).
+  List<String> _list(String key, {String separator = ','}) {
     final v = _values[key];
     if (v == null) return const [];
     if (v is YamlList) return [for (final e in v) '$e'];
     if (v is String) {
       return [
-        for (final e in v.split(','))
+        for (final e in v.split(separator))
           if (e.trim().isNotEmpty) e.trim(),
       ];
     }

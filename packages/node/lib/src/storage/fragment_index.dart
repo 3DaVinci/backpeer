@@ -257,6 +257,12 @@ final class FragmentIndex {
     return _db.updatedRows == 1;
   });
 
+  /// Использован ли талон [ticketId] (и ещё не забыт).
+  bool isTicketUsed(List<int> ticketId) => _db.select(
+    'SELECT 1 FROM used_tickets WHERE ticket_id = ?',
+    [ticketId],
+  ).isNotEmpty;
+
   /// Сколько талонов помнит узел.
   int get usedTicketCount =>
       _db.select('SELECT count(*) AS c FROM used_tickets').single['c'] as int;

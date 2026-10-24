@@ -128,6 +128,7 @@ enum PeerMessage_Body {
   deleteFragmentResult,
   ping,
   pong,
+  cancel,
   notSet
 }
 
@@ -148,6 +149,7 @@ class PeerMessage extends $pb.GeneratedMessage {
     DeleteFragmentResult? deleteFragmentResult,
     Ping? ping,
     Pong? pong,
+    Cancel? cancel,
   }) {
     final result = PeerMessage._();
     if (requestId != null) result.requestId = requestId;
@@ -165,6 +167,7 @@ class PeerMessage extends $pb.GeneratedMessage {
       result.deleteFragmentResult = deleteFragmentResult;
     if (ping != null) result.ping = ping;
     if (pong != null) result.pong = pong;
+    if (cancel != null) result.cancel = cancel;
     return result;
   }
 
@@ -190,13 +193,14 @@ class PeerMessage extends $pb.GeneratedMessage {
     11: PeerMessage_Body.deleteFragmentResult,
     12: PeerMessage_Body.ping,
     13: PeerMessage_Body.pong,
+    14: PeerMessage_Body.cancel,
     0: PeerMessage_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'PeerMessage',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
       createEmptyInstance: PeerMessage.$_createMessage)
-    ..oo(0, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+    ..oo(0, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
     ..a<$fixnum.Int64>(
         1, _omitFieldNames ? '' : 'requestId', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
@@ -225,6 +229,8 @@ class PeerMessage extends $pb.GeneratedMessage {
         subBuilder: Ping.$_createMessage)
     ..aOM<Pong>(13, _omitFieldNames ? '' : 'pong',
         subBuilder: Pong.$_createMessage)
+    ..aOM<Cancel>(14, _omitFieldNames ? '' : 'cancel',
+        subBuilder: Cancel.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -261,6 +267,7 @@ class PeerMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(11)
   @$pb.TagNumber(12)
   @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
   PeerMessage_Body whichBody() => _PeerMessage_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(2)
   @$pb.TagNumber(3)
@@ -274,6 +281,7 @@ class PeerMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(11)
   @$pb.TagNumber(12)
   @$pb.TagNumber(13)
+  @$pb.TagNumber(14)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -416,6 +424,17 @@ class PeerMessage extends $pb.GeneratedMessage {
   void clearPong() => $_clearField(13);
   @$pb.TagNumber(13)
   Pong ensurePong() => $_ensure(12);
+
+  @$pb.TagNumber(14)
+  Cancel get cancel => $_getN(13);
+  @$pb.TagNumber(14)
+  set cancel(Cancel value) => $_setField(14, value);
+  @$pb.TagNumber(14)
+  $core.bool hasCancel() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearCancel() => $_clearField(14);
+  @$pb.TagNumber(14)
+  Cancel ensureCancel() => $_ensure(13);
 }
 
 /// Начало загрузки. Затем идут FragmentData с тем же request_id, последний
@@ -933,6 +952,49 @@ class DeleteFragmentResult extends $pb.GeneratedMessage {
       $pb.GeneratedMessage.$_defaultFor<DeleteFragmentResult>(
           DeleteFragmentResult.$_createMessage);
   static DeleteFragmentResult? _defaultInstance;
+}
+
+/// Отмена запроса с тем же request_id (protocol.md, раздел 3.4): загрузка
+/// или выдача фрагмента прекращается, ответа на отмену нет. Сообщения
+/// отменённого запроса, уже отправленные собеседником, получатель
+/// пропускает.
+class Cancel extends $pb.GeneratedMessage {
+  factory Cancel() => Cancel._();
+
+  Cancel._();
+
+  factory Cancel.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Cancel()..mergeFromBuffer(data, registry);
+  factory Cancel.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      Cancel()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'Cancel',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: Cancel.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Cancel clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  Cancel copyWith(void Function(Cancel) updates) =>
+      super.copyWith((message) => updates(message as Cancel)) as Cancel;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use Cancel() / Cancel.new instead')
+  static Cancel create() => Cancel._();
+  static $pb.GeneratedMessage $_createMessage() => Cancel._();
+  @$core.override
+  Cancel createEmptyInstance() => Cancel._();
+  @$core.pragma('dart2js:noInline')
+  static Cancel getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<Cancel>(Cancel.$_createMessage);
+  static Cancel? _defaultInstance;
 }
 
 class Ping extends $pb.GeneratedMessage {

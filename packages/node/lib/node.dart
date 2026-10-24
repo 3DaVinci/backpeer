@@ -5,7 +5,8 @@
 /// - `storage/` — файлы фрагментов, индекс в SQLite, квота и место,
 ///   фоновая проверка целостности (3.2);
 /// - `control/` — локальный API управления для CLI и приложения (3.1.3);
-/// - `peers/` — собеседники по каналу Noise: отозванные устройства (3.3.2);
+/// - `peers/` — собеседники по каналу Noise: отозванные устройства (3.3.2),
+///   операции с фрагментами, пределы и расписание скорости (3.4);
 /// - `stub_nodes.dart` — узлы-заглушки этапа 2 для разработки и тестов.
 library;
 
@@ -19,7 +20,9 @@ export 'src/daemon/identity.dart';
 export 'src/daemon/log.dart';
 export 'src/daemon/node_daemon.dart';
 export 'src/daemon/transfers.dart';
+export 'src/peers/peer_service.dart';
 export 'src/peers/revocations.dart';
+export 'src/peers/speed_schedule.dart';
 export 'src/storage/fragment_files.dart';
 export 'src/storage/fragment_index.dart';
 export 'src/storage/fragment_storage.dart';

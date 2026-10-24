@@ -268,6 +268,25 @@ final class PeerRejectedException extends CoreException {
   }
 }
 
+/// Собеседник по каналу Noise ответил на запрос ошибкой, не ответил
+/// вовремя или соединение оборвалось (protocol.md, раздел 3.4).
+final class PeerRequestException extends CoreException {
+  const new(this.code, this.detail, {this.retryAfter});
+
+  /// Код из `PeerMessage.error`; таймаут и обрыв соединения —
+  /// `UNAVAILABLE`, нарушение протокола собеседником — `BAD_REQUEST`.
+  final pb.ErrorCode code;
+
+  /// `Error.message` собеседника или описание сбоя: для журнала.
+  final String detail;
+
+  /// Для `RATE_LIMITED` и `UNAVAILABLE`.
+  final Duration? retryAfter;
+
+  @override
+  String get message => 'собеседник: ${errorCodeName(code)}: $detail';
+}
+
 /// Имя кода для журнала: `BAD_REQUEST`. Не зависит от того, сохранены ли
 /// в сборке имена значений enum Protobuf.
 String errorCodeName(pb.ErrorCode code) => switch (code) {

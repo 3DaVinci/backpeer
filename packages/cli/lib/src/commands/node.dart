@@ -101,10 +101,8 @@ final class _NodeStatusCommand extends _NodeSubcommand {
         'Фрагментов: ${s['fragments']}, повреждённых: '
         '${s['damagedFragments']}; примет ещё ${_size(s['freeBytes'])}',
       )
-      ..info(
-        'Пределы: отдача ${_rate(limits?['uploadBytesPerSecond'])}, '
-        'приём ${_rate(limits?['downloadBytesPerSecond'])}',
-      )
+      ..info(_limits(limits))
+      ..info('Соединений с собеседниками: ${s['connections'] ?? 0}')
       ..info(_coordinator(coordinator))
       ..result(s);
     if (s['damagedFragments'] case final int damaged when damaged > 0) {
@@ -121,6 +119,22 @@ final class _NodeStatusCommand extends _NodeSubcommand {
       );
     }
     return ExitCode.ok;
+  }
+
+  /// Основные пределы и, если расписание их сейчас меняет, действующие.
+  static String _limits(Map<String, Object?>? l) {
+    final line =
+        'Пределы: отдача ${_rate(l?['uploadBytesPerSecond'])}, '
+        'приём ${_rate(l?['downloadBytesPerSecond'])}';
+    final e = l?['effective'] as Map<String, Object?>?;
+    if (e == null ||
+        (e['uploadBytesPerSecond'] == l?['uploadBytesPerSecond'] &&
+            e['downloadBytesPerSecond'] == l?['downloadBytesPerSecond'])) {
+      return line;
+    }
+    return '$line; по расписанию сейчас отдача '
+        '${_rate(e['uploadBytesPerSecond'])}, приём '
+        '${_rate(e['downloadBytesPerSecond'])}';
   }
 
   static String _coordinator(Map<String, Object?>? c) {
@@ -205,12 +219,11 @@ final class _NodeLimitsCommand extends _NodeSubcommand {
         if (a.option(key) case final String v) key: _parse(key, v),
     };
     final s = await callNode('limits', params);
-    ctx.report
-      ..info(
-        'Отдача ${_rate(s['uploadBytesPerSecond'])}, '
-        'приём ${_rate(s['downloadBytesPerSecond'])}',
-      )
-      ..result(s);
+    ctx.report.info(_NodeStatusCommand._limits(s));
+    if (s['schedule'] case final List<Object?> rules when rules.isNotEmpty) {
+      ctx.report.info('Расписание: ${rules.join('; ')}');
+    }
+    ctx.report.result(s);
     return ExitCode.ok;
   }
 

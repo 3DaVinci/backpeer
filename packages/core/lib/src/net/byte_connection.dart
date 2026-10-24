@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -55,41 +56,123 @@ final class SocketConnection implements ByteConnection {
 
 /// Пара соединённых потоков в памяти: для тестов и для связи внутри
 /// процесса.
-(ByteConnection, ByteConnection) memoryConnectionPair() {
-  final aToB = StreamController<Uint8List>();
-  final bToA = StreamController<Uint8List>();
-  return (
-    _MemoryConnection(bToA.stream, aToB, bToA),
-    _MemoryConnection(aToB.stream, bToA, aToB),
-  );
+///
+/// [capacity] — сколько байт может ждать в одном направлении, пока
+/// получатель их не прочитал: `flush` отправителя ждёт, пока непрочитанного
+/// не станет не больше [capacity], как у TCP с заполненными буферами.
+/// `null` — без предела (`flush` завершается сразу).
+(ByteConnection, ByteConnection) memoryConnectionPair({int? capacity}) {
+  final aToB = _Pipe(capacity);
+  final bToA = _Pipe(capacity);
+  return (_MemoryConnection(bToA, aToB), _MemoryConnection(aToB, bToA));
+}
+
+/// Одно направление пары: очередь байт, которые получатель забирает, пока
+/// его подписка не на паузе.
+final class _Pipe {
+  new(this.capacity) {
+    // Синхронная доставка: пауза подписчика сразу останавливает очередь, и
+    // непрочитанное остаётся в [_queue], а не в буфере контроллера.
+    _controller = StreamController<Uint8List>(
+      sync: true,
+      onListen: () => scheduleMicrotask(_deliver),
+      onResume: () => scheduleMicrotask(_deliver),
+      onCancel: () {
+        _queue.clear();
+        _pending = 0;
+        _wake();
+      },
+    );
+  }
+
+  final int? capacity;
+  late final StreamController<Uint8List> _controller;
+  final _queue = Queue<Uint8List>();
+  int _pending = 0;
+  bool _closing = false;
+  final _waiters = <Completer<void>>[];
+
+  Stream<Uint8List> get stream => _controller.stream;
+
+  bool get isClosed => _closing || _controller.isClosed;
+
+  void add(Uint8List data) {
+    if (isClosed) return;
+    _queue.add(Uint8List.fromList(data));
+    _pending += data.length;
+    _deliver();
+  }
+
+  Future<void> flush() {
+    final limit = capacity;
+    if (limit == null || _pending <= limit || isClosed) return Future.value();
+    final waiter = Completer<void>();
+    _waiters.add(waiter);
+    return waiter.future;
+  }
+
+  /// Закрывает направление после доставки очереди.
+  void close() {
+    if (isClosed) return;
+    _closing = true;
+    _deliver();
+  }
+
+  /// Закрывает немедленно, очередь пропадает.
+  void destroy() {
+    _queue.clear();
+    _pending = 0;
+    _closing = true;
+    _wake();
+    if (!_controller.isClosed) unawaited(_controller.close());
+  }
+
+  void _deliver() {
+    while (_queue.isNotEmpty &&
+        _controller.hasListener &&
+        !_controller.isPaused) {
+      final chunk = _queue.removeFirst();
+      _pending -= chunk.length;
+      _controller.add(chunk);
+    }
+    _wake();
+    if (_closing && _queue.isEmpty && !_controller.isClosed) {
+      // Future закрытия ждёт подписчика на той стороне: не ждём его.
+      unawaited(_controller.close());
+    }
+  }
+
+  void _wake() {
+    final limit = capacity;
+    if (limit != null && _pending > limit && !_closing) return;
+    for (final w in _waiters) {
+      w.complete();
+    }
+    _waiters.clear();
+  }
 }
 
 final class _MemoryConnection implements ByteConnection {
-  new(this.input, this._out, this._in);
+  new(this._in, this._out);
+
+  final _Pipe _in;
+  final _Pipe _out;
 
   @override
-  final Stream<Uint8List> input;
-
-  final StreamController<Uint8List> _out;
-  final StreamController<Uint8List> _in;
+  Stream<Uint8List> get input => _in.stream;
 
   @override
-  void add(Uint8List data) {
-    if (!_out.isClosed) _out.add(Uint8List.fromList(data));
-  }
+  void add(Uint8List data) => _out.add(data);
 
   @override
-  Future<void> flush() async {}
+  Future<void> flush() => _out.flush();
 
   @override
-  Future<void> close() async {
-    // Future закрытия ждёт подписчика на той стороне: не ждём его.
-    if (!_out.isClosed) unawaited(_out.close());
-  }
+  Future<void> close() async => _out.close();
 
   @override
   void destroy() {
-    if (!_out.isClosed) unawaited(_out.close());
-    if (!_in.isClosed) unawaited(_in.close());
+    _out.destroy();
+    _in.destroy();
   }
 }

@@ -10,17 +10,20 @@ import 'package:node/src/daemon/coordinator_link.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
 import 'package:node/src/daemon/transfers.dart';
+import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:node/src/storage/integrity_checker.dart';
+import 'package:protocol/protocol.dart' as pb;
 
 /// Состояние демона для `cli node status`.
 enum NodeState { running, paused, stopping }
 
-/// Демон хранителя (задачи 3.1.1–3.1.3, 3.2): папка данных под
+/// Демон хранителя (задачи 3.1.1–3.1.3, 3.2, 3.4): папка данных под
 /// блокировкой, журнал с ротацией, ключи и сертификат узла, хранилище
-/// фрагментов с фоновой проверкой целостности, регистрация у
-/// координатора и heartbeat, локальный API управления.
+/// фрагментов с фоновой проверкой целостности, операции с фрагментами для
+/// собеседников по Noise ([peers]), регистрация у координатора и
+/// heartbeat, локальный API управления.
 ///
 /// Остановка ([stop], SIGINT, SIGTERM, метод `stop` локального API):
 /// новые передачи не начинаются, начатые завершаются (не дольше
@@ -124,6 +127,12 @@ final class NodeDaemon {
 
   /// Отозванные устройства: рукопожатие с ними не проходит (3.3.2).
   final RevocationList revocations;
+
+  /// Операции с фрагментами для собеседников; `null` — у узла нет
+  /// сертификата (рукопожатие без него невозможно). Соединения передаёт
+  /// транспорт ([PeerService.serve]): приём TCP — задача 3.5.
+  PeerService? get peers => _peers;
+  PeerService? _peers;
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
@@ -149,9 +158,13 @@ final class NodeDaemon {
       ? NodeState.paused
       : NodeState.running;
 
-  /// Текущие пределы скорости; меняются через локальный API до
+  /// Основные пределы скорости; меняются через локальный API до
   /// перезапуска.
   SpeedLimits get limits => _limits;
+
+  /// Пределы сейчас: основные с учётом расписания `limits.schedule`.
+  SpeedLimits get effectiveLimits =>
+      config.schedule.at(DateTime.now(), _limits);
 
   CoordinatorLink? get link => _link;
   ControlServer? get control => _control;
@@ -161,6 +174,33 @@ final class NodeDaemon {
     bool handleSignals,
     int? allowedUid,
   ) async {
+    final trustedKeys = config.coordinatorKeys.isEmpty
+        ? CoordinatorKeySet.builtIn
+        : CoordinatorKeySet.fromHex(config.coordinatorKeys);
+    if (identity.certificate case final certificate?) {
+      _peers = PeerService(
+        crypto: crypto,
+        local: LocalPeer(
+          role: pb.PeerRole.PEER_ROLE_NODE,
+          staticKey: identity.keys.dh,
+          certificate: certificate,
+          software: 'node $appVersion',
+        ),
+        nodeId: identity.nodeId,
+        storage: storage,
+        trustedKeys: trustedKeys,
+        revocations: revocations,
+        gate: gate,
+        stats: stats,
+        limits: config.peers,
+        uploadLimiter: BandwidthLimiter(
+          () => effectiveLimits.uploadBytesPerSecond,
+        ),
+        downloadLimiter: BandwidthLimiter(
+          () => effectiveLimits.downloadBytesPerSecond,
+        ),
+      );
+    }
     if (config.coordinatorUrl case final String url) {
       final SecurityContext? trusted;
       if (config.coordinatorCa case final String ca) {
@@ -183,9 +223,7 @@ final class NodeDaemon {
         damaged: storage,
         revocations: revocations,
         endpoints: config.endpoints,
-        trustedKeys: config.coordinatorKeys.isEmpty
-            ? CoordinatorKeySet.builtIn
-            : CoordinatorKeySet.fromHex(config.coordinatorKeys),
+        trustedKeys: trustedKeys,
       )..start();
     }
     checker.onDamaged = (_) {
@@ -237,6 +275,7 @@ final class NodeDaemon {
     if (!drained && !_force) {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
+    await _peers?.close();
     await checker.stop();
     await _link?.stop();
     _client?.close(force: true);
@@ -278,7 +317,7 @@ final class NodeDaemon {
         if (params.isNotEmpty) {
           _log.info(LogEvent('limits_changed', _limits.toJson()));
         }
-        return _limits.toJson();
+        return _limitsJson();
       case 'pause':
         if (!gate.paused) _log.info(const LogEvent('paused'));
         gate.paused = true;
@@ -321,9 +360,16 @@ final class NodeDaemon {
     'fragments': storage.fragmentCount,
     'damagedFragments': storage.damagedCount,
     'revokedDevices': revocations.count,
-    'limits': _limits.toJson(),
+    'limits': _limitsJson(),
     'activeTransfers': gate.active,
+    'connections': _peers?.connectionCount ?? 0,
     'coordinator': _link?.toJson(),
+  };
+
+  Map<String, Object?> _limitsJson() => {
+    ..._limits.toJson(),
+    'effective': effectiveLimits.toJson(),
+    'schedule': config.schedule.toJson(),
   };
 
   /// Папка данных — одному демону: исключительная блокировка

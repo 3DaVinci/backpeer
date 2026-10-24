@@ -182,6 +182,11 @@ final class NodeService {
     if (request.usedBytes.isNegative || request.usedBytes.toInt() > capacity) {
       throw _bad('used_bytes больше ёмкости');
     }
+    int? free;
+    if (request.hasFreeBytes()) {
+      free = _capacity(request.freeBytes);
+      if (free > capacity) throw _bad('free_bytes больше ёмкости');
+    }
     _checkEndpoints(request.endpoints);
     final subnet = _subnet(context);
     final now = _clock();
@@ -189,12 +194,14 @@ final class NodeService {
       await tx.execute(
         Sql.named('''
           UPDATE nodes SET capacity_bytes = @cap:int8, used_bytes = @u:int8,
-                 endpoints = @e:_text, subnet = @sub:text
+                 free_bytes = @free:int8, endpoints = @e:_text,
+                 subnet = @sub:text
             WHERE node_id = @n:bytea'''),
         parameters: {
           'n': nodeId,
           'cap': capacity,
           'u': request.usedBytes.toInt(),
+          'free': free,
           'e': request.endpoints.toList(),
           'sub': subnet,
         },
@@ -204,6 +211,49 @@ final class NodeService {
     return pb.HeartbeatResponse(
       nextHeartbeatMs: policy.heartbeatInterval.inMilliseconds,
     );
+  }
+
+  /// Наибольшее число фрагментов в одном `ReportDamagedFragments`.
+  static const maxDamagedPerReport = 1000;
+
+  /// `ReportDamagedFragments` (задача 3.2.4): отмечает фрагменты этого
+  /// узла повреждёнными. Фрагменты, которых координатор не знает на этом
+  /// узле, пропускаются: узел может хранить фрагменты без ссылок
+  /// (protocol.md, раздел 5.2). Повторный отчёт — не ошибка.
+  Future<pb.ReportDamagedFragmentsResponse> reportDamaged(
+    CallContext context,
+    pb.ReportDamagedFragmentsRequest request,
+  ) async {
+    final ids = request.fragmentIds;
+    if (ids.isEmpty || ids.length > maxDamagedPerReport) {
+      throw _bad('fragment_ids: от 1 до $maxDamagedPerReport');
+    }
+    if (ids.any((id) => id.length != 32)) {
+      throw _bad('fragment_ids: по 32 байта');
+    }
+    final nodeId = context.caller!.publicKey;
+    final rows = await _db.transaction(
+      (tx) => tx.execute(
+        Sql.named('''
+          UPDATE fragments
+            SET damaged_at = coalesce(damaged_at, @t:timestamptz)
+            WHERE node_id = @n:bytea AND fragment_id = ANY(@ids:_bytea)
+            RETURNING 1'''),
+        parameters: {
+          'n': nodeId,
+          't': _clock(),
+          'ids': [for (final id in ids) Uint8List.fromList(id)],
+        },
+      ),
+    );
+    _log.warning(
+      LogEvent('fragments_damaged', {
+        'node_id': bytesToHex(nodeId),
+        'reported': ids.length,
+        'known': rows.length,
+      }),
+    );
+    return pb.ReportDamagedFragmentsResponse(known: rows.length);
   }
 
   /// Доступность узла на момент [at] (по умолчанию — сейчас) или `null`,
@@ -295,7 +345,8 @@ final class NodeService {
       (s) => s.execute(
         Sql.named('''
           SELECT node_id, account_id, subnet,
-                 capacity_bytes - greatest(used_bytes, assigned_bytes),
+                 least(capacity_bytes - greatest(used_bytes, assigned_bytes),
+                       free_bytes - greatest(assigned_bytes - used_bytes, 0)),
                  availability, endpoints, registered_at
             FROM nodes
             WHERE removed_at IS NULL

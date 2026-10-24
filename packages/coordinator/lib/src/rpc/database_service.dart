@@ -175,6 +175,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   ) => nodes.heartbeat(context, request);
 
   @override
+  Future<pb.ReportDamagedFragmentsResponse> reportDamagedFragments(
+    CallContext context,
+    pb.ReportDamagedFragmentsRequest request,
+  ) => nodes.reportDamaged(context, request);
+
+  @override
   Future<pb.AllocateSegmentResponse> allocateSegment(
     CallContext context,
     pb.AllocateSegmentRequest request,

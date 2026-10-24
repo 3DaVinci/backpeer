@@ -293,7 +293,7 @@ final class SegmentService {
           SELECT f.idx, f.fragment_id, n.node_id, n.endpoints
             FROM fragments f JOIN nodes n USING (node_id)
             WHERE f.account_id = @a:bytea AND f.segment_id = @g:bytea
-              AND f.stored AND n.removed_at IS NULL
+              AND f.stored AND f.damaged_at IS NULL AND n.removed_at IS NULL
             ORDER BY n.last_heartbeat_at >= @online:timestamptz DESC,
                      n.availability DESC, f.idx'''),
         parameters: {

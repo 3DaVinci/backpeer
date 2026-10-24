@@ -104,7 +104,8 @@ coordinator:
       (s) => s.execute(
         Sql.named(
           'SELECT account_id, capacity_bytes, endpoints, '
-          'last_heartbeat_at IS NOT NULL FROM nodes WHERE node_id = @n:bytea',
+          'last_heartbeat_at IS NOT NULL, free_bytes '
+          'FROM nodes WHERE node_id = @n:bytea',
         ),
         parameters: {'n': nodeId},
       ),
@@ -115,6 +116,12 @@ coordinator:
     expect(rows.single[1], 200000000000);
     expect(rows.single[2], ['127.0.0.1:7340']);
     expect(rows.single[3], isTrue);
+    // Свободное место — меньшее из квоты и диска за вычетом запаса; диск
+    // мог измениться с момента heartbeat.
+    expect(
+      rows.single[4],
+      isA<int>().having((v) => v, 'free', lessThanOrEqualTo(200000000000)),
+    );
 
     final control = await NodeControlClient.connect(
       ControlEndpoint.forDataDir(dir.path),

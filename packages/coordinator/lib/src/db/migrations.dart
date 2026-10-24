@@ -220,6 +220,19 @@ const List<Migration> schemaMigrations = [
              object_bytes, fragment_bytes, blocked_at, blocked_reason
         FROM accounts''',
   ]),
+  Migration(8, 'свободное место узла и повреждённые фрагменты', [
+    // Сколько ещё байт фрагментов узел готов принять по последнему
+    // heartbeat (задача 3.2.3); NULL — узел не сообщает.
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN free_bytes bigint CHECK (free_bytes >= 0)''',
+    // Узел сообщил, что фрагмент повреждён или пропал (задача 3.2.4).
+    // Такой фрагмент не выдаётся в LocateSegment; ремонт — этап 4.
+    'ALTER TABLE fragments ADD COLUMN damaged_at timestamptz',
+    '''
+    CREATE INDEX fragments_damaged ON fragments (damaged_at)
+      WHERE damaged_at IS NOT NULL''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

@@ -10,24 +10,29 @@ import 'package:node/src/daemon/coordinator_link.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
 import 'package:node/src/daemon/transfers.dart';
+import 'package:node/src/storage/fragment_storage.dart';
+import 'package:node/src/storage/integrity_checker.dart';
 
 /// Состояние демона для `cli node status`.
 enum NodeState { running, paused, stopping }
 
-/// Демон хранителя (задачи 3.1.1–3.1.3): папка данных под блокировкой,
-/// журнал с ротацией, ключи и сертификат узла, регистрация у
+/// Демон хранителя (задачи 3.1.1–3.1.3, 3.2): папка данных под
+/// блокировкой, журнал с ротацией, ключи и сертификат узла, хранилище
+/// фрагментов с фоновой проверкой целостности, регистрация у
 /// координатора и heartbeat, локальный API управления.
 ///
 /// Остановка ([stop], SIGINT, SIGTERM, метод `stop` локального API):
 /// новые передачи не начинаются, начатые завершаются (не дольше
 /// `shutdown.grace_seconds`), затем узел отключается от координатора и
 /// освобождает папку данных. Повторный сигнал — остановка без ожидания.
-/// Состояние на диске (ключи, сертификат, фрагменты — задача 3.2.1)
+/// Состояние на диске (ключи, сертификат, фрагменты и их индекс)
 /// пишется атомарно, поэтому и прерванная остановка его не портит.
 final class NodeDaemon {
   new _({
     required this.config,
     required this.identity,
+    required this.storage,
+    required this.checker,
     required this.gate,
     required this._lock,
     required this._writer,
@@ -53,6 +58,7 @@ final class NodeDaemon {
     RotatingLogFile? logFile;
     JsonLogWriter? writer;
     NodeIdentity? identity;
+    FragmentStorage? storage;
     try {
       if (config.log.file == '-') {
         writer = JsonLogWriter(stderr);
@@ -72,9 +78,22 @@ final class NodeDaemon {
           'устройстве владельца и импортируйте (node import-cert)',
         );
       }
+      storage = FragmentStorage.open(
+        config.dataDir,
+        crypto: crypto,
+        quotaBytes: config.quotaBytes,
+        freeReserveBytes: config.freeReserveBytes,
+      );
       final daemon = NodeDaemon._(
         config: config,
         identity: identity,
+        storage: storage,
+        checker: IntegrityChecker(
+          storage: storage,
+          crypto: crypto,
+          interval: config.checkInterval,
+          bytesPerSecond: config.checkBytesPerSecond,
+        ),
         gate: TransferGate(),
         lock: lock,
         writer: writer,
@@ -84,6 +103,7 @@ final class NodeDaemon {
       return daemon;
     } on Object catch (e, st) {
       _log.severe(LogEvent('start_failed', {'reason': '$e'}), null, st);
+      await storage?.close();
       identity?.dispose();
       await writer?.detach();
       logFile?.close();
@@ -96,6 +116,8 @@ final class NodeDaemon {
 
   final NodeConfig config;
   final NodeIdentity identity;
+  final FragmentStorage storage;
+  final IntegrityChecker checker;
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
@@ -150,13 +172,19 @@ final class NodeDaemon {
         client: client,
         identity: identity,
         capacityBytes: config.quotaBytes,
-        usedBytes: usedBytes,
+        usedBytes: () => storage.usedBytes,
+        freeBytes: () => storage.freeBytes,
+        damaged: storage,
         endpoints: config.endpoints,
         trustedKeys: config.coordinatorKeys.isEmpty
             ? CoordinatorKeySet.builtIn
             : CoordinatorKeySet.fromHex(config.coordinatorKeys),
       )..start();
     }
+    checker.onDamaged = (_) {
+      if (_link case final link?) unawaited(link.reportDamaged());
+    };
+    checker.start();
     _control = await ControlServer.bind(
       ControlEndpoint.forDataDir(
         config.dataDir,
@@ -176,6 +204,8 @@ final class NodeDaemon {
         'version': appVersion,
         'node_id': bytesToHex(identity.nodeId),
         'quota_bytes': config.quotaBytes,
+        'used_bytes': storage.usedBytes,
+        'fragments': storage.fragmentCount,
         'coordinator': config.coordinatorUrl != null,
       }),
     );
@@ -200,29 +230,20 @@ final class NodeDaemon {
     if (!drained && !_force) {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
+    await checker.stop();
     await _link?.stop();
     _client?.close(force: true);
     for (final s in _signals) {
       await s.cancel();
     }
     await _control?.close();
+    await storage.close();
     identity.dispose();
     _log.info(const LogEvent('stopped'));
     await _writer.detach();
     _logFile?.close();
     _releaseLock(Directory(config.dataDir), _lock);
     _done.complete();
-  }
-
-  /// Занятое место: размер папки фрагментов (до индекса из задачи 3.2.2).
-  int usedBytes() {
-    final dir = Directory('${config.dataDir}/fragments');
-    if (!dir.existsSync()) return 0;
-    var total = 0;
-    for (final f in dir.listSync(recursive: true, followLinks: false)) {
-      if (f is File) total += f.lengthSync();
-    }
-    return total;
   }
 
   /// Методы локального API (`docs/ops/node.md`, раздел «Локальный API»).
@@ -236,6 +257,7 @@ final class NodeDaemon {
       case 'stats':
         return {
           ...stats.toJson(),
+          ...checker.toJson(),
           'activeTransfers': gate.active,
           'uptimeSeconds': DateTime.now().difference(startedAt).inSeconds,
         };
@@ -286,7 +308,11 @@ final class NodeDaemon {
     'startedAt': startedAt.toUtc().toIso8601String(),
     'dataDir': config.dataDir,
     'quotaBytes': config.quotaBytes,
-    'usedBytes': usedBytes(),
+    'usedBytes': storage.usedBytes,
+    'freeBytes': storage.freeBytes,
+    'diskAvailableBytes': storage.diskAvailable,
+    'fragments': storage.fragmentCount,
+    'damagedFragments': storage.damagedCount,
     'limits': _limits.toJson(),
     'activeTransfers': gate.active,
     'coordinator': _link?.toJson(),

@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:node/node.dart';
 import 'package:test/test.dart';
+
+import 'support.dart';
 
 void main() {
   late CryptoProvider crypto;
@@ -45,20 +48,29 @@ void main() {
   test('локальный API: статус, пределы, пауза, остановка', () async {
     await NodeIdentity.ensureKeys(dir, crypto);
     final daemon = await NodeDaemon.start(
-      config(yaml: 'storage:\n  quota_bytes: 5000000'),
+      config(yaml: 'storage:\n  quota_bytes: 5000000\n  free_reserve_bytes: 0'),
       crypto: crypto,
       handleSignals: false,
     );
-    File('${dir.path}/fragments/ab/x')
-      ..createSync(recursive: true)
-      ..writeAsBytesSync(List.filled(1000, 1));
+    final fragment = testFragment(crypto, blobLength: 1000);
+    final incoming = await daemon.storage.beginPut(
+      fragmentId: fragmentIdOf(crypto, fragment),
+      size: fragment.bytes.length,
+      accountId: Uint8List(32),
+    );
+    await incoming.add(fragment.bytes);
+    await incoming.commit();
     final client = await connect();
     final status = await client.call('status');
     expect(status['nodeId'], bytesToHex(daemon.identity.nodeId));
     expect(status['state'], 'running');
     expect(status['quotaBytes'], 5000000);
-    expect(status['usedBytes'], 1000);
+    expect(status['usedBytes'], fragment.bytes.length);
+    expect(status['fragments'], 1);
+    expect(status['damagedFragments'], 0);
+    expect(status['freeBytes'], lessThanOrEqualTo(5000000 - 1024 - 96));
     expect(status['coordinator'], isNull);
+    expect((await client.call('stats'))['fragmentsChecked'], 0);
 
     expect(await client.call('limits', {'upload': 1000, 'download': 0}), {
       'uploadBytesPerSecond': 1000,

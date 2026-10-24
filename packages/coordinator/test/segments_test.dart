@@ -395,6 +395,45 @@ void main() {
       expect(located.placements.map((p) => p.index), isNot(contains(4)));
       expect(located.placements, hasLength(19));
     });
+
+    test('ReportDamagedFragments: повреждённый фрагмент не выдаётся в '
+        'LocateSegment', () async {
+      final response = await allocate(allocation(id(18)));
+      await commit(id(18), [for (var i = 0; i < 20; i++) i]);
+      final node = nodes.firstWhere(
+        (n) =>
+            constantTimeEquals(n.publicKey, response.placements[3].node.nodeId),
+      );
+      Future<pb.ReportDamagedFragmentsResponse> report(
+        List<List<int>> ids, {
+        Ed25519KeyPair? key,
+      }) => h.call(
+        'ReportDamagedFragments',
+        pb.ReportDamagedFragmentsRequest(fragmentIds: ids),
+        pb.ReportDamagedFragmentsResponse.fromBuffer,
+        key: key ?? node,
+      );
+
+      // Свой фрагмент, чужой фрагмент (другого узла) и неизвестный.
+      final result = await report([id(0xF0, 3), id(0xF0, 5), id(0xEE)]);
+      expect(result.known, 1, reason: 'только фрагмент этого узла');
+      expect((await report([id(0xF0, 3)])).known, 1, reason: 'повтор');
+      final located = await locate(id(18));
+      expect(located.placements.map((p) => p.index), isNot(contains(3)));
+      expect(located.placements, hasLength(19));
+
+      await expectLater(() => report([]), failsWith(_badRequest));
+      await expectLater(() => report([Uint8List(31)]), failsWith(_badRequest));
+      await expectLater(
+        () => report([for (var i = 0; i < 1001; i++) id(0xEE)]),
+        failsWith(_badRequest),
+      );
+      // Подписан не узлом.
+      await expectLater(
+        () => report([id(0xF0, 3)], key: device),
+        failsWith(pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED),
+      );
+    });
   });
 
   group('DeleteSegment (сборка мусора)', () {

@@ -247,7 +247,12 @@ void main() {
           usedBytes: Int64(10),
           capacityBytes: Int64(1 << 40),
           endpoints: ['203.0.113.10:7000'],
+          freeBytes: Int64(1 << 30),
         ),
+        node,
+      ),
+      'ReportDamagedFragments': (
+        pb.ReportDamagedFragmentsRequest(fragmentIds: [id(1), id(2)]),
         node,
       ),
       'ListRevocations': (

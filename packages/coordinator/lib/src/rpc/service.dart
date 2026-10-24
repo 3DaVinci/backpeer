@@ -101,6 +101,11 @@ abstract base class CoordinatorService {
     pb.HeartbeatRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.ReportDamagedFragmentsResponse> reportDamagedFragments(
+    CallContext context,
+    pb.ReportDamagedFragmentsRequest request,
+  ) => _unimplemented(context);
+
   static Never _unimplemented(CallContext context) => throw RpcException(
     pb.ErrorCode.ERROR_CODE_INTERNAL,
     'метод ${context.method} не реализован',

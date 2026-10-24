@@ -308,11 +308,13 @@ extension NodeHarness on DbHarness {
     String ip = '203.0.113.10',
     int used = 0,
     int capacity = 1 << 40,
+    int? free,
   }) => call(
     'Heartbeat',
     pb.HeartbeatRequest(
       usedBytes: Int64(used),
       capacityBytes: Int64(capacity),
+      freeBytes: free == null ? null : Int64(free),
       endpoints: const ['203.0.113.10:7000'],
     ),
     pb.HeartbeatResponse.fromBuffer,

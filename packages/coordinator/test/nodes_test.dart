@@ -228,6 +228,42 @@ void main() {
         () => h.heartbeat(node, used: 2, capacity: 1),
         failsWith(_badRequest),
       );
+      await expectLater(
+        () => h.heartbeat(node, free: 2, capacity: 1),
+        failsWith(_badRequest),
+      );
+    });
+
+    test('свободное место узла ограничивает размещение', () async {
+      final other = await h.newAccount();
+      await h.register(other, await h.newKey(), login: 'other');
+      final node = await h.newKey();
+      await h.registerNode(other, node);
+      Future<int?> free() async {
+        final found = await service().candidates(
+          fragmentSize: 1000,
+          minAvailability: 0,
+        );
+        return found.isEmpty ? null : found.single.freeBytes;
+      }
+
+      await h.heartbeat(node, used: 1000);
+      expect(await free(), (1 << 40) - 1000, reason: 'без free_bytes');
+      // Диск почти полон: принимает ещё 5000 байт.
+      await h.heartbeat(node, used: 1000, free: 5000);
+      expect(await free(), 5000);
+      // Выданное координатором, но ещё не принятое узлом, вычитается.
+      await h.db.run(
+        (s) => s.execute(
+          Sql.named(
+            'UPDATE nodes SET assigned_bytes = 3000 WHERE node_id = @n:bytea',
+          ),
+          parameters: {'n': node.publicKey},
+        ),
+      );
+      expect(await free(), 3000);
+      await h.heartbeat(node, used: 1000, free: 1500);
+      expect(await free(), isNull, reason: 'фрагмент в 1000 байт не влезет');
     });
 
     test('узел, бывший в сети половину времени, — доступность 0,5', () async {

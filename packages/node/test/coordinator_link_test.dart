@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:node/node.dart';
@@ -166,4 +167,91 @@ void main() {
     identity.dispose();
     owner.dispose();
   });
+
+  test('свободное место в heartbeat; отчёт о повреждённых фрагментах '
+      'с повтором после сбоя', () async {
+    final owner = await nodeWithCertificate(dir, crypto);
+    final identity = await NodeIdentity.load(dir, crypto);
+    final damaged = _Damaged([
+      for (var i = 0; i < 1001; i++)
+        Uint8List(32)
+          ..[0] = i % 256
+          ..[1] = i ~/ 256,
+    ]);
+    var reports = 0;
+    final fake = await _FakeCoordinator.start((method, body) {
+      switch (method) {
+        case 'RegisterNode':
+          return pb.RegisterNodeResponse();
+        case 'ReportDamagedFragments':
+          reports++;
+          if (reports == 1) {
+            return pb.Error(
+              code: pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED,
+              message: 'сбой',
+            );
+          }
+          final r = pb.ReportDamagedFragmentsRequest.fromBuffer(body);
+          return pb.ReportDamagedFragmentsResponse(known: r.fragmentIds.length);
+        default:
+          return pb.HeartbeatResponse(nextHeartbeatMs: 20);
+      }
+    });
+    final client = CoordinatorClient(
+      baseUri: Uri.parse(fake.url),
+      crypto: crypto,
+      retry: RetryPolicy.none,
+    );
+    final link = CoordinatorLink(
+      client: client,
+      identity: identity,
+      capacityBytes: 1000,
+      usedBytes: () => 100,
+      freeBytes: () => 5000, // больше ёмкости — шлётся ёмкость
+      damaged: damaged,
+      trustedKeys: CoordinatorKeySet(const []),
+      interval: const Duration(milliseconds: 20),
+    )..start();
+    // Регистрация, отчёт (сбой), heartbeat, отчёт двумя пачками.
+    await fake.waitCalls(5);
+    await link.stop();
+    client.close(force: true);
+    await fake.close();
+    expect(fake.calls.take(5), [
+      'RegisterNode',
+      'ReportDamagedFragments',
+      'Heartbeat',
+      'ReportDamagedFragments',
+      'ReportDamagedFragments',
+    ]);
+    final beat = pb.HeartbeatRequest.fromBuffer(fake.bodies[2]);
+    expect(beat.hasFreeBytes(), isTrue);
+    expect(beat.freeBytes.toInt(), 1000);
+    expect(
+      pb.ReportDamagedFragmentsRequest.fromBuffer(fake.bodies[3]).fragmentIds,
+      hasLength(1000),
+    );
+    expect(
+      pb.ReportDamagedFragmentsRequest.fromBuffer(fake.bodies[4]).fragmentIds,
+      hasLength(1),
+    );
+    expect(damaged.pending, isEmpty);
+    identity.dispose();
+    owner.dispose();
+  });
+}
+
+/// Повреждённые фрагменты в памяти.
+final class _Damaged implements DamagedFragments {
+  new(this.pending);
+
+  final List<Uint8List> pending;
+
+  @override
+  List<Uint8List> unreportedDamaged({int limit = 1000}) =>
+      pending.take(limit).toList();
+
+  @override
+  void markReported(List<Uint8List> fragmentIds) =>
+      pending.removeWhere(fragmentIds.contains);
 }

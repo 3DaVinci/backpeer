@@ -2647,11 +2647,13 @@ class HeartbeatRequest extends $pb.GeneratedMessage {
     $fixnum.Int64? usedBytes,
     $fixnum.Int64? capacityBytes,
     $core.Iterable<$core.String>? endpoints,
+    $fixnum.Int64? freeBytes,
   }) {
     final result = HeartbeatRequest._();
     if (usedBytes != null) result.usedBytes = usedBytes;
     if (capacityBytes != null) result.capacityBytes = capacityBytes;
     if (endpoints != null) result.endpoints.addAll(endpoints);
+    if (freeBytes != null) result.freeBytes = freeBytes;
     return result;
   }
 
@@ -2675,6 +2677,9 @@ class HeartbeatRequest extends $pb.GeneratedMessage {
         2, _omitFieldNames ? '' : 'capacityBytes', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..pPS(3, _omitFieldNames ? '' : 'endpoints')
+    ..a<$fixnum.Int64>(
+        4, _omitFieldNames ? '' : 'freeBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2719,6 +2724,19 @@ class HeartbeatRequest extends $pb.GeneratedMessage {
 
   @$pb.TagNumber(3)
   $pb.PbList<$core.String> get endpoints => $_getList(2);
+
+  /// Сколько ещё байт фрагментов узел готов принять сейчас: меньшее из
+  /// остатка квоты и свободного места на диске за вычетом запаса
+  /// (protocol.md, раздел 4.9). Нет поля — узел не сообщает, координатор
+  /// считает по ёмкости.
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get freeBytes => $_getI64(3);
+  @$pb.TagNumber(4)
+  set freeBytes($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasFreeBytes() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearFreeBytes() => $_clearField(4);
 }
 
 class HeartbeatResponse extends $pb.GeneratedMessage {
@@ -2777,6 +2795,132 @@ class HeartbeatResponse extends $pb.GeneratedMessage {
   $core.bool hasNextHeartbeatMs() => $_has(0);
   @$pb.TagNumber(1)
   void clearNextHeartbeatMs() => $_clearField(1);
+}
+
+/// Узел нашёл у себя фрагменты, не прошедшие проверку целостности или
+/// пропавшие с диска (фоновая проверка, задача 3.2.4). Обработка — ремонт
+/// (этап 4).
+class ReportDamagedFragmentsRequest extends $pb.GeneratedMessage {
+  factory ReportDamagedFragmentsRequest({
+    $core.Iterable<$core.List<$core.int>>? fragmentIds,
+  }) {
+    final result = ReportDamagedFragmentsRequest._();
+    if (fragmentIds != null) result.fragmentIds.addAll(fragmentIds);
+    return result;
+  }
+
+  ReportDamagedFragmentsRequest._();
+
+  factory ReportDamagedFragmentsRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportDamagedFragmentsRequest()..mergeFromBuffer(data, registry);
+  factory ReportDamagedFragmentsRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportDamagedFragmentsRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportDamagedFragmentsRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReportDamagedFragmentsRequest.$_createMessage)
+    ..p<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'fragmentIds', $pb.PbFieldType.PY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportDamagedFragmentsRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportDamagedFragmentsRequest copyWith(
+          void Function(ReportDamagedFragmentsRequest) updates) =>
+      super.copyWith(
+              (message) => updates(message as ReportDamagedFragmentsRequest))
+          as ReportDamagedFragmentsRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportDamagedFragmentsRequest() / ReportDamagedFragmentsRequest.new instead')
+  static ReportDamagedFragmentsRequest create() =>
+      ReportDamagedFragmentsRequest._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReportDamagedFragmentsRequest._();
+  @$core.override
+  ReportDamagedFragmentsRequest createEmptyInstance() =>
+      ReportDamagedFragmentsRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReportDamagedFragmentsRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportDamagedFragmentsRequest>(
+          ReportDamagedFragmentsRequest.$_createMessage);
+  static ReportDamagedFragmentsRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.List<$core.int>> get fragmentIds => $_getList(0);
+}
+
+class ReportDamagedFragmentsResponse extends $pb.GeneratedMessage {
+  factory ReportDamagedFragmentsResponse({
+    $core.int? known,
+  }) {
+    final result = ReportDamagedFragmentsResponse._();
+    if (known != null) result.known = known;
+    return result;
+  }
+
+  ReportDamagedFragmentsResponse._();
+
+  factory ReportDamagedFragmentsResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportDamagedFragmentsResponse()..mergeFromBuffer(data, registry);
+  factory ReportDamagedFragmentsResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportDamagedFragmentsResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportDamagedFragmentsResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReportDamagedFragmentsResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'known', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportDamagedFragmentsResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportDamagedFragmentsResponse copyWith(
+          void Function(ReportDamagedFragmentsResponse) updates) =>
+      super.copyWith(
+              (message) => updates(message as ReportDamagedFragmentsResponse))
+          as ReportDamagedFragmentsResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportDamagedFragmentsResponse() / ReportDamagedFragmentsResponse.new instead')
+  static ReportDamagedFragmentsResponse create() =>
+      ReportDamagedFragmentsResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      ReportDamagedFragmentsResponse._();
+  @$core.override
+  ReportDamagedFragmentsResponse createEmptyInstance() =>
+      ReportDamagedFragmentsResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReportDamagedFragmentsResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportDamagedFragmentsResponse>(
+          ReportDamagedFragmentsResponse.$_createMessage);
+  static ReportDamagedFragmentsResponse? _defaultInstance;
+
+  /// Сколько из перечисленных фрагментов координатор знает на этом узле;
+  /// остальные — фрагменты без ссылок (например, неподтверждённых сегментов).
+  @$pb.TagNumber(1)
+  $core.int get known => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set known($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasKnown() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearKnown() => $_clearField(1);
 }
 
 const $core.bool _omitFieldNames =

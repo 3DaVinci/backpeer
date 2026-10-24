@@ -153,8 +153,29 @@ void main() {
           bytesToHex(merkleRoot(crypto, body)),
           map(c['expected'])['root'],
         );
+        // Те же векторы частями неровной длины, поперёк границ блоков.
+        final builder = MerkleBuilder(crypto);
+        for (var i = 0, step = 1; i < body.length; i += step, step *= 3) {
+          builder.add(
+            Uint8List.sublistView(
+              body,
+              i,
+              i + step < body.length ? i + step : body.length,
+            ),
+          );
+        }
+        expect(bytesToHex(builder.finish()), map(c['expected'])['root']);
       });
     }
+
+    test('MerkleBuilder: пустое тело и повторное завершение', () {
+      expect(() => MerkleBuilder(crypto).finish(), throwsArgumentError);
+      final b = MerkleBuilder(crypto)
+        ..add([1])
+        ..finish();
+      expect(b.finish, throwsStateError);
+      expect(() => b.add([2]), throwsStateError);
+    });
   });
 
   group('fragment', () {

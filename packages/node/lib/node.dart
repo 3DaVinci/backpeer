@@ -2,6 +2,8 @@
 ///
 /// - `daemon/` — настройки, журнал, ключи узла, связь с координатором,
 ///   жизненный цикл демона (задачи 3.1.1, 3.1.2);
+/// - `storage/` — файлы фрагментов, индекс в SQLite, квота и место,
+///   фоновая проверка целостности (3.2);
 /// - `control/` — локальный API управления для CLI и приложения (3.1.3);
 /// - `stub_nodes.dart` — узлы-заглушки этапа 2 для разработки и тестов.
 library;
@@ -16,4 +18,9 @@ export 'src/daemon/identity.dart';
 export 'src/daemon/log.dart';
 export 'src/daemon/node_daemon.dart';
 export 'src/daemon/transfers.dart';
+export 'src/storage/fragment_files.dart';
+export 'src/storage/fragment_index.dart';
+export 'src/storage/fragment_storage.dart';
+export 'src/storage/integrity_checker.dart';
+export 'src/storage/native_fs.dart';
 export 'src/stub_nodes.dart';

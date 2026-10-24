@@ -207,7 +207,24 @@ message HeartbeatRequest {
   uint64 used_bytes = 1;
   uint64 capacity_bytes = 2;
   repeated string endpoints = 3;
+  // Сколько ещё байт фрагментов узел готов принять сейчас: меньшее из
+  // остатка квоты и свободного места на диске за вычетом запаса
+  // (protocol.md, раздел 4.9). Нет поля — узел не сообщает, координатор
+  // считает по ёмкости.
+  optional uint64 free_bytes = 4;
 }
 message HeartbeatResponse {
   uint32 next_heartbeat_ms = 1;
+}
+
+// Узел нашёл у себя фрагменты, не прошедшие проверку целостности или
+// пропавшие с диска (фоновая проверка, задача 3.2.4). Обработка — ремонт
+// (этап 4).
+message ReportDamagedFragmentsRequest {
+  repeated bytes fragment_ids = 1; // до 1000, по 32 байта
+}
+message ReportDamagedFragmentsResponse {
+  // Сколько из перечисленных фрагментов координатор знает на этом узле;
+  // остальные — фрагменты без ссылок (например, неподтверждённых сегментов).
+  uint32 known = 1;
 }

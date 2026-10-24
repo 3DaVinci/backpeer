@@ -6,6 +6,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
+import 'package:node/src/storage/fragment_storage.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Регистрация узла у координатора и heartbeat (`protocol.md`,
@@ -18,6 +19,9 @@ import 'package:protocol/protocol.dart' as pb;
 /// - Затем `Heartbeat` с интервалом из ответа координатора.
 /// - `UNAUTHENTICATED` на heartbeat (координатор не знает узел, например
 ///   после очистки базы стенда) — повторная регистрация.
+/// - После регистрации и каждого heartbeat — отчёт о повреждённых
+///   фрагментах ([damaged], `ReportDamagedFragments`), если они есть;
+///   [reportDamaged] отправляет его сразу.
 final class CoordinatorLink {
   new({
     required this.client,
@@ -25,6 +29,8 @@ final class CoordinatorLink {
     required this.capacityBytes,
     required this.usedBytes,
     required this.trustedKeys,
+    this.freeBytes,
+    this.damaged,
     this.endpoints = const [],
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
@@ -44,6 +50,13 @@ final class CoordinatorLink {
 
   /// Занятое место сейчас.
   final int Function() usedBytes;
+
+  /// Сколько ещё байт узел готов принять (`HeartbeatRequest.free_bytes`);
+  /// `null` — не сообщать.
+  final int Function()? freeBytes;
+
+  /// Повреждённые фрагменты для отчёта.
+  final DamagedFragments? damaged;
   final CoordinatorKeySet trustedKeys;
   final List<String> endpoints;
   final Duration maxBackoff;
@@ -60,6 +73,7 @@ final class CoordinatorLink {
   List<String> _unknownKeys = const [];
   Completer<void>? _wake;
   Future<void>? _loop;
+  Future<void>? _reporting;
 
   bool get registered => _registered;
 
@@ -103,6 +117,7 @@ final class CoordinatorLink {
         failures = 0;
         reregistered = false;
         _lastError = null;
+        await reportDamaged();
       } on CoordinatorException catch (e) {
         if (_stopped) break;
         _lastError = '${e.code.name}: ${e.detail}';
@@ -183,6 +198,10 @@ final class CoordinatorLink {
         usedBytes: Int64(math.min(used, capacityBytes)),
         capacityBytes: Int64(capacityBytes),
         endpoints: endpoints,
+        freeBytes: switch (freeBytes) {
+          final f? => Int64(math.min(f(), capacityBytes)),
+          null => null,
+        },
       ),
       nodeKey: identity.keys.sign,
     );
@@ -193,6 +212,46 @@ final class CoordinatorLink {
     _log.fine(LogEvent('heartbeat', {'used_bytes': used}));
     return _interval;
   }
+
+  /// Отправляет координатору повреждённые фрагменты, о которых он ещё не
+  /// знает, пачками по [maxDamagedPerReport]. Узел не
+  /// зарегистрирован — ничего не делает (отчёт уйдёт после регистрации);
+  /// сбой связи — в журнал, повтор после следующего heartbeat.
+  /// Одновременные вызовы ждут один отчёт.
+  Future<void> reportDamaged() =>
+      _reporting ??= _report().whenComplete(() => _reporting = null);
+
+  Future<void> _report() async {
+    final source = damaged;
+    if (source == null || !_registered) return;
+    try {
+      while (!_stopped) {
+        final ids = source.unreportedDamaged(limit: maxDamagedPerReport);
+        if (ids.isEmpty) return;
+        final response = await client.reportDamagedFragments(
+          pb.ReportDamagedFragmentsRequest(fragmentIds: ids),
+          nodeKey: identity.keys.sign,
+        );
+        source.markReported(ids);
+        _log.info(
+          LogEvent('damaged_reported', {
+            'fragments': ids.length,
+            'known': response.known,
+          }),
+        );
+      }
+    } on CoordinatorException catch (e) {
+      _log.warning(
+        LogEvent('damaged_report_failed', {
+          'code': e.code.name,
+          'http_status': e.httpStatus,
+        }),
+      );
+    }
+  }
+
+  /// Наибольшая пачка `ReportDamagedFragments` (protocol.md, раздел 4.9).
+  static const maxDamagedPerReport = 1000;
 
   void _checkKeys(List<List<int>> keys) {
     final crypto = client.crypto;

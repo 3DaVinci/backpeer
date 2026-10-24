@@ -58,6 +58,9 @@ final class NodeConfig {
   const new({
     required this.dataDir,
     this.quotaBytes = 100000000000,
+    this.freeReserveBytes = 2000000000,
+    this.checkInterval = const Duration(days: 30),
+    this.checkBytesPerSecond = 10000000,
     this.listenPort = 7340,
     this.endpoints = const [],
     this.limits = const SpeedLimits(),
@@ -117,6 +120,9 @@ final class NodeConfig {
   static const _keys = {
     'data.dir',
     'storage.quota_bytes',
+    'storage.free_reserve_bytes',
+    'storage.check_interval_days',
+    'storage.check_bytes_per_second',
     'listen.port',
     'listen.endpoints',
     'limits.upload_bytes_per_second',
@@ -138,6 +144,17 @@ final class NodeConfig {
   /// Сколько места узел отдаёт под чужие фрагменты; сообщается
   /// координатору как ёмкость.
   final int quotaBytes;
+
+  /// Сколько места на диске оставлять свободным: фрагмент, после которого
+  /// останется меньше, не принимается (задача 3.2.3).
+  final int freeReserveBytes;
+
+  /// Как часто фоновая проверка перечитывает каждый фрагмент (3.2.4).
+  final Duration checkInterval;
+
+  /// Предел скорости чтения фоновой проверки, байт в секунду; 0 — без
+  /// предела.
+  final int checkBytesPerSecond;
 
   /// Порт входящих соединений (TCP и UDP, задачи 3.5 и 3.7).
   final int listenPort;
@@ -200,6 +217,16 @@ final class _Reader {
     return NodeConfig(
       dataDir: dir,
       quotaBytes: _int('storage.quota_bytes', 1 << 20, 1 << 60) ?? d.quotaBytes,
+      freeReserveBytes:
+          _int('storage.free_reserve_bytes', 0, 1 << 50) ?? d.freeReserveBytes,
+      checkInterval: Duration(
+        days:
+            _int('storage.check_interval_days', 1, 3650) ??
+            d.checkInterval.inDays,
+      ),
+      checkBytesPerSecond:
+          _int('storage.check_bytes_per_second', 0, 1 << 40) ??
+          d.checkBytesPerSecond,
       listenPort: _int('listen.port', 1, 65535) ?? d.listenPort,
       endpoints: _list('listen.endpoints'),
       limits: SpeedLimits(

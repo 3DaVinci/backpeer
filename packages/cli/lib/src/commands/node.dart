@@ -98,11 +98,21 @@ final class _NodeStatusCommand extends _NodeSubcommand {
         'передач сейчас: ${s['activeTransfers']}',
       )
       ..info(
+        'Фрагментов: ${s['fragments']}, повреждённых: '
+        '${s['damagedFragments']}; примет ещё ${_size(s['freeBytes'])}',
+      )
+      ..info(
         'Пределы: отдача ${_rate(limits?['uploadBytesPerSecond'])}, '
         'приём ${_rate(limits?['downloadBytesPerSecond'])}',
       )
       ..info(_coordinator(coordinator))
       ..result(s);
+    if (s['damagedFragments'] case final int damaged when damaged > 0) {
+      ctx.report.warn(
+        'Повреждённых фрагментов: $damaged — проверьте диск; координатор '
+        'получает отчёт о них',
+      );
+    }
     if (coordinator?['unknownCoordinatorKeys'] case final List<Object?> keys
         when keys.isNotEmpty) {
       ctx.report.warn(
@@ -156,6 +166,10 @@ final class _NodeStatsCommand extends _NodeSubcommand {
         '  удалено фрагментов: ${s['fragmentsDeleted']}, '
         'отклонено запросов: ${s['requestsRejected']}, '
         'передач сейчас: ${s['activeTransfers']}',
+      )
+      ..info(
+        '  проверено фрагментов: ${s['fragmentsChecked']}, '
+        'найдено повреждённых: ${s['fragmentsDamaged']}',
       )
       ..result(s);
     return ExitCode.ok;

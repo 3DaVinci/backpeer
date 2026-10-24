@@ -367,6 +367,16 @@ final class CoordinatorClient {
   }) =>
       call('Heartbeat', request, pb.HeartbeatResponse.fromBuffer, key: nodeKey);
 
+  Future<pb.ReportDamagedFragmentsResponse> reportDamagedFragments(
+    pb.ReportDamagedFragmentsRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'ReportDamagedFragments',
+    request,
+    pb.ReportDamagedFragmentsResponse.fromBuffer,
+    key: nodeKey,
+  );
+
   Future<pb.ListRevocationsResponse> listRevocations(
     pb.ListRevocationsRequest request, {
     required Ed25519KeyPair nodeKey,

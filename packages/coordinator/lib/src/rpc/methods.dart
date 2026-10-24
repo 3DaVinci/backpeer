@@ -163,4 +163,13 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.HeartbeatRequest.fromBuffer,
     handle: s.heartbeat,
   ),
+  RpcMethod<
+    pb.ReportDamagedFragmentsRequest,
+    pb.ReportDamagedFragmentsResponse
+  >(
+    name: 'ReportDamagedFragments',
+    auth: AuthRequirement.node,
+    parse: pb.ReportDamagedFragmentsRequest.fromBuffer,
+    handle: s.reportDamagedFragments,
+  ),
 ];

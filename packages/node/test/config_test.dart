@@ -12,6 +12,9 @@ void main() {
       final c = parse('');
       expect(c.dataDir, '/data');
       expect(c.quotaBytes, 100000000000);
+      expect(c.freeReserveBytes, 2000000000);
+      expect(c.checkInterval, const Duration(days: 30));
+      expect(c.checkBytesPerSecond, 10000000);
       expect(c.listenPort, 7340);
       expect(c.coordinatorUrl, isNull);
       expect(c.limits.uploadBytesPerSecond, 0);
@@ -28,6 +31,8 @@ data:
   dir: /srv/node
 storage:
   quota_bytes: 2000000000000
+  free_reserve_bytes: 5000000000
+  check_interval_days: 7
 listen:
   port: 9000
   endpoints: [203.0.113.5:9000, "[2001:db8::1]:9000"]
@@ -43,12 +48,16 @@ log:
 ''',
       {
         'FS_NODE_LISTEN_PORT': '9100',
+        'FS_NODE_STORAGE_CHECK_BYTES_PER_SECOND': '0',
         'FS_NODE_LIMITS_DOWNLOAD_BYTES_PER_SECOND': '5000',
         'FS_NODE_COORDINATOR_KEYS': '${'cd' * 32}, ${'ef' * 32}',
       },
     );
     expect(c.dataDir, '/srv/node');
     expect(c.quotaBytes, 2000000000000);
+    expect(c.freeReserveBytes, 5000000000);
+    expect(c.checkInterval, const Duration(days: 7));
+    expect(c.checkBytesPerSecond, 0);
     expect(c.listenPort, 9100);
     expect(c.endpoints, ['203.0.113.5:9000', '[2001:db8::1]:9000']);
     expect(c.limits.uploadBytesPerSecond, 1000000);
@@ -64,6 +73,7 @@ log:
       'storage:\n  qouta_bytes: 1',
       'listen:\n  port: 70000',
       'storage:\n  quota_bytes: 10',
+      'storage:\n  check_interval_days: 0',
       'coordinator:\n  url: ftp://x',
       'coordinator:\n  keys: [abc]',
       'log:\n  level: debug',

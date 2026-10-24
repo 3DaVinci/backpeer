@@ -700,6 +700,18 @@ const HeartbeatRequest$json = {
     {'1': 'used_bytes', '3': 1, '4': 1, '5': 4, '10': 'usedBytes'},
     {'1': 'capacity_bytes', '3': 2, '4': 1, '5': 4, '10': 'capacityBytes'},
     {'1': 'endpoints', '3': 3, '4': 3, '5': 9, '10': 'endpoints'},
+    {
+      '1': 'free_bytes',
+      '3': 4,
+      '4': 1,
+      '5': 4,
+      '9': 0,
+      '10': 'freeBytes',
+      '17': true
+    },
+  ],
+  '8': [
+    {'1': '_free_bytes'},
   ],
 };
 
@@ -707,7 +719,8 @@ const HeartbeatRequest$json = {
 final $typed_data.Uint8List heartbeatRequestDescriptor = $convert.base64Decode(
     'ChBIZWFydGJlYXRSZXF1ZXN0Eh0KCnVzZWRfYnl0ZXMYASABKARSCXVzZWRCeXRlcxIlCg5jYX'
     'BhY2l0eV9ieXRlcxgCIAEoBFINY2FwYWNpdHlCeXRlcxIcCgllbmRwb2ludHMYAyADKAlSCWVu'
-    'ZHBvaW50cw==');
+    'ZHBvaW50cxIiCgpmcmVlX2J5dGVzGAQgASgESABSCWZyZWVCeXRlc4gBAUINCgtfZnJlZV9ieX'
+    'Rlcw==');
 
 @$core.Deprecated('Use heartbeatResponseDescriptor instead')
 const HeartbeatResponse$json = {
@@ -727,3 +740,30 @@ const HeartbeatResponse$json = {
 final $typed_data.Uint8List heartbeatResponseDescriptor = $convert.base64Decode(
     'ChFIZWFydGJlYXRSZXNwb25zZRIqChFuZXh0X2hlYXJ0YmVhdF9tcxgBIAEoDVIPbmV4dEhlYX'
     'J0YmVhdE1z');
+
+@$core.Deprecated('Use reportDamagedFragmentsRequestDescriptor instead')
+const ReportDamagedFragmentsRequest$json = {
+  '1': 'ReportDamagedFragmentsRequest',
+  '2': [
+    {'1': 'fragment_ids', '3': 1, '4': 3, '5': 12, '10': 'fragmentIds'},
+  ],
+};
+
+/// Descriptor for `ReportDamagedFragmentsRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportDamagedFragmentsRequestDescriptor =
+    $convert.base64Decode(
+        'Ch1SZXBvcnREYW1hZ2VkRnJhZ21lbnRzUmVxdWVzdBIhCgxmcmFnbWVudF9pZHMYASADKAxSC2'
+        'ZyYWdtZW50SWRz');
+
+@$core.Deprecated('Use reportDamagedFragmentsResponseDescriptor instead')
+const ReportDamagedFragmentsResponse$json = {
+  '1': 'ReportDamagedFragmentsResponse',
+  '2': [
+    {'1': 'known', '3': 1, '4': 1, '5': 13, '10': 'known'},
+  ],
+};
+
+/// Descriptor for `ReportDamagedFragmentsResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportDamagedFragmentsResponseDescriptor =
+    $convert.base64Decode(
+        'Ch5SZXBvcnREYW1hZ2VkRnJhZ21lbnRzUmVzcG9uc2USFAoFa25vd24YASABKA1SBWtub3du');

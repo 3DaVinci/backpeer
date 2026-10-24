@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
@@ -45,3 +46,27 @@ Future<pb.Signed> foreignCertificate(
   nodeDh: nodeDh ?? crypto.randomBytes(32),
   issuedAt: DateTime.now(),
 );
+
+/// Детерминированный фрагмент для тестов хранилища: блоб [blobLength]
+/// байт и сегмент из генератора с зерном [seed], k = 1, n = 2.
+Fragment testFragment(
+  CryptoProvider crypto, {
+  int seed = 1,
+  int blobLength = 3 << 20,
+}) {
+  final random = Random(seed);
+  Uint8List bytes(int n) =>
+      Uint8List.fromList(List<int>.generate(n, (_) => random.nextInt(256)));
+  final segmentId = bytes(32);
+  return encodeFragments(
+    crypto,
+    blob: bytes(blobLength),
+    segmentId: segmentId,
+    k: 1,
+    n: 2,
+  ).first;
+}
+
+/// `fragment_id` фрагмента.
+Uint8List fragmentIdOf(CryptoProvider crypto, Fragment f) =>
+    f.header.fragmentId(crypto);

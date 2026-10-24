@@ -1,6 +1,7 @@
 // Демон узла против настоящего координатора (задача 3.1.2): регистрация с
 // сертификатом от учётной записи владельца, heartbeat, узел в реестре,
-// ключ подписанта совпадает со списком узла. Нужен FS_TEST_POSTGRES.
+// ключ подписанта совпадает со списком узла; отзыв устройства доходит до
+// узла (3.3.2). Нужен FS_TEST_POSTGRES.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -123,12 +124,44 @@ coordinator:
       isA<int>().having((v) => v, 'free', lessThanOrEqualTo(200000000000)),
     );
 
+    // Отзыв второго устройства владельца доходит до узла через
+    // ListRevocations и переживает перезапуск демона.
+    final second = await DeviceKeys.generate(crypto);
+    final owners = live.client();
+    await owners.addDevice(
+      pb.AddDeviceRequest(
+        deviceCertificate: await DeviceCertificates.issue(
+          crypto,
+          owner,
+          second,
+          issuedAt: DateTime.now(),
+        ),
+      ),
+      accountKey: owner.accountSign,
+    );
+    await owners.revokeDevice(
+      pb.RevokeDeviceRequest(
+        revocation: await DeviceCertificates.revoke(
+          crypto,
+          owner,
+          deviceSign: second.sign.publicKey,
+          revokedAt: DateTime.now(),
+        ),
+      ),
+      accountKey: owner.accountSign,
+    );
+    owners.close();
+    await link.syncRevocations();
+    expect(daemon.revocations.isRevoked(second.sign.publicKey), isTrue);
+    expect(daemon.revocations.isRevoked(device.sign.publicKey), isFalse);
+
     final control = await NodeControlClient.connect(
       ControlEndpoint.forDataDir(dir.path),
     );
     final status = await control.call('status');
     await control.close();
     expect(status['owner'], bytesToHex(owner.accountId));
+    expect(status['revokedDevices'], 1);
     expect(
       (status['coordinator']! as Map<String, Object?>)['registered'],
       isTrue,
@@ -136,5 +169,6 @@ coordinator:
     await daemon.stop();
     owner.dispose();
     device.dispose();
+    second.dispose();
   });
 }

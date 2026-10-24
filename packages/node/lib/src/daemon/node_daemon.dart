@@ -10,6 +10,7 @@ import 'package:node/src/daemon/coordinator_link.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
 import 'package:node/src/daemon/transfers.dart';
+import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:node/src/storage/integrity_checker.dart';
 
@@ -33,6 +34,7 @@ final class NodeDaemon {
     required this.identity,
     required this.storage,
     required this.checker,
+    required this.revocations,
     required this.gate,
     required this._lock,
     required this._writer,
@@ -94,6 +96,7 @@ final class NodeDaemon {
           interval: config.checkInterval,
           bytesPerSecond: config.checkBytesPerSecond,
         ),
+        revocations: RevocationList(storage.index, crypto),
         gate: TransferGate(),
         lock: lock,
         writer: writer,
@@ -118,6 +121,9 @@ final class NodeDaemon {
   final NodeIdentity identity;
   final FragmentStorage storage;
   final IntegrityChecker checker;
+
+  /// Отозванные устройства: рукопожатие с ними не проходит (3.3.2).
+  final RevocationList revocations;
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
@@ -175,6 +181,7 @@ final class NodeDaemon {
         usedBytes: () => storage.usedBytes,
         freeBytes: () => storage.freeBytes,
         damaged: storage,
+        revocations: revocations,
         endpoints: config.endpoints,
         trustedKeys: config.coordinatorKeys.isEmpty
             ? CoordinatorKeySet.builtIn
@@ -313,6 +320,7 @@ final class NodeDaemon {
     'diskAvailableBytes': storage.diskAvailable,
     'fragments': storage.fragmentCount,
     'damagedFragments': storage.damagedCount,
+    'revokedDevices': revocations.count,
     'limits': _limits.toJson(),
     'activeTransfers': gate.active,
     'coordinator': _link?.toJson(),

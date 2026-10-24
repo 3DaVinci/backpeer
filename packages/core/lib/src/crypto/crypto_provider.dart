@@ -76,6 +76,8 @@ abstract interface class CryptoProvider {
   static const int aeadTagLength = 16;
   static const int hashLength = 32;
   static const int ed25519SignatureLength = 64;
+  static const int chachaNonceLength = 12;
+  static const int blake2b512Length = 64;
 
   /// XChaCha20-Poly1305 (IETF): возвращает шифротекст с тегом в конце,
   /// длина `plaintext.length + 16`.
@@ -94,6 +96,27 @@ abstract interface class CryptoProvider {
     required Uint8List ciphertext,
     required Uint8List aad,
   });
+
+  /// ChaCha20-Poly1305 (IETF, RFC 8439) с nonce 12 байт. Только для Noise
+  /// (protocol.md, раздел 3.1): данные бэкапа шифрует [aeadEncrypt].
+  /// Шифротекст с тегом в конце, длина `plaintext.length + 16`.
+  Uint8List chacha20Poly1305Encrypt({
+    required SecretBytes key,
+    required Uint8List nonce,
+    required Uint8List plaintext,
+    required Uint8List aad,
+  });
+
+  /// Обратная к [chacha20Poly1305Encrypt]. Неверный тег — `null`.
+  Uint8List? chacha20Poly1305Decrypt({
+    required SecretBytes key,
+    required Uint8List nonce,
+    required Uint8List ciphertext,
+    required Uint8List aad,
+  });
+
+  /// BLAKE2b-512 без ключа. Только для Noise (`HASH`, HMAC и HKDF Noise).
+  Uint8List blake2b512(Uint8List data);
 
   /// BLAKE2b-256 (RFC 7693); с [key] — ключевой режим, ключ 32 байта.
   Uint8List blake2b256(Uint8List data, {SecretBytes? key});

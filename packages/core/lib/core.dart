@@ -11,6 +11,7 @@
 /// - `snapshot/` — обход папок, деревья, снимки и индексы;
 /// - `storage/` — хранилища фрагментов и объектов, локальный индекс;
 /// - `pipeline/` — конвейеры бэкапа и восстановления;
+/// - `net/` — канал Noise между клиентом и узлами;
 /// - `password/` — оценка стойкости и требования к паролю.
 library;
 
@@ -44,6 +45,12 @@ export 'src/format/fragment.dart';
 export 'src/format/merkle.dart';
 export 'src/format/segment.dart';
 export 'src/format/ticket.dart';
+export 'src/net/byte_connection.dart';
+export 'src/net/frames.dart';
+export 'src/net/noise.dart';
+export 'src/net/peer_handshake.dart';
+export 'src/net/peer_identity.dart';
+export 'src/net/secure_channel.dart';
 export 'src/password/estimator.dart';
 export 'src/password/policy.dart';
 export 'src/pipeline/backup.dart';

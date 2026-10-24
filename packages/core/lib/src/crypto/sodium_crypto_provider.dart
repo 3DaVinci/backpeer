@@ -1,3 +1,4 @@
+import 'dart:ffi';
 import 'dart:isolate';
 import 'dart:typed_data';
 
@@ -5,6 +6,8 @@ import 'package:core/src/crypto/crypto_provider.dart';
 import 'package:core/src/crypto/kdf.dart' as kdf;
 import 'package:core/src/crypto/secret_bytes.dart';
 import 'package:core/src/errors.dart';
+import 'package:ffi/ffi.dart';
+import 'package:sodium/sodium.ffi.dart' show LibSodiumFFI;
 import 'package:sodium/sodium_sumo.dart';
 
 /// [CryptoProvider] на libsodium через FFI (пакет `sodium`, решение 0.5.1).
@@ -78,6 +81,126 @@ final class SodiumCryptoProvider implements CryptoProvider {
       }
     });
   }
+
+  // ChaCha20-Poly1305 IETF в высокоуровневом API пакета `sodium` нет
+  // (только исходная конструкция с nonce 8 байт), поэтому — прямой вызов
+  // привязок FFI того же пакета, с той же собранной libsodium.
+  static const _ffi = LibSodiumFFI();
+
+  @override
+  Uint8List chacha20Poly1305Encrypt({
+    required SecretBytes key,
+    required Uint8List nonce,
+    required Uint8List plaintext,
+    required Uint8List aad,
+  }) {
+    _checkLength(key.length, CryptoProvider.keyLength, 'key');
+    _checkLength(nonce.length, CryptoProvider.chachaNonceLength, 'nonce');
+    return _ietf(key, nonce, aad, plaintext, (k, n, a, input, out) {
+      final outLength = calloc<UnsignedLongLong>();
+      try {
+        final rc = _ffi.crypto_aead_chacha20poly1305_ietf_encrypt(
+          out,
+          outLength,
+          input,
+          plaintext.length,
+          a,
+          aad.length,
+          nullptr,
+          n,
+          k,
+        );
+        if (rc != 0) throw StateError('chacha20poly1305: код $rc');
+        return outLength.value;
+      } finally {
+        calloc.free(outLength);
+      }
+    }, plaintext.length + CryptoProvider.aeadTagLength)!;
+  }
+
+  @override
+  Uint8List? chacha20Poly1305Decrypt({
+    required SecretBytes key,
+    required Uint8List nonce,
+    required Uint8List ciphertext,
+    required Uint8List aad,
+  }) {
+    _checkLength(key.length, CryptoProvider.keyLength, 'key');
+    _checkLength(nonce.length, CryptoProvider.chachaNonceLength, 'nonce');
+    if (ciphertext.length < CryptoProvider.aeadTagLength) return null;
+    return _ietf(key, nonce, aad, ciphertext, (k, n, a, input, out) {
+      final outLength = calloc<UnsignedLongLong>();
+      try {
+        final rc = _ffi.crypto_aead_chacha20poly1305_ietf_decrypt(
+          out,
+          outLength,
+          nullptr,
+          input,
+          ciphertext.length,
+          a,
+          aad.length,
+          n,
+          k,
+        );
+        return rc == 0 ? outLength.value : null;
+      } finally {
+        calloc.free(outLength);
+      }
+    }, ciphertext.length - CryptoProvider.aeadTagLength);
+  }
+
+  /// Копирует аргументы в нативную память, вызывает [call] и забирает
+  /// [outCapacity] байт результата. Копия ключа затирается.
+  static Uint8List? _ietf(
+    SecretBytes key,
+    Uint8List nonce,
+    Uint8List aad,
+    Uint8List input,
+    int? Function(
+      Pointer<UnsignedChar> key,
+      Pointer<UnsignedChar> nonce,
+      Pointer<UnsignedChar> aad,
+      Pointer<UnsignedChar> input,
+      Pointer<UnsignedChar> out,
+    )
+    call,
+    int outCapacity,
+  ) => using((arena) {
+    Pointer<UnsignedChar> copy(Uint8List bytes) {
+      // Пустой буфер — ненулевой указатель: libsodium его не читает.
+      final p = arena<Uint8>(bytes.isEmpty ? 1 : bytes.length);
+      p.asTypedList(bytes.length).setAll(0, bytes);
+      return p.cast();
+    }
+
+    final k = arena<Uint8>(CryptoProvider.keyLength);
+    try {
+      k.asTypedList(CryptoProvider.keyLength).setAll(0, key.bytes);
+      final out = arena<Uint8>(outCapacity == 0 ? 1 : outCapacity);
+      final length = call(
+        k.cast(),
+        copy(nonce),
+        copy(aad),
+        copy(input),
+        out.cast(),
+      );
+      return length == null
+          ? null
+          : Uint8List.fromList(out.asTypedList(length));
+    } finally {
+      k
+          .asTypedList(CryptoProvider.keyLength)
+          .fillRange(0, CryptoProvider.keyLength, 0);
+    }
+  });
+
+  @override
+  Uint8List blake2b512(Uint8List data) => _own(
+    _sodium.crypto.genericHash(
+      message: data,
+      outLen: CryptoProvider.blake2b512Length,
+    ),
+  );
 
   @override
   Uint8List blake2b256(Uint8List data, {SecretBytes? key}) {

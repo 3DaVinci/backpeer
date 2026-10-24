@@ -120,4 +120,35 @@ abstract final class DeviceCertificates {
       ),
     );
   }
+
+  /// Проверяет отзыв устройства (protocol.md, раздел 4.7), как его
+  /// проверяет узел после `ListRevocations`: подписан ключом учётной
+  /// записи из самого отзыва, `device_sign` — 32 байта. Битые поля —
+  /// [DataFormatException], подпись — [IntegrityException].
+  static Future<pb.DeviceRevocation> openRevocation(
+    CryptoProvider crypto,
+    pb.Signed signed,
+  ) async {
+    final revocation = await SignedMessages.open(
+      crypto,
+      signed,
+      context: revocationContext,
+      object: revocationContext,
+      parse: pb.DeviceRevocation.fromBuffer,
+    );
+    if (!constantTimeEquals(revocation.accountId, signed.signer)) {
+      throw const IntegrityException(
+        object: revocationContext,
+        check: IntegrityCheck.signature,
+      );
+    }
+    if (revocation.deviceSign.length != CryptoProvider.keyLength) {
+      throw const DataFormatException(
+        object: revocationContext,
+        problem: FormatProblem.invalidField,
+        detail: 'device_sign',
+      );
+    }
+    return revocation;
+  }
 }

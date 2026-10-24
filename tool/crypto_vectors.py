@@ -22,6 +22,7 @@ import struct
 import unicodedata
 
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -367,6 +368,38 @@ def primitives_cases() -> list:
                   "input": {**aead_input, "aad": wrong_aad, "ciphertext": ciphertext},
                   "expected": {"error": "integrity"}})
 
+    # ChaCha20-Poly1305 (IETF, nonce 12 байт) — только для Noise
+    # (protocol.md, раздел 3.1): RFC 8439, раздел 2.8.2.
+    key = h("808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f")
+    nonce = h("070000004041424344454647")
+    ciphertext = h("""
+        d31a8d34648e60db7b86afbc53ef7ec2a4aded51296e08fea9e2b5a736ee62d6
+        3dbea45e8ca9671282fafb69da92728b1a71de0a9e060b2905d6a5b67ecd3b36
+        92ddbd7f2d778b8c9803aee328091b58fab324e4fad675945585808b4831d7bc
+        3ff4def08e4b7a9de576d26586cec64b6116""") + h("1ae10b594f09e26a7e902ecbd0600691")
+    assert ChaCha20Poly1305(key).encrypt(nonce, plaintext, aad) == ciphertext
+    aead_input = {"primitive": "chacha20poly1305", "key": key, "nonce": nonce, "aad": aad}
+    cases.append({"name": "chacha20poly1305-rfc8439-2.8.2",
+                  "input": {**aead_input, "plaintext": plaintext},
+                  "expected": {"ciphertext": ciphertext}})
+    tampered = ciphertext[:-1] + bytes([ciphertext[-1] ^ 1])
+    cases.append({"name": "chacha20poly1305-rfc8439-2.8.2-bad-tag",
+                  "input": {**aead_input, "ciphertext": tampered},
+                  "expected": {"error": "integrity"}})
+
+    # BLAKE2b-512 — только для Noise: RFC 7693, приложение A, и пустой вход.
+    for name, data, digest in [
+        ("blake2b512-rfc7693-abc", b"abc",
+         "ba80a53f981c4d0d6a2797b69f12f6e94c212f14685ac4b74b12bb6fdbffa2d1"
+         "7d87c5392aab792dc252d5de4533cc9518d38aa8dbf1925ab92386edd4009923"),
+        ("blake2b512-empty", b"",
+         "786a02f742015903c6c6fd852552d272912f4740e15847618a86e217f71f5419"
+         "d25e1031afee585313896444934eb04b903a685b1448b755d56f701afe9be2ce"),
+    ]:
+        assert hashlib.blake2b(data).digest() == h(digest), name
+        cases.append({"name": name, "input": {"primitive": "blake2b512", "data": data},
+                      "expected": {"digest": h(digest)}})
+
     # BLAKE2b-256. В RFC 7693 только BLAKE2b-512("abc"); для 32-байтного
     # выхода — эталон BLAKE2 из hashlib, сверенный с известными значениями.
     assert hashlib.blake2b(b"abc").digest() == h("""
@@ -644,7 +677,7 @@ def main() -> None:
     write("primitives.json", "crypto/primitives",
           "Примитивы crypto.md, раздел 2, на векторах из RFC: XChaCha20-Poly1305 "
           "(draft-irtf-cfrg-xchacha-03), HKDF-SHA256 (RFC 5869), Ed25519 (RFC 8032), "
-          "X25519 (RFC 7748); BLAKE2b-256 — эталон BLAKE2 (в RFC 7693 только 512-битный вектор). "
+          "X25519 (RFC 7748); для Noise — ChaCha20-Poly1305 (RFC 8439) и BLAKE2b-512 (RFC 7693); BLAKE2b-256 — эталон BLAKE2 (в RFC 7693 только 512-битный вектор). "
           "Поле input.primitive задаёт примитив. Argon2id проверяется векторами key-bundle.json: "
           "вектор RFC 9106 требует p = 4, secret и associated data, которых нет в libsodium "
           "и в crypto.md. PBKDF2-HMAC-SHA512 проверяется векторами bip39-seed.json.",

@@ -24,7 +24,7 @@ import 'package:protocol/protocol.dart' as pb;
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
-import '../../core/test/fuzz_test.dart' show mutate;
+import '../../core/test/support/fuzz.dart' show mutate;
 import 'support/db_harness.dart';
 import 'support/harness.dart';
 import 'support/postgres.dart';

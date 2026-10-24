@@ -234,6 +234,40 @@ final class CoordinatorException extends CoreException {
   String get message => 'координатор: ${errorCodeName(code)}: $detail';
 }
 
+/// Почему собеседник по каналу Noise не принят (protocol.md, раздел 3.2).
+enum PeerRejection {
+  handshake('рукопожатие Noise не удалось'),
+  hello('Hello не разбирается'),
+  role('недопустимая роль'),
+  certificate('сертификат не прошёл проверку'),
+  keyMismatch('ключ Noise не совпадает с ключом из сертификата'),
+  unexpectedNode('сертификат другого узла'),
+  revoked('устройство отозвано'),
+  versionUnsupported('нет общей версии протокола'),
+  timeout('истекло время рукопожатия');
+
+  new(this.description);
+
+  final String description;
+}
+
+/// Рукопожатие с собеседником не удалось или он не прошёл проверку.
+/// Соединение к этому моменту закрыто.
+final class PeerRejectedException extends CoreException {
+  const new(this.reason, {this.detail});
+
+  final PeerRejection reason;
+
+  /// Подробность для журнала, без секретов.
+  final String? detail;
+
+  @override
+  String get message {
+    final tail = detail == null ? '' : ' ($detail)';
+    return 'собеседник отклонён: ${reason.description}$tail';
+  }
+}
+
 /// Имя кода для журнала: `BAD_REQUEST`. Не зависит от того, сохранены ли
 /// в сборке имена значений enum Protobuf.
 String errorCodeName(pb.ErrorCode code) => switch (code) {

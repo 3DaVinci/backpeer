@@ -1,0 +1,311 @@
+{
+  "spec": "protocol/noise-frames",
+  "specVersion": 1,
+  "generator": "tool/noise_vectors.py (Python hashlib, hmac, cryptography)",
+  "description": "Канал Noise (protocol.md, разделы 3.1, 3.3): рукопожатие XX с фиксированными закрытыми ключами X25519 (статическими и эфемерными) и прологом fs/v1/noise, затем кадры приложения. handshake — три транспортных кадра рукопожатия (u16be длина || сообщение Noise), handshakePayloads — их полезные нагрузки (в протоколе — Hello; здесь произвольные байты). messages — сообщения приложения по порядку отправки: from — отправитель, message — тело PeerMessage (байты или splitmix64-le, docs/spec/test-vectors.md), wire — транспортные кадры отправителя (u32be длина || тело, нарезанные по 65 519 байт), для длинных — wireLength и wireHash (BLAKE2b-256), transportFrames — число транспортных кадров. rekeyInterval — через сколько сообщений в направлении вызывается Rekey (в протоколе 65 536; 2 — чтобы смена ключей была видна). Случаи с initiatorWire — поток инициатора после рукопожатия, который отвечающий должен отклонить: error format (длины, обрыв) или integrity (тег).",
+  "cases": [
+    {
+      "name": "messages",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "ce56971cde355897421efc0b1046c8bf2f537eddbfbc7b9864f6e7ff7a82f2c329fb173fb546c44fb3b2c77bb33cbc5886654aae7b4ff2b983e503f6aed334bdffcc8758bc7814406cf86fef330a45ba35e6b0e89844e8567799bb31ad6015706103b161b558488eaef1cbb80e94b15ff35da430279f97ee1932da1e686e113412e79a9de0043c33d4f36eadec473e5d525d9b692a2db960d59612ceaaedce35c166fc4c8acd560c1d63f1029a790487b1288e8de2ab8961962ab871d202a854e407c5dc50bd8bea52a2bf2ecbb480bd8eefcee5d1d87586200751326e56a99e2dd7cc0ffe1efc02826d9d1c05d2064d39c690b42ad9fcdd55caf93024a77a9a0f69bb22baca4b44249e0f5f2583c857a9b01f5f531b31e2d35dd0e974ac4d593c9cd9e0fa2a6047d1f71a86",
+          "ed8f01dbe4140b1d89a9817b8a6f46b301dd50d0a6e8eb9ccfc9ab66fb64a7129699b7caad8d6837074f1f093777dfa2b8fdbecb42eb9822169285dc210d83e37aee49c8e044b67d726b03a2b1a976e3cc7ad4d712b6ccb27f485c308f2d3eb6f4dc0f9d990fec7ac39f3493952204565c1cf0654e7ca6b7ea9382616a1284cce67d28e0fa90594ef5b993d4af8b991aa8060ef6c85f4b2c2dcfc2e81eb98696321b25f4d5d8c5d1c68903e02c0d8aef93219d97ffd56dabd1074534b32fec3094bf600e63ea579ff5db009e3126e0e3d4eba184caec3d37bda4bd1e048df51ed7461098d5e126a450af98de5cdb36df7183580f0d24f6b1a1a22ef385a77fb9253b14ff531a6330888794bb292518e6cf5192ab1c56a66d"
+        ]
+      },
+      "expected": {
+        "handshake": [
+          "00205869aff450549732cbaaed5e5df9b30a6da31cb0e5742bad5ad4a1a768f1a67b",
+          "018c244fe3b963e899dd295baffce248d3530f3a9a7479ba063002680ebfe7adad49c8135a92e0830925f2df8199a059bf3248e2cbfff8e0655f87ee50332339201197acc7de3db46b6b1c99208d4751bbdee126ed594bae6585b00dcb6e58f3d01ee087b931bb9eedd2c7ee3fdee085160c5da83c1339d726fe8ff591da9fa046cd856aae44f71ff99229d9b89935865614e6246d1cfdb96b96e1e87919aad4fb1133498c4081188e38fcd9dbf3365ec248263ae26ec98cccdc2d1081df3efbf9fa825e407de54cb193a23bbc77cd2a734dc12e98da626d12e2a9157d284a96ecee5110da5a4a7eed8c46b19a26f4a64726640483b52dc78fa815ed969f9c72298f374d4c9eb49cd8f809b4229ca5daa805ae878c92de3ffec3bbd53c7bbaef5e370f70fe809da81627515bfb6e9e12bbb17882616bc8b7456b63b498d3cd841e6f95988468bf7d39b902ad99e203d262cbe1f55ac7d0f8938b3ad4b0b664fe85c22634b321730f57017e2c87eca47917346fd6db6af2a02bf5a82c1924b62958605a50758c8b3b8677950eb64d",
+          "01580d77afa79fe222d90f0b687a5d3c8b0d4b3a2f4b63db0a380dbeecc429a22eb456fcf7c9e458132638ccdbc30e1ef8b9b9d1f79de7d55aebde75cafb60ff342c9b8ccc952398630a2d6fe1eef0d5a02ae2836d46e458f717449e5db81fcddbda2f6644b6ba6bf580e75b9a801b66fe93d7d41f9274d810f1270e4df60328bb96124a62bd2a7667b0a8ce71036401708073b8192a5b5850aceb8de2857ef2fbfbda4b28e8f3a12ab45ebc4259af5174419f9ac1d0a187eb57ef06f39a154ddc58701d6da3fcf8169a43fc25de5f4cc0c5611fca65d018652156a028c6a9229781ee3f3d65ea66022a5699c04fd7b1e29517b7f12752259d5dec8bd927823a220684587bf6017cd5f9028e1bd39c6bfe93f01fe0f83093ce13853225148cb514e3f6ab4b5ce5865e91dd7bc04c240b0681b1cac23c163ebadfb805485386ee5735a6c3ee8f4f09932890e834aa67068c1afc4f5b5bdc3986a5"
+        ],
+        "handshakeHash": "03edb4c299dda712378a5775b0fc3004b1622ea43ab7ec686557e12d50980b1d65ad3db997c38ec2279e319f9278aba51b02ed73f6fd9b025c9f6df43a4e5a5c",
+        "initiatorStatic": "07a37cbc142093c8b755dc1b10e86cb426374ad16aa853ed0bdfc0b2b86d1c7c",
+        "responderStatic": "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d48466",
+        "messages": [
+          {
+            "from": "initiator",
+            "message": "",
+            "wire": "00140d799f7bfd4cfb8deee39c05d066f909ed5f7970",
+            "transportFrames": 1
+          },
+          {
+            "from": "responder",
+            "message": "08011a0408011001",
+            "wire": "001c00ce4b46518c38893c091cf1141e0bbc9ec2cf2e4880672fc1bab024",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": "c15c0289ec2d0a9167ec8e65a18debbe5e5532fbeea293f80bc942ee9086c171b9b501d1d854bb7180021590ff0b4dc3a53c36d76cec99e0758527120fbbe785a83d7e35de181749966761748e5c43cb614f560177dc7567fe8bcf144dd4fc9ac05daa4b",
+            "wire": "0078b739b11db78a5a28a8d19daf53c2acaf685e1ec0c5fd3b9d0c8839bc795dc008a2faaf2cdfc30ee10d3d4ff7cc0571f4975fe3c3aaec59749312c7beb364c76e7d8bf649fdb136cd9d9c9871d32aa5a12cd11031f0bb40e571a550098fef455edb41481075140c0b0f5e3b9add8b1c864878f53f74a54ae4",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": {
+              "type": "splitmix64-le",
+              "seed": 12,
+              "length": 65515
+            },
+            "wireLength": 65537,
+            "wireHash": "b0c51d4323825cd322e19423ac9a0d33f58f0483947c142b646bff4286456bfb",
+            "transportFrames": 1
+          },
+          {
+            "from": "responder",
+            "message": {
+              "type": "splitmix64-le",
+              "seed": 13,
+              "length": 65516
+            },
+            "wireLength": 65556,
+            "wireHash": "ff97211fc16cab0089b42564f6ab1b49d302c1276fecdf92a3053302f10abf47",
+            "transportFrames": 2
+          },
+          {
+            "from": "initiator",
+            "message": {
+              "type": "splitmix64-le",
+              "seed": 10,
+              "length": 200000
+            },
+            "wireLength": 200076,
+            "wireHash": "c4e3af16570e1e5b9209082a137e44b993cabdd3d3ffaa89b32dbe59850b85a7",
+            "transportFrames": 4
+          },
+          {
+            "from": "responder",
+            "message": {
+              "type": "splitmix64-le",
+              "seed": 11,
+              "length": 1048576
+            },
+            "wireLength": 1048886,
+            "wireHash": "5e3a0cad98c423705be6b64f1d0a70eac83ae12c0effd7747c1d03a3d8e30e37",
+            "transportFrames": 17
+          }
+        ]
+      }
+    },
+    {
+      "name": "rekey",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 2,
+        "handshakePayloads": [
+          "",
+          "ce56971cde355897421efc0b1046c8bf2f537eddbfbc7b9864f6e7ff7a82f2c329fb173fb546c44fb3b2c77bb33cbc5886654aae7b4ff2b983e503f6aed334bdffcc8758bc7814406cf86fef330a45ba35e6b0e89844e8567799bb31ad6015706103b161b558488eaef1cbb80e94b15ff35da430279f97ee1932da1e686e113412e79a9de0043c33d4f36eadec473e5d525d9b692a2db960d59612ceaaedce35c166fc4c8acd560c1d63f1029a790487b1288e8de2ab8961962ab871d202a854e407c5dc50bd8bea52a2bf2ecbb480bd8eefcee5d1d87586200751326e56a99e2dd7cc0ffe1efc02826d9d1c05d2064d39c690b42ad9fcdd55caf93024a77a9a0f69bb22baca4b44249e0f5f2583c857a9b01f5f531b31e2d35dd0e974ac4d593c9cd9e0fa2a6047d1f71a86",
+          "ed8f01dbe4140b1d89a9817b8a6f46b301dd50d0a6e8eb9ccfc9ab66fb64a7129699b7caad8d6837074f1f093777dfa2b8fdbecb42eb9822169285dc210d83e37aee49c8e044b67d726b03a2b1a976e3cc7ad4d712b6ccb27f485c308f2d3eb6f4dc0f9d990fec7ac39f3493952204565c1cf0654e7ca6b7ea9382616a1284cce67d28e0fa90594ef5b993d4af8b991aa8060ef6c85f4b2c2dcfc2e81eb98696321b25f4d5d8c5d1c68903e02c0d8aef93219d97ffd56dabd1074534b32fec3094bf600e63ea579ff5db009e3126e0e3d4eba184caec3d37bda4bd1e048df51ed7461098d5e126a450af98de5cdb36df7183580f0d24f6b1a1a22ef385a77fb9253b14ff531a6330888794bb292518e6cf5192ab1c56a66d"
+        ]
+      },
+      "expected": {
+        "handshake": [
+          "00205869aff450549732cbaaed5e5df9b30a6da31cb0e5742bad5ad4a1a768f1a67b",
+          "018c244fe3b963e899dd295baffce248d3530f3a9a7479ba063002680ebfe7adad49c8135a92e0830925f2df8199a059bf3248e2cbfff8e0655f87ee50332339201197acc7de3db46b6b1c99208d4751bbdee126ed594bae6585b00dcb6e58f3d01ee087b931bb9eedd2c7ee3fdee085160c5da83c1339d726fe8ff591da9fa046cd856aae44f71ff99229d9b89935865614e6246d1cfdb96b96e1e87919aad4fb1133498c4081188e38fcd9dbf3365ec248263ae26ec98cccdc2d1081df3efbf9fa825e407de54cb193a23bbc77cd2a734dc12e98da626d12e2a9157d284a96ecee5110da5a4a7eed8c46b19a26f4a64726640483b52dc78fa815ed969f9c72298f374d4c9eb49cd8f809b4229ca5daa805ae878c92de3ffec3bbd53c7bbaef5e370f70fe809da81627515bfb6e9e12bbb17882616bc8b7456b63b498d3cd841e6f95988468bf7d39b902ad99e203d262cbe1f55ac7d0f8938b3ad4b0b664fe85c22634b321730f57017e2c87eca47917346fd6db6af2a02bf5a82c1924b62958605a50758c8b3b8677950eb64d",
+          "01580d77afa79fe222d90f0b687a5d3c8b0d4b3a2f4b63db0a380dbeecc429a22eb456fcf7c9e458132638ccdbc30e1ef8b9b9d1f79de7d55aebde75cafb60ff342c9b8ccc952398630a2d6fe1eef0d5a02ae2836d46e458f717449e5db81fcddbda2f6644b6ba6bf580e75b9a801b66fe93d7d41f9274d810f1270e4df60328bb96124a62bd2a7667b0a8ce71036401708073b8192a5b5850aceb8de2857ef2fbfbda4b28e8f3a12ab45ebc4259af5174419f9ac1d0a187eb57ef06f39a154ddc58701d6da3fcf8169a43fc25de5f4cc0c5611fca65d018652156a028c6a9229781ee3f3d65ea66022a5699c04fd7b1e29517b7f12752259d5dec8bd927823a220684587bf6017cd5f9028e1bd39c6bfe93f01fe0f83093ce13853225148cb514e3f6ab4b5ce5865e91dd7bc04c240b0681b1cac23c163ebadfb805485386ee5735a6c3ee8f4f09932890e834aa67068c1afc4f5b5bdc3986a5"
+        ],
+        "handshakeHash": "03edb4c299dda712378a5775b0fc3004b1622ea43ab7ec686557e12d50980b1d65ad3db997c38ec2279e319f9278aba51b02ed73f6fd9b025c9f6df43a4e5a5c",
+        "initiatorStatic": "07a37cbc142093c8b755dc1b10e86cb426374ad16aa853ed0bdfc0b2b86d1c7c",
+        "responderStatic": "64b101b1d0be5a8704bd078f9895001fc03e8e9f9522f188dd128d9846d48466",
+        "messages": [
+          {
+            "from": "initiator",
+            "message": "00",
+            "wire": "00150d799f7afc903cac786b64068fc0ea151cf3f13e72",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": "0101",
+            "wire": "0016b739b17b77d7655b8453cff9d37ef1070c561c8b7836",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": "020202",
+            "wire": "0017e4ee6921dfb9f0062bb07cf7319c4341ac37fd7f944fb2",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": "03030303",
+            "wire": "0018b8bb1598dc755753b183c33d1ae7888f7aa8b26fe56091bf",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": "0404040404",
+            "wire": "00192d3220861f495f1118ecd41b69e3055837b7e9a4855fd29cdf",
+            "transportFrames": 1
+          },
+          {
+            "from": "responder",
+            "message": "808080",
+            "wire": "001700ce4b4dd90da2f320eaf8df0c79726b4280f83557105f",
+            "transportFrames": 1
+          },
+          {
+            "from": "responder",
+            "message": "818181",
+            "wire": "0017d54918c93a091a87463f36505dca4fd8bd19bf02e0e622",
+            "transportFrames": 1
+          },
+          {
+            "from": "responder",
+            "message": "828282",
+            "wire": "0017c398d1625b1da000e23a41c7d9f7e7b85d2e6bf5416bd9",
+            "transportFrames": 1
+          },
+          {
+            "from": "initiator",
+            "message": {
+              "type": "splitmix64-le",
+              "seed": 20,
+              "length": 196557
+            },
+            "wireLength": 196633,
+            "wireHash": "b03e8105163053630902379d3578a9474c4b8228ae59f98f2228e6f387b37427",
+            "transportFrames": 4
+          }
+        ]
+      }
+    },
+    {
+      "name": "app-message-too-large",
+      "description": "длина кадра приложения 1 МиБ + 1",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "68656c6c6f2d32",
+          "68656c6c6f2d33"
+        ],
+        "initiatorWire": "00780d699f7a847d80eb50f03487d1f1f4ea9a3165b9e2097702c6235ed45a8ac29ab4de4e3c1f3ea0e4d6e4154a1f790e71e866e511fbb0b9e8e73246762e7ada11c27a8be4c4e38b6bac4f170e479f695232fdbb0755ed6a48814823cea4397a9a4c91360aa8d079da31a4d91222a2ccd93a6d446867a94c65"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "tampered-frame",
+      "description": "испорчен последний байт тега",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "68656c6c6f2d32",
+          "68656c6c6f2d33"
+        ],
+        "initiatorWire": "001b0d799f7c8c6481ff47e9287946277827510b32ddec109be309e0ba"
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "transport-frame-shorter-than-tag",
+      "description": "транспортный кадр короче тега (15 байт)",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "68656c6c6f2d32",
+          "68656c6c6f2d33"
+        ],
+        "initiatorWire": "000f000000000000000000000000000000"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "truncated-transport-frame",
+      "description": "поток оборван внутри транспортного кадра",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "68656c6c6f2d32",
+          "68656c6c6f2d33"
+        ],
+        "initiatorWire": "001b0d799f7c8c6481ff47e9287946277827510b32ddec109be3"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "truncated-app-message",
+      "description": "поток оборван внутри кадра приложения",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "68656c6c6f2d32",
+          "68656c6c6f2d33"
+        ],
+        "initiatorWire": "00170d799f719d679b1867d6797633ac31a53515c5075e0f56"
+      },
+      "expected": {
+        "error": "format"
+      }
+    },
+    {
+      "name": "reordered-frames",
+      "description": "транспортные кадры переставлены: nonce не тот",
+      "input": {
+        "initStatic": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+        "initEphemeral": "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40",
+        "respStatic": "4142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60",
+        "respEphemeral": "6162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f80",
+        "prologue": "66732f76312f6e6f697365",
+        "rekeyInterval": 65536,
+        "handshakePayloads": [
+          "",
+          "68656c6c6f2d32",
+          "68656c6c6f2d33"
+        ],
+        "initiatorWire": "001ab739b17f05b33bce2a98f891a17ed57dbe7bdeb7fc1130c0ddcd00190d799f7e9a6c8ae05c72f02a186486a3315a26c1ab6d85d81e"
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    }
+  ]
+}

@@ -56,6 +56,7 @@ void main() {
       ConfigException() => 'config',
       CancelledException() => 'cancelled',
       CoordinatorException() => 'coordinator',
+      PeerRejectedException() => 'peer',
       PreconditionException() => 'precondition',
       PlacementRejectedException() => 'placement',
     };

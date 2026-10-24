@@ -6,6 +6,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
+import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:protocol/protocol.dart' as pb;
 
@@ -22,6 +23,7 @@ import 'package:protocol/protocol.dart' as pb;
 /// - После регистрации и каждого heartbeat — отчёт о повреждённых
 ///   фрагментах ([damaged], `ReportDamagedFragments`), если они есть;
 ///   [reportDamaged] отправляет его сразу.
+/// - Там же — новые отзывы устройств ([revocations], `ListRevocations`).
 final class CoordinatorLink {
   new({
     required this.client,
@@ -31,6 +33,7 @@ final class CoordinatorLink {
     required this.trustedKeys,
     this.freeBytes,
     this.damaged,
+    this.revocations,
     this.endpoints = const [],
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
@@ -57,6 +60,9 @@ final class CoordinatorLink {
 
   /// Повреждённые фрагменты для отчёта.
   final DamagedFragments? damaged;
+
+  /// Список отозванных устройств, который дополняется от координатора.
+  final RevocationList? revocations;
   final CoordinatorKeySet trustedKeys;
   final List<String> endpoints;
   final Duration maxBackoff;
@@ -118,6 +124,7 @@ final class CoordinatorLink {
         reregistered = false;
         _lastError = null;
         await reportDamaged();
+        await syncRevocations();
       } on CoordinatorException catch (e) {
         if (_stopped) break;
         _lastError = '${e.code.name}: ${e.detail}';
@@ -243,6 +250,23 @@ final class CoordinatorLink {
     } on CoordinatorException catch (e) {
       _log.warning(
         LogEvent('damaged_report_failed', {
+          'code': e.code.name,
+          'http_status': e.httpStatus,
+        }),
+      );
+    }
+  }
+
+  /// Дочитывает отзывы устройств у координатора. Сбой связи — в журнал,
+  /// повтор после следующего heartbeat.
+  Future<void> syncRevocations() async {
+    final list = revocations;
+    if (list == null || !_registered || _stopped) return;
+    try {
+      await list.sync(client, identity.keys.sign);
+    } on CoordinatorException catch (e) {
+      _log.warning(
+        LogEvent('revocations_sync_failed', {
           'code': e.code.name,
           'http_status': e.httpStatus,
         }),

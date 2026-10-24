@@ -58,8 +58,9 @@ final class FragmentRecord {
 }
 
 /// Индекс хранителя в SQLite (задача 3.2.2): фрагменты (кто загрузил,
-/// размер, `body_root`, время приёма, состояние) и использованные талоны
-/// до их истечения (protocol.md, раздел 5). Файлы фрагментов —
+/// размер, `body_root`, время приёма, состояние), использованные талоны
+/// до их истечения (protocol.md, раздел 5) и отозванные устройства
+/// (раздел 4.7). Файлы фрагментов —
 /// `FragmentFiles`; индекс — источник правды о том, что узел хранит.
 ///
 /// Запись идёт с `synchronous = FULL`: принятый фрагмент и использованный
@@ -260,6 +261,51 @@ final class FragmentIndex {
   int get usedTicketCount =>
       _db.select('SELECT count(*) AS c FROM used_tickets').single['c'] as int;
 
+  // --- отзывы устройств ---------------------------------------------------
+
+  /// Номер последнего отзыва, полученного от координатора
+  /// (`ListRevocations.after_sequence`), 0 — ещё ни одного.
+  int get revocationSequence {
+    final rows = _db.select(
+      "SELECT value FROM sync_state WHERE name = 'revocation_sequence'",
+    );
+    return rows.isEmpty ? 0 : rows.single['value'] as int;
+  }
+
+  /// Запоминает отзывы [revocations] и номер [sequence], до которого
+  /// дочитан список, в одной транзакции. Повтор отзыва — без изменений.
+  void addRevocations(List<RevokedDevice> revocations, int sequence) =>
+      _transaction(() {
+        final insert = _db.prepare(
+          'INSERT OR IGNORE INTO revoked_devices '
+          '(device_sign, account_id, revoked_at, sequence) VALUES (?, ?, ?, ?)',
+        );
+        try {
+          for (final r in revocations) {
+            insert.execute([
+              r.deviceSign,
+              r.accountId,
+              r.revokedAt.millisecondsSinceEpoch,
+              r.sequence,
+            ]);
+          }
+        } finally {
+          insert.close();
+        }
+        _db.execute(
+          'INSERT INTO sync_state (name, value) '
+          "VALUES ('revocation_sequence', ?) "
+          'ON CONFLICT (name) DO UPDATE SET value = max(value, excluded.value)',
+          [sequence],
+        );
+      });
+
+  /// Все отозванные устройства.
+  List<Uint8List> revokedDeviceKeys() => [
+    for (final row in _db.select('SELECT device_sign FROM revoked_devices'))
+      row['device_sign'] as Uint8List,
+  ];
+
   T _transaction<T>(T Function() body) {
     _db.execute('BEGIN IMMEDIATE');
     try {
@@ -295,6 +341,24 @@ final class FragmentIndex {
       DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
 }
 
+/// Отзыв устройства, полученный от координатора (protocol.md,
+/// раздел 4.7) и проверенный узлом.
+final class RevokedDevice {
+  const new({
+    required this.deviceSign,
+    required this.accountId,
+    required this.revokedAt,
+    required this.sequence,
+  });
+
+  final Uint8List deviceSign;
+  final Uint8List accountId;
+  final DateTime revokedAt;
+
+  /// Номер записи в `ListRevocations`.
+  final int sequence;
+}
+
 /// Миграции: элемент i переводит базу с версии i на i + 1. Выпущенные
 /// миграции не меняются.
 const _migrations = [
@@ -318,5 +382,19 @@ const _migrations = [
     expires_at INTEGER NOT NULL
   ) WITHOUT ROWID;
   CREATE INDEX used_tickets_expires ON used_tickets (expires_at);
+  ''',
+  // 2: отозванные устройства и место, до которого прочитан их список
+  // (задача 3.3.2).
+  '''
+  CREATE TABLE revoked_devices (
+    device_sign BLOB PRIMARY KEY CHECK (length(device_sign) = 32),
+    account_id BLOB NOT NULL CHECK (length(account_id) = 32),
+    revoked_at INTEGER NOT NULL,
+    sequence INTEGER NOT NULL
+  ) WITHOUT ROWID;
+  CREATE TABLE sync_state (
+    name TEXT PRIMARY KEY,
+    value INTEGER NOT NULL
+  ) WITHOUT ROWID;
   ''',
 ];

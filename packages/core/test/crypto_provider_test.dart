@@ -51,6 +51,33 @@ void main() {
         dart.blake2b256(data, key: key),
         sodium.blake2b256(data, key: key),
       );
+      // Примитивы Noise: пустые входы и длины, не кратные блоку.
+      final shortNonce = sodium.randomBytes(12);
+      final sealed = sodium.chacha20Poly1305Encrypt(
+        key: key,
+        nonce: shortNonce,
+        plaintext: data,
+        aad: aad,
+      );
+      expect(
+        dart.chacha20Poly1305Encrypt(
+          key: key,
+          nonce: shortNonce,
+          plaintext: data,
+          aad: aad,
+        ),
+        sealed,
+      );
+      expect(
+        dart.chacha20Poly1305Decrypt(
+          key: key,
+          nonce: shortNonce,
+          ciphertext: sealed,
+          aad: aad,
+        ),
+        data,
+      );
+      expect(dart.blake2b512(data), sodium.blake2b512(data));
       final pair = await sodium.ed25519FromSeed(key);
       final signature = await sodium.ed25519Sign(pair, data);
       expect(await dart.ed25519Sign(pair, data), signature);
@@ -113,6 +140,42 @@ void _primitives(CryptoProvider Function() provider) {
               ),
               plaintext,
             );
+          case 'chacha20poly1305':
+            final key = SecretBytes(_hex(input['key']));
+            final nonce = _hex(input['nonce']);
+            final aad = _hex(input['aad']);
+            if (expected['error'] == 'integrity') {
+              expect(
+                provider().chacha20Poly1305Decrypt(
+                  key: key,
+                  nonce: nonce,
+                  ciphertext: _hex(input['ciphertext']),
+                  aad: aad,
+                ),
+                isNull,
+              );
+              return;
+            }
+            final plaintext = _hex(input['plaintext']);
+            final ciphertext = provider().chacha20Poly1305Encrypt(
+              key: key,
+              nonce: nonce,
+              plaintext: plaintext,
+              aad: aad,
+            );
+            expect(bytesToHex(ciphertext), expected['ciphertext']);
+            expect(
+              provider().chacha20Poly1305Decrypt(
+                key: key,
+                nonce: nonce,
+                ciphertext: ciphertext,
+                aad: aad,
+              ),
+              plaintext,
+            );
+          case 'blake2b512':
+            final digest = provider().blake2b512(_hex(input['data']));
+            expect(bytesToHex(digest), expected['digest']);
           case 'blake2b256':
             final key = input['key'];
             final digest = provider().blake2b256(

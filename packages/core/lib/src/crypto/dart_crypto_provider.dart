@@ -19,6 +19,7 @@ final class DartCryptoProvider implements CryptoProvider {
   final Random _random;
 
   static const _aead = c.DartXchacha20.poly1305Aead();
+  static const _chacha = c.DartChacha20.poly1305Aead();
   static final _ed25519 = c.DartEd25519();
   static const _x25519 = c.DartX25519();
 
@@ -70,6 +71,59 @@ final class DartCryptoProvider implements CryptoProvider {
       return null;
     }
   }
+
+  @override
+  Uint8List chacha20Poly1305Encrypt({
+    required SecretBytes key,
+    required Uint8List nonce,
+    required Uint8List plaintext,
+    required Uint8List aad,
+  }) {
+    _checkLength(key.length, CryptoProvider.keyLength, 'key');
+    _checkLength(nonce.length, CryptoProvider.chachaNonceLength, 'nonce');
+    final box = _chacha.encryptSync(
+      plaintext,
+      secretKey: c.SecretKeyData(key.bytes),
+      nonce: nonce,
+      aad: aad,
+    );
+    final tag = box.mac.bytes;
+    return Uint8List(box.cipherText.length + tag.length)
+      ..setAll(0, box.cipherText)
+      ..setAll(box.cipherText.length, tag);
+  }
+
+  @override
+  Uint8List? chacha20Poly1305Decrypt({
+    required SecretBytes key,
+    required Uint8List nonce,
+    required Uint8List ciphertext,
+    required Uint8List aad,
+  }) {
+    _checkLength(key.length, CryptoProvider.keyLength, 'key');
+    _checkLength(nonce.length, CryptoProvider.chachaNonceLength, 'nonce');
+    const tagLength = CryptoProvider.aeadTagLength;
+    if (ciphertext.length < tagLength) return null;
+    final split = ciphertext.length - tagLength;
+    try {
+      final plain = _chacha.decryptSync(
+        c.SecretBox(
+          Uint8List.sublistView(ciphertext, 0, split),
+          nonce: nonce,
+          mac: c.Mac(Uint8List.sublistView(ciphertext, split)),
+        ),
+        secretKey: c.SecretKeyData(key.bytes),
+        aad: aad,
+      );
+      return plain is Uint8List ? plain : Uint8List.fromList(plain);
+    } on c.SecretBoxAuthenticationError {
+      return null;
+    }
+  }
+
+  @override
+  Uint8List blake2b512(Uint8List data) =>
+      hashlib.blake2b512.convert(data).bytes;
 
   @override
   Uint8List blake2b256(Uint8List data, {SecretBytes? key}) {

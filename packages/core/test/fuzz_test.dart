@@ -8,8 +8,6 @@
 // По умолчанию — 2000 входов на разборщик, seed 1. Упавший вход
 // печатается вместе с seed и номером прогона.
 
-import 'dart:io';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
@@ -18,94 +16,7 @@ import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
 import 'package:test_vectors/test_vectors.dart';
 
-final Map<String, String> _env = Platform.environment;
-final int _runs = int.parse(_env['FS_FUZZ_RUNS'] ?? '2000');
-final int _seed = int.parse(_env['FS_FUZZ_SEED'] ?? '1');
-
-/// Мутация правильного образца: переворот битов, замена байтов на
-/// граничные значения, обрезка, удлинение, вставка и удаление участка,
-/// перестановка участков; иногда — совсем случайный вход.
-Uint8List mutate(Random r, Uint8List sample) {
-  if (r.nextInt(20) == 0) {
-    return Uint8List.fromList(
-      List.generate(r.nextInt(sample.length * 2 + 2), (_) => r.nextInt(256)),
-    );
-  }
-  var b = Uint8List.fromList(sample);
-  final steps = 1 + r.nextInt(4);
-  for (var s = 0; s < steps; s++) {
-    if (b.isEmpty) b = Uint8List(1);
-    switch (r.nextInt(8)) {
-      case 0:
-        b[r.nextInt(b.length)] ^= 1 << r.nextInt(8);
-      case 1:
-        const interesting = [0, 1, 0x7F, 0x80, 0xFF];
-        b[r.nextInt(b.length)] = interesting[r.nextInt(interesting.length)];
-      case 2:
-        // Граничное 32-битное число по случайному смещению: длины и
-        // счётчики в заголовках — u32le.
-        if (b.length >= 4) {
-          const values = [0, 1, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF, 65536];
-          final at = r.nextInt(b.length - 3);
-          final v = values[r.nextInt(values.length)];
-          for (var i = 0; i < 4; i++) {
-            b[at + i] = (v >> (8 * i)) & 0xFF;
-          }
-        }
-      case 3:
-        b = Uint8List.sublistView(b, 0, r.nextInt(b.length + 1));
-      case 4:
-        b = Uint8List.fromList([
-          ...b,
-          ...List.generate(1 + r.nextInt(64), (_) => r.nextInt(256)),
-        ]);
-      case 5:
-        final at = r.nextInt(b.length + 1);
-        b = Uint8List.fromList([
-          ...b.sublist(0, at),
-          ...List.generate(1 + r.nextInt(16), (_) => r.nextInt(256)),
-          ...b.sublist(at),
-        ]);
-      case 6:
-        final at = r.nextInt(b.length);
-        final end = min(b.length, at + 1 + r.nextInt(16));
-        b = Uint8List.fromList([...b.sublist(0, at), ...b.sublist(end)]);
-      default:
-        final a = r.nextInt(b.length);
-        final c = r.nextInt(b.length);
-        final len = min(16, min(b.length - a, b.length - c));
-        b.setRange(c, c + len, Uint8List.fromList(b.sublist(a, a + len)));
-    }
-  }
-  return b;
-}
-
-/// [_runs] мутаций каждого из [samples] через [target]. Допустимы только
-/// успех и [CoreException]. Возвращает число отказов.
-int fuzz(
-  String name,
-  List<Uint8List> samples,
-  void Function(Uint8List input) target, {
-  int? runs,
-}) {
-  final r = Random(_seed ^ name.hashCode);
-  var rejected = 0;
-  final total = runs ?? _runs;
-  for (var i = 0; i < total; i++) {
-    final input = mutate(r, samples[i % samples.length]);
-    try {
-      target(input);
-    } on CoreException {
-      rejected++;
-    } on Object catch (e, st) {
-      fail(
-        '$name: seed $_seed, прогон $i, вход ${input.length} байт '
-        '${toHex(input.take(256).toList())}…\n$e\n$st',
-      );
-    }
-  }
-  return rejected;
-}
+import 'support/fuzz.dart';
 
 void main() {
   late CryptoProvider crypto;
@@ -147,7 +58,7 @@ void main() {
     ]);
     // Мутации полного сегмента 64 КиБ медленные; случайные правки
     // заголовка и оглавления — на усечённых образцах тоже.
-    fuzz('segment', [plain], SegmentPlaintext.parse, runs: _runs ~/ 4);
+    fuzz('segment', [plain], SegmentPlaintext.parse, runs: fuzzRuns ~/ 4);
     fuzz(
       'segment-head',
       [Uint8List.sublistView(plain, 0, 512)],
@@ -244,7 +155,7 @@ void main() {
       'snapshot-blob',
       [ManifestObjects.sealSnapshot(crypto, key, snapshot)],
       (b) => ManifestObjects.openSnapshot(crypto, key, b),
-      runs: _runs ~/ 4,
+      runs: fuzzRuns ~/ 4,
     );
   });
 

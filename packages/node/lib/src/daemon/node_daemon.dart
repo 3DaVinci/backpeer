@@ -263,6 +263,7 @@ final class NodeDaemon {
         endpoints: config.endpoints,
         reachability: _reachability,
         trustedKeys: trustedKeys,
+        commandChannel: config.commandChannel,
       )..start();
     }
     checker.onDamaged = (_) {

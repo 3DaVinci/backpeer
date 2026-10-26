@@ -16,6 +16,7 @@ export 'src/control/control_client.dart';
 export 'src/control/control_endpoint.dart'
     show ControlEndpoint, ControlException;
 export 'src/control/control_server.dart';
+export 'src/daemon/command_channel.dart';
 export 'src/daemon/config.dart';
 export 'src/daemon/coordinator_link.dart';
 export 'src/daemon/identity.dart';

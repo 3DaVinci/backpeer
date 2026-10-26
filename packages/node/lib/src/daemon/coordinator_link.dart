@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:core/core.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
+import 'package:node/src/daemon/command_channel.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
 import 'package:node/src/net/reachability.dart';
@@ -29,6 +30,11 @@ import 'package:protocol/protocol.dart' as pb;
 ///   `CheckReachability`); изменились адреса узла — heartbeat с ними
 ///   сразу. [recheckReachability] проверяет вне очереди (получен или снят
 ///   проброс порта).
+/// - С `commandChannel` после регистрации открывается канал команд
+///   ([CommandChannel], задача 3.6.1): heartbeat идёт по нему, а по HTTP —
+///   только пока канала нет; открылся канал — heartbeat сразу. Команда
+///   `SyncRevocations` дочитывает отзывы со случайной задержкой до
+///   [revocationJitter], чтобы узлы не пришли к координатору разом.
 final class CoordinatorLink {
   new({
     required this.client,
@@ -43,8 +49,20 @@ final class CoordinatorLink {
     this.reachability,
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
+    bool commandChannel = false,
+    this.revocationJitter = const Duration(seconds: 10),
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now {
+    if (commandChannel) {
+      channel = CommandChannel(
+        client: client,
+        nodeKey: identity.keys.sign,
+        onCommand: _onCommand,
+        onConnected: _wakeUp,
+        maxBackoff: maxBackoff,
+      );
+    }
+  }
 
   /// Версии протокола между узлами, которые знает узел (раздел 2).
   static const versions = [1];
@@ -77,7 +95,13 @@ final class CoordinatorLink {
   /// Проверка достижимости и адреса узла (задача 3.5.1).
   final Reachability? reachability;
   final Duration maxBackoff;
+
+  /// Наибольшая случайная задержка `ListRevocations` по команде.
+  final Duration revocationJitter;
   final DateTime Function() _clock;
+
+  /// Канал команд; `null` — выключен.
+  CommandChannel? channel;
 
   static final _log = Logger('coordinator');
 
@@ -102,6 +126,7 @@ final class CoordinatorLink {
     'nextAttemptAt': _nextAttempt?.toUtc().toIso8601String(),
     'lastError': _lastError,
     'unknownCoordinatorKeys': _unknownKeys,
+    'channel': channel?.toJson(),
   };
 
   /// Запускает цикл регистрации и heartbeat.
@@ -111,9 +136,9 @@ final class CoordinatorLink {
   /// ждётся не дольше [wait].
   Future<void> stop({Duration wait = const Duration(seconds: 5)}) async {
     _stopped = true;
-    if (_wake case final w? when !w.isCompleted) w.complete();
+    _wakeUp();
     try {
-      await _loop?.timeout(wait);
+      await Future.wait([?_loop, ?channel?.stop()]).timeout(wait);
     } on TimeoutException {
       _log.warning(const LogEvent('stop_request_abandoned'));
     }
@@ -127,6 +152,7 @@ final class CoordinatorLink {
       try {
         if (!_registered) {
           await register();
+          channel?.start();
           next = _interval;
         } else {
           next = await heartbeat();
@@ -192,7 +218,39 @@ final class CoordinatorLink {
     if (r == null) return;
     r.invalidate();
     if (!_registered) return;
+    _wakeUp();
+  }
+
+  /// Прервать паузу цикла: следующий heartbeat — сейчас.
+  void _wakeUp() {
     if (_wake case final w? when !w.isCompleted) w.complete();
+  }
+
+  /// Команда координатора по каналу (protocol.md, раздел 4.10).
+  Future<void> _onCommand(pb.CoordinatorChannelMessage command) async {
+    switch (command.whichBody()) {
+      case pb.CoordinatorChannelMessage_Body.ping:
+        return;
+      case pb.CoordinatorChannelMessage_Body.syncRevocations:
+        final list = revocations;
+        if (list == null ||
+            command.syncRevocations.sequence.toInt() <= list.sequence) {
+          return;
+        }
+        final ms = revocationJitter.inMilliseconds;
+        final delay = Duration(
+          milliseconds: ms == 0 ? 0 : math.Random().nextInt(ms),
+        );
+        unawaited(Future<void>.delayed(delay, syncRevocations));
+      case pb.CoordinatorChannelMessage_Body.heartbeat ||
+          pb.CoordinatorChannelMessage_Body.error ||
+          pb.CoordinatorChannelMessage_Body.notSet:
+        // Новая команда, которой этот узел не знает.
+        throw const CoordinatorException(
+          pb.ErrorCode.ERROR_CODE_BAD_REQUEST,
+          'неизвестная команда',
+        );
+    }
   }
 
   /// Проверка, если пора; `true` — адреса изменились.
@@ -229,26 +287,38 @@ final class CoordinatorLink {
   /// `Heartbeat`; возвращает паузу до следующего.
   Future<Duration> heartbeat() async {
     final used = usedBytes();
-    final response = await client.heartbeat(
-      pb.HeartbeatRequest(
-        // Координатор отклоняет занятое больше ёмкости, а квоту могли
-        // уменьшить в настройках при уже принятых фрагментах.
-        usedBytes: Int64(math.min(used, capacityBytes)),
-        capacityBytes: Int64(capacityBytes),
-        endpoints: currentEndpoints,
-        freeBytes: switch (freeBytes) {
-          final f? => Int64(math.min(f(), capacityBytes)),
-          null => null,
-        },
-      ),
-      nodeKey: identity.keys.sign,
+    final request = pb.HeartbeatRequest(
+      // Координатор отклоняет занятое больше ёмкости, а квоту могли
+      // уменьшить в настройках при уже принятых фрагментах.
+      usedBytes: Int64(math.min(used, capacityBytes)),
+      capacityBytes: Int64(capacityBytes),
+      endpoints: currentEndpoints,
+      freeBytes: switch (freeBytes) {
+        final f? => Int64(math.min(f(), capacityBytes)),
+        null => null,
+      },
     );
+    final response = await _sendHeartbeat(request);
     _lastHeartbeat = _clock();
     if (response.nextHeartbeatMs > 0) {
       _interval = Duration(milliseconds: response.nextHeartbeatMs);
     }
     _log.fine(LogEvent('heartbeat', {'used_bytes': used}));
     return _interval;
+  }
+
+  /// По каналу, если он открыт, иначе по HTTP.
+  Future<pb.HeartbeatResponse> _sendHeartbeat(
+    pb.HeartbeatRequest request,
+  ) async {
+    if (channel case final c? when c.connected) {
+      try {
+        return await c.heartbeat(request);
+      } on ChannelUnavailableException catch (e) {
+        _log.fine(LogEvent('channel_heartbeat_failed', {'reason': e.reason}));
+      }
+    }
+    return await client.heartbeat(request, nodeKey: identity.keys.sign);
   }
 
   /// Отправляет координатору повреждённые фрагменты, о которых он ещё не

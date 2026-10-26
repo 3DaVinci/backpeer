@@ -42,6 +42,7 @@ coordinator:
   url: https://coord.example
   keys:
     - ${'ab' * 32}
+  channel: true
 log:
   level: fine
   file: "-"
@@ -51,6 +52,7 @@ log:
         'FS_NODE_STORAGE_CHECK_BYTES_PER_SECOND': '0',
         'FS_NODE_LIMITS_DOWNLOAD_BYTES_PER_SECOND': '5000',
         'FS_NODE_COORDINATOR_KEYS': '${'cd' * 32}, ${'ef' * 32}',
+        'FS_NODE_COORDINATOR_CHANNEL': 'false',
       },
     );
     expect(c.dataDir, '/srv/node');
@@ -64,6 +66,7 @@ log:
     expect(c.limits.downloadBytesPerSecond, 5000);
     expect(c.coordinatorUrl, 'https://coord.example');
     expect(c.coordinatorKeys, ['cd' * 32, 'ef' * 32]);
+    expect(c.commandChannel, isFalse);
     expect(c.log.level, Level.FINE);
     expect(c.log.file, '-');
   });
@@ -72,6 +75,7 @@ log:
     for (final yaml in [
       'storage:\n  qouta_bytes: 1',
       'listen:\n  port: 70000',
+      'coordinator:\n  channel: yes please',
       'storage:\n  quota_bytes: 10',
       'storage:\n  check_interval_days: 0',
       'coordinator:\n  url: ftp://x',

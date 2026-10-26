@@ -844,3 +844,137 @@ const ReachabilityResult$json = {
 final $typed_data.Uint8List reachabilityResultDescriptor = $convert.base64Decode(
     'ChJSZWFjaGFiaWxpdHlSZXN1bHQSEgoEcG9ydBgBIAEoDVIEcG9ydBIxCgZzdGF0dXMYAiABKA'
     '4yGS5mcy52MS5SZWFjaGFiaWxpdHlTdGF0dXNSBnN0YXR1cw==');
+
+@$core.Deprecated('Use nodeChannelMessageDescriptor instead')
+const NodeChannelMessage$json = {
+  '1': 'NodeChannelMessage',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 4, '10': 'id'},
+    {'1': 'reply_to', '3': 2, '4': 1, '5': 4, '10': 'replyTo'},
+    {
+      '1': 'heartbeat',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.HeartbeatRequest',
+      '9': 0,
+      '10': 'heartbeat'
+    },
+    {
+      '1': 'done',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.CommandDone',
+      '9': 0,
+      '10': 'done'
+    },
+    {
+      '1': 'error',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Error',
+      '9': 0,
+      '10': 'error'
+    },
+  ],
+  '8': [
+    {'1': 'body'},
+  ],
+};
+
+/// Descriptor for `NodeChannelMessage`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodeChannelMessageDescriptor = $convert.base64Decode(
+    'ChJOb2RlQ2hhbm5lbE1lc3NhZ2USDgoCaWQYASABKARSAmlkEhkKCHJlcGx5X3RvGAIgASgEUg'
+    'dyZXBseVRvEjcKCWhlYXJ0YmVhdBgDIAEoCzIXLmZzLnYxLkhlYXJ0YmVhdFJlcXVlc3RIAFIJ'
+    'aGVhcnRiZWF0EigKBGRvbmUYBCABKAsyEi5mcy52MS5Db21tYW5kRG9uZUgAUgRkb25lEiQKBW'
+    'Vycm9yGAUgASgLMgwuZnMudjEuRXJyb3JIAFIFZXJyb3JCBgoEYm9keQ==');
+
+@$core.Deprecated('Use coordinatorChannelMessageDescriptor instead')
+const CoordinatorChannelMessage$json = {
+  '1': 'CoordinatorChannelMessage',
+  '2': [
+    {'1': 'id', '3': 1, '4': 1, '5': 4, '10': 'id'},
+    {'1': 'reply_to', '3': 2, '4': 1, '5': 4, '10': 'replyTo'},
+    {
+      '1': 'heartbeat',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.HeartbeatResponse',
+      '9': 0,
+      '10': 'heartbeat'
+    },
+    {
+      '1': 'error',
+      '3': 4,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Error',
+      '9': 0,
+      '10': 'error'
+    },
+    {
+      '1': 'ping',
+      '3': 5,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.PingCommand',
+      '9': 0,
+      '10': 'ping'
+    },
+    {
+      '1': 'sync_revocations',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.SyncRevocationsCommand',
+      '9': 0,
+      '10': 'syncRevocations'
+    },
+  ],
+  '8': [
+    {'1': 'body'},
+  ],
+};
+
+/// Descriptor for `CoordinatorChannelMessage`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List coordinatorChannelMessageDescriptor = $convert.base64Decode(
+    'ChlDb29yZGluYXRvckNoYW5uZWxNZXNzYWdlEg4KAmlkGAEgASgEUgJpZBIZCghyZXBseV90bx'
+    'gCIAEoBFIHcmVwbHlUbxI4CgloZWFydGJlYXQYAyABKAsyGC5mcy52MS5IZWFydGJlYXRSZXNw'
+    'b25zZUgAUgloZWFydGJlYXQSJAoFZXJyb3IYBCABKAsyDC5mcy52MS5FcnJvckgAUgVlcnJvch'
+    'IoCgRwaW5nGAUgASgLMhIuZnMudjEuUGluZ0NvbW1hbmRIAFIEcGluZxJKChBzeW5jX3Jldm9j'
+    'YXRpb25zGAYgASgLMh0uZnMudjEuU3luY1Jldm9jYXRpb25zQ29tbWFuZEgAUg9zeW5jUmV2b2'
+    'NhdGlvbnNCBgoEYm9keQ==');
+
+@$core.Deprecated('Use commandDoneDescriptor instead')
+const CommandDone$json = {
+  '1': 'CommandDone',
+};
+
+/// Descriptor for `CommandDone`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List commandDoneDescriptor =
+    $convert.base64Decode('CgtDb21tYW5kRG9uZQ==');
+
+@$core.Deprecated('Use pingCommandDescriptor instead')
+const PingCommand$json = {
+  '1': 'PingCommand',
+};
+
+/// Descriptor for `PingCommand`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List pingCommandDescriptor =
+    $convert.base64Decode('CgtQaW5nQ29tbWFuZA==');
+
+@$core.Deprecated('Use syncRevocationsCommandDescriptor instead')
+const SyncRevocationsCommand$json = {
+  '1': 'SyncRevocationsCommand',
+  '2': [
+    {'1': 'sequence', '3': 1, '4': 1, '5': 4, '10': 'sequence'},
+  ],
+};
+
+/// Descriptor for `SyncRevocationsCommand`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List syncRevocationsCommandDescriptor =
+    $convert.base64Decode(
+        'ChZTeW5jUmV2b2NhdGlvbnNDb21tYW5kEhoKCHNlcXVlbmNlGAEgASgEUghzZXF1ZW5jZQ==');

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
 import 'package:logging/logging.dart';
@@ -79,6 +80,7 @@ final class CoordinatorConfig {
     this.maxDevicesPerAccount = 5,
     this.maxObjectBytesPerAccount = 1 << 30,
     this.nodes = const NodePolicy(),
+    this.channels = const ChannelPolicy(),
     this.placement = const PlacementPolicy(),
     this.signerSocket,
     this.adminRole = 'fs_admin',
@@ -158,6 +160,8 @@ final class CoordinatorConfig {
     'nodes.heartbeat_seconds',
     'nodes.check_private_addresses',
     'nodes.reachability_timeout_ms',
+    'channels.max_connections',
+    'channels.ping_seconds',
     'placement.min_availability',
     'placement.probation_hours',
     'placement.max_probation_share',
@@ -191,6 +195,9 @@ final class CoordinatorConfig {
   /// Реестр узлов: минимум места, предел узлов, период heartbeat.
   final NodePolicy nodes;
 
+  /// Канал команд узлов: предел каналов, период ping.
+  final ChannelPolicy channels;
+
   /// Размещение: порог доступности, испытательный срок, срок талонов.
   final PlacementPolicy placement;
 
@@ -216,6 +223,7 @@ final class _Reader {
     const lim = RateLimits();
     const np = NodePolicy();
     const pp = PlacementPolicy();
+    const cp = ChannelPolicy();
     final cert = _string('tls.certificate');
     final key = _string('tls.private_key');
     if ((cert == null) != (key == null)) {
@@ -292,6 +300,15 @@ final class _Reader {
           milliseconds:
               _int('nodes.reachability_timeout_ms', 100, 60000) ??
               np.reachabilityTimeout.inMilliseconds,
+        ),
+      ),
+      channels: ChannelPolicy(
+        maxConnections:
+            _int('channels.max_connections', 0, 1000000) ?? cp.maxConnections,
+        pingInterval: Duration(
+          seconds:
+              _int('channels.ping_seconds', 5, 600) ??
+              cp.pingInterval.inSeconds,
         ),
       ),
       placement: PlacementPolicy(

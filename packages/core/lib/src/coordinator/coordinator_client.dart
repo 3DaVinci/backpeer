@@ -143,6 +143,53 @@ final class CoordinatorClient {
     }
   }
 
+  /// Путь канала команд узла (protocol.md, раздел 4.10).
+  static const nodeChannelPath = '/api/v1/NodeChannel';
+
+  /// Открывает канал команд узла: WebSocket к [nodeChannelPath] с
+  /// подписью `FS-Auth` ключом [nodeKey] над путём и пустым телом. Тот же
+  /// TLS, что у запросов; сжатие выключено. Отказ координатора (ошибка
+  /// подписи, перегрузка, старый координатор без канала) и сбой связи —
+  /// [CoordinatorException] с кодом `UNAVAILABLE`: причину отказа узел
+  /// узнаёт из обычного heartbeat по HTTP.
+  Future<WebSocket> openNodeChannel({required Ed25519KeyPair nodeKey}) async {
+    final path = '${_basePath()}$nodeChannelPath';
+    final auth = await RequestAuth.sign(
+      crypto,
+      nodeKey,
+      path: path,
+      body: const [],
+    );
+    final url = baseUri.replace(
+      scheme: baseUri.scheme == 'https' ? 'wss' : 'ws',
+      path: path,
+    );
+    try {
+      return await WebSocket.connect(
+        url.toString(),
+        headers: {RequestAuth.headerName: auth.toHeader()},
+        compression: CompressionOptions.compressionOff,
+        customClient: _http,
+      ).timeout(requestTimeout);
+    } on TlsException catch (e) {
+      throw CoordinatorException(
+        pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED,
+        'TLS: ${e.message}',
+      );
+    } on IOException catch (e) {
+      // WebSocketException и HttpException — тоже IOException.
+      throw CoordinatorException(
+        pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+        'канал не открыт: ${e.runtimeType}',
+      );
+    } on TimeoutException {
+      throw const CoordinatorException(
+        pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+        'канал не открыт: нет ответа',
+      );
+    }
+  }
+
   void close({bool force = false}) => _http.close(force: force);
 
   String _basePath() {

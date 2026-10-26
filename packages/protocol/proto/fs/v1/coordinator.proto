@@ -256,3 +256,46 @@ enum ReachabilityStatus {
   REACHABILITY_STATUS_WRONG_PEER = 4;  // ответил не этот узел или не Noise
   REACHABILITY_STATUS_NOT_CHECKED = 5; // адрес не публичный (настройка координатора)
 }
+
+// --- Канал команд координатора (задача 3.6.1) -------------------------------
+//
+// Узел держит исходящее соединение WebSocket к координатору:
+// GET /api/v1/NodeChannel с подписью FS-Auth ключом узла над путём и пустым
+// телом (protocol.md, раздел 4.10). Каждый двоичный кадр WebSocket — одно
+// сообщение: от узла — NodeChannelMessage, от координатора —
+// CoordinatorChannelMessage. Каждая сторона нумерует свои запросы (id от 1,
+// по возрастанию); ответ несёт reply_to — номер запроса другой стороны.
+// Новые команды — новые варианты oneof: узел отвечает на незнакомую команду
+// ошибкой BAD_REQUEST, канал не закрывается.
+
+message NodeChannelMessage {
+  uint64 id = 1;                       // номер запроса узла; у ответа 0
+  uint64 reply_to = 2;                 // номер команды координатора; у запроса 0
+  oneof body {
+    HeartbeatRequest heartbeat = 3;    // запрос: heartbeat по каналу
+    CommandDone done = 4;              // ответ: команда принята
+    Error error = 5;                   // ответ: команда отклонена
+  }
+}
+
+message CoordinatorChannelMessage {
+  uint64 id = 1;                       // номер команды; у ответа 0
+  uint64 reply_to = 2;                 // номер запроса узла; у команды 0
+  oneof body {
+    HeartbeatResponse heartbeat = 3;   // ответ на heartbeat
+    Error error = 4;                   // ответ ошибкой на запрос узла
+    PingCommand ping = 5;
+    SyncRevocationsCommand sync_revocations = 6;
+  }
+}
+
+message CommandDone {}
+
+// Проверка канала: узел отвечает CommandDone.
+message PingCommand {}
+
+// Появился отзыв устройства с номером sequence (ListRevocations): узел,
+// у которого номер последнего полученного отзыва меньше, дочитывает список.
+message SyncRevocationsCommand {
+  uint64 sequence = 1;
+}

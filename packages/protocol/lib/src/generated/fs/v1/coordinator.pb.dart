@@ -3123,6 +3123,452 @@ class ReachabilityResult extends $pb.GeneratedMessage {
   void clearStatus() => $_clearField(2);
 }
 
+enum NodeChannelMessage_Body { heartbeat, done, error, notSet }
+
+class NodeChannelMessage extends $pb.GeneratedMessage {
+  factory NodeChannelMessage({
+    $fixnum.Int64? id,
+    $fixnum.Int64? replyTo,
+    HeartbeatRequest? heartbeat,
+    CommandDone? done,
+    $0.Error? error,
+  }) {
+    final result = NodeChannelMessage._();
+    if (id != null) result.id = id;
+    if (replyTo != null) result.replyTo = replyTo;
+    if (heartbeat != null) result.heartbeat = heartbeat;
+    if (done != null) result.done = done;
+    if (error != null) result.error = error;
+    return result;
+  }
+
+  NodeChannelMessage._();
+
+  factory NodeChannelMessage.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodeChannelMessage()..mergeFromBuffer(data, registry);
+  factory NodeChannelMessage.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodeChannelMessage()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, NodeChannelMessage_Body>
+      _NodeChannelMessage_BodyByTag = {
+    3: NodeChannelMessage_Body.heartbeat,
+    4: NodeChannelMessage_Body.done,
+    5: NodeChannelMessage_Body.error,
+    0: NodeChannelMessage_Body.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodeChannelMessage',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodeChannelMessage.$_createMessage)
+    ..oo(0, [3, 4, 5])
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'id', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'replyTo', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOM<HeartbeatRequest>(3, _omitFieldNames ? '' : 'heartbeat',
+        subBuilder: HeartbeatRequest.$_createMessage)
+    ..aOM<CommandDone>(4, _omitFieldNames ? '' : 'done',
+        subBuilder: CommandDone.$_createMessage)
+    ..aOM<$0.Error>(5, _omitFieldNames ? '' : 'error',
+        subBuilder: $0.Error.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodeChannelMessage clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodeChannelMessage copyWith(void Function(NodeChannelMessage) updates) =>
+      super.copyWith((message) => updates(message as NodeChannelMessage))
+          as NodeChannelMessage;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NodeChannelMessage() / NodeChannelMessage.new instead')
+  static NodeChannelMessage create() => NodeChannelMessage._();
+  static $pb.GeneratedMessage $_createMessage() => NodeChannelMessage._();
+  @$core.override
+  NodeChannelMessage createEmptyInstance() => NodeChannelMessage._();
+  @$core.pragma('dart2js:noInline')
+  static NodeChannelMessage getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodeChannelMessage>(
+          NodeChannelMessage.$_createMessage);
+  static NodeChannelMessage? _defaultInstance;
+
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  NodeChannelMessage_Body whichBody() =>
+      _NodeChannelMessage_BodyByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  void clearBody() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get id => $_getI64(0);
+  @$pb.TagNumber(1)
+  set id($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get replyTo => $_getI64(1);
+  @$pb.TagNumber(2)
+  set replyTo($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReplyTo() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReplyTo() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  HeartbeatRequest get heartbeat => $_getN(2);
+  @$pb.TagNumber(3)
+  set heartbeat(HeartbeatRequest value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHeartbeat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHeartbeat() => $_clearField(3);
+  @$pb.TagNumber(3)
+  HeartbeatRequest ensureHeartbeat() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  CommandDone get done => $_getN(3);
+  @$pb.TagNumber(4)
+  set done(CommandDone value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasDone() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearDone() => $_clearField(4);
+  @$pb.TagNumber(4)
+  CommandDone ensureDone() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  $0.Error get error => $_getN(4);
+  @$pb.TagNumber(5)
+  set error($0.Error value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasError() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearError() => $_clearField(5);
+  @$pb.TagNumber(5)
+  $0.Error ensureError() => $_ensure(4);
+}
+
+enum CoordinatorChannelMessage_Body {
+  heartbeat,
+  error,
+  ping,
+  syncRevocations,
+  notSet
+}
+
+class CoordinatorChannelMessage extends $pb.GeneratedMessage {
+  factory CoordinatorChannelMessage({
+    $fixnum.Int64? id,
+    $fixnum.Int64? replyTo,
+    HeartbeatResponse? heartbeat,
+    $0.Error? error,
+    PingCommand? ping,
+    SyncRevocationsCommand? syncRevocations,
+  }) {
+    final result = CoordinatorChannelMessage._();
+    if (id != null) result.id = id;
+    if (replyTo != null) result.replyTo = replyTo;
+    if (heartbeat != null) result.heartbeat = heartbeat;
+    if (error != null) result.error = error;
+    if (ping != null) result.ping = ping;
+    if (syncRevocations != null) result.syncRevocations = syncRevocations;
+    return result;
+  }
+
+  CoordinatorChannelMessage._();
+
+  factory CoordinatorChannelMessage.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CoordinatorChannelMessage()..mergeFromBuffer(data, registry);
+  factory CoordinatorChannelMessage.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CoordinatorChannelMessage()..mergeFromJson(json, registry);
+
+  static const $core.Map<$core.int, CoordinatorChannelMessage_Body>
+      _CoordinatorChannelMessage_BodyByTag = {
+    3: CoordinatorChannelMessage_Body.heartbeat,
+    4: CoordinatorChannelMessage_Body.error,
+    5: CoordinatorChannelMessage_Body.ping,
+    6: CoordinatorChannelMessage_Body.syncRevocations,
+    0: CoordinatorChannelMessage_Body.notSet
+  };
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CoordinatorChannelMessage',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: CoordinatorChannelMessage.$_createMessage)
+    ..oo(0, [3, 4, 5, 6])
+    ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'id', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'replyTo', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOM<HeartbeatResponse>(3, _omitFieldNames ? '' : 'heartbeat',
+        subBuilder: HeartbeatResponse.$_createMessage)
+    ..aOM<$0.Error>(4, _omitFieldNames ? '' : 'error',
+        subBuilder: $0.Error.$_createMessage)
+    ..aOM<PingCommand>(5, _omitFieldNames ? '' : 'ping',
+        subBuilder: PingCommand.$_createMessage)
+    ..aOM<SyncRevocationsCommand>(6, _omitFieldNames ? '' : 'syncRevocations',
+        subBuilder: SyncRevocationsCommand.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CoordinatorChannelMessage clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CoordinatorChannelMessage copyWith(
+          void Function(CoordinatorChannelMessage) updates) =>
+      super.copyWith((message) => updates(message as CoordinatorChannelMessage))
+          as CoordinatorChannelMessage;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CoordinatorChannelMessage() / CoordinatorChannelMessage.new instead')
+  static CoordinatorChannelMessage create() => CoordinatorChannelMessage._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CoordinatorChannelMessage._();
+  @$core.override
+  CoordinatorChannelMessage createEmptyInstance() =>
+      CoordinatorChannelMessage._();
+  @$core.pragma('dart2js:noInline')
+  static CoordinatorChannelMessage getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CoordinatorChannelMessage>(
+          CoordinatorChannelMessage.$_createMessage);
+  static CoordinatorChannelMessage? _defaultInstance;
+
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  CoordinatorChannelMessage_Body whichBody() =>
+      _CoordinatorChannelMessage_BodyByTag[$_whichOneof(0)]!;
+  @$pb.TagNumber(3)
+  @$pb.TagNumber(4)
+  @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
+  void clearBody() => $_clearField($_whichOneof(0));
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get id => $_getI64(0);
+  @$pb.TagNumber(1)
+  set id($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get replyTo => $_getI64(1);
+  @$pb.TagNumber(2)
+  set replyTo($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReplyTo() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReplyTo() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  HeartbeatResponse get heartbeat => $_getN(2);
+  @$pb.TagNumber(3)
+  set heartbeat(HeartbeatResponse value) => $_setField(3, value);
+  @$pb.TagNumber(3)
+  $core.bool hasHeartbeat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearHeartbeat() => $_clearField(3);
+  @$pb.TagNumber(3)
+  HeartbeatResponse ensureHeartbeat() => $_ensure(2);
+
+  @$pb.TagNumber(4)
+  $0.Error get error => $_getN(3);
+  @$pb.TagNumber(4)
+  set error($0.Error value) => $_setField(4, value);
+  @$pb.TagNumber(4)
+  $core.bool hasError() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearError() => $_clearField(4);
+  @$pb.TagNumber(4)
+  $0.Error ensureError() => $_ensure(3);
+
+  @$pb.TagNumber(5)
+  PingCommand get ping => $_getN(4);
+  @$pb.TagNumber(5)
+  set ping(PingCommand value) => $_setField(5, value);
+  @$pb.TagNumber(5)
+  $core.bool hasPing() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearPing() => $_clearField(5);
+  @$pb.TagNumber(5)
+  PingCommand ensurePing() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  SyncRevocationsCommand get syncRevocations => $_getN(5);
+  @$pb.TagNumber(6)
+  set syncRevocations(SyncRevocationsCommand value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasSyncRevocations() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearSyncRevocations() => $_clearField(6);
+  @$pb.TagNumber(6)
+  SyncRevocationsCommand ensureSyncRevocations() => $_ensure(5);
+}
+
+class CommandDone extends $pb.GeneratedMessage {
+  factory CommandDone() => CommandDone._();
+
+  CommandDone._();
+
+  factory CommandDone.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommandDone()..mergeFromBuffer(data, registry);
+  factory CommandDone.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CommandDone()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CommandDone',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: CommandDone.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommandDone clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CommandDone copyWith(void Function(CommandDone) updates) =>
+      super.copyWith((message) => updates(message as CommandDone))
+          as CommandDone;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use CommandDone() / CommandDone.new instead')
+  static CommandDone create() => CommandDone._();
+  static $pb.GeneratedMessage $_createMessage() => CommandDone._();
+  @$core.override
+  CommandDone createEmptyInstance() => CommandDone._();
+  @$core.pragma('dart2js:noInline')
+  static CommandDone getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<CommandDone>(
+          CommandDone.$_createMessage);
+  static CommandDone? _defaultInstance;
+}
+
+/// Проверка канала: узел отвечает CommandDone.
+class PingCommand extends $pb.GeneratedMessage {
+  factory PingCommand() => PingCommand._();
+
+  PingCommand._();
+
+  factory PingCommand.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PingCommand()..mergeFromBuffer(data, registry);
+  factory PingCommand.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      PingCommand()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'PingCommand',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: PingCommand.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PingCommand clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  PingCommand copyWith(void Function(PingCommand) updates) =>
+      super.copyWith((message) => updates(message as PingCommand))
+          as PingCommand;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use PingCommand() / PingCommand.new instead')
+  static PingCommand create() => PingCommand._();
+  static $pb.GeneratedMessage $_createMessage() => PingCommand._();
+  @$core.override
+  PingCommand createEmptyInstance() => PingCommand._();
+  @$core.pragma('dart2js:noInline')
+  static PingCommand getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<PingCommand>(
+          PingCommand.$_createMessage);
+  static PingCommand? _defaultInstance;
+}
+
+/// Появился отзыв устройства с номером sequence (ListRevocations): узел,
+/// у которого номер последнего полученного отзыва меньше, дочитывает список.
+class SyncRevocationsCommand extends $pb.GeneratedMessage {
+  factory SyncRevocationsCommand({
+    $fixnum.Int64? sequence,
+  }) {
+    final result = SyncRevocationsCommand._();
+    if (sequence != null) result.sequence = sequence;
+    return result;
+  }
+
+  SyncRevocationsCommand._();
+
+  factory SyncRevocationsCommand.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncRevocationsCommand()..mergeFromBuffer(data, registry);
+  factory SyncRevocationsCommand.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SyncRevocationsCommand()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SyncRevocationsCommand',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: SyncRevocationsCommand.$_createMessage)
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'sequence', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncRevocationsCommand clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SyncRevocationsCommand copyWith(
+          void Function(SyncRevocationsCommand) updates) =>
+      super.copyWith((message) => updates(message as SyncRevocationsCommand))
+          as SyncRevocationsCommand;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use SyncRevocationsCommand() / SyncRevocationsCommand.new instead')
+  static SyncRevocationsCommand create() => SyncRevocationsCommand._();
+  static $pb.GeneratedMessage $_createMessage() => SyncRevocationsCommand._();
+  @$core.override
+  SyncRevocationsCommand createEmptyInstance() => SyncRevocationsCommand._();
+  @$core.pragma('dart2js:noInline')
+  static SyncRevocationsCommand getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<SyncRevocationsCommand>(
+          SyncRevocationsCommand.$_createMessage);
+  static SyncRevocationsCommand? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get sequence => $_getI64(0);
+  @$pb.TagNumber(1)
+  set sequence($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSequence() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSequence() => $_clearField(1);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

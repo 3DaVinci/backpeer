@@ -2,7 +2,8 @@
 // сертификатом от учётной записи владельца, heartbeat, узел в реестре,
 // ключ подписанта совпадает со списком узла; отзыв устройства доходит до
 // узла (3.3.2); координатор подключается к узлу по TCP и узел сообщает
-// найденный адрес (3.5.1). Нужен FS_TEST_POSTGRES.
+// найденный адрес (3.5.1); канал команд: ping доходит, новый отзыв узел
+// дочитывает сам по команде координатора (3.6.1). Нужен FS_TEST_POSTGRES.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -166,10 +167,55 @@ coordinator:
       ),
       accountKey: owner.accountSign,
     );
-    owners.close();
     await link.syncRevocations();
     expect(daemon.revocations.isRevoked(second.sign.publicKey), isTrue);
     expect(daemon.revocations.isRevoked(device.sign.publicKey), isFalse);
+
+    // Канал команд: открыт, ping доходит; следующий отзыв узел дочитывает
+    // сам по команде SyncRevocations (с задержкой до 10 с), без heartbeat.
+    final channels = live.server.channels;
+    for (var i = 0; i < 100 && !channels.isConnected(nodeId); i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(link.channel!.connected, isTrue);
+    final pong = await channels.send(
+      nodeId,
+      pb.CoordinatorChannelMessage(ping: pb.PingCommand()),
+    );
+    expect(pong!.hasDone(), isTrue);
+    final third = await DeviceKeys.generate(crypto);
+    await owners.addDevice(
+      pb.AddDeviceRequest(
+        deviceCertificate: await DeviceCertificates.issue(
+          crypto,
+          owner,
+          third,
+          issuedAt: DateTime.now(),
+        ),
+      ),
+      accountKey: owner.accountSign,
+    );
+    await owners.revokeDevice(
+      pb.RevokeDeviceRequest(
+        revocation: await DeviceCertificates.revoke(
+          crypto,
+          owner,
+          deviceSign: third.sign.publicKey,
+          revokedAt: DateTime.now(),
+        ),
+      ),
+      accountKey: owner.accountSign,
+    );
+    owners.close();
+    for (
+      var i = 0;
+      i < 300 && !daemon.revocations.isRevoked(third.sign.publicKey);
+      i++
+    ) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(daemon.revocations.isRevoked(third.sign.publicKey), isTrue);
+    third.dispose();
 
     final control = await NodeControlClient.connect(
       ControlEndpoint.forDataDir(dir.path),
@@ -177,7 +223,7 @@ coordinator:
     final status = await control.call('status');
     await control.close();
     expect(status['owner'], bytesToHex(owner.accountId));
-    expect(status['revokedDevices'], 1);
+    expect(status['revokedDevices'], 2);
     expect(
       (status['coordinator']! as Map<String, Object?>)['registered'],
       isTrue,

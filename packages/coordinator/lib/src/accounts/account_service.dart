@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:coordinator/src/accounts/certificates.dart';
@@ -28,6 +29,13 @@ final class AccountService {
   static const maxRevocationsPage = 1000;
 
   static final _log = Logger('accounts');
+
+  final _revocations = StreamController<int>.broadcast();
+
+  /// Номера новых подписанных отзывов (`revocation_seq`) после фиксации:
+  /// по ним канал команд зовёт узлы дочитать `ListRevocations`
+  /// (protocol.md, раздел 4.10).
+  Stream<int> get revocations => _revocations.stream;
 
   // Отзывы получают номер и фиксируются по одному: иначе узел, который
   // читает отзывы после номера N, пропустил бы отзыв с меньшим номером,
@@ -162,7 +170,7 @@ final class AccountService {
   ) async {
     final accountId = context.caller!.publicKey;
     final revocation = await _checks.revocation(request.revocation, accountId);
-    final changed = await _db.transaction((tx) async {
+    final sequence = await _db.transaction<int?>((tx) async {
       await tx.execute(
         Sql.named('SELECT pg_advisory_xact_lock(@id:int8)'),
         parameters: {'id': _revocationLock},
@@ -182,23 +190,25 @@ final class AccountService {
       }
       // Отзыв без подписи учётной записи (оператор, `coordinator admin
       // device revoke`) дополняется подписанным: его получат узлы.
-      if (rows.single.single! as bool) return false;
-      await tx.execute(
+      if (rows.single.single! as bool) return null;
+      final updated = await tx.execute(
         Sql.named('''
           UPDATE devices SET revoked_at = coalesce(revoked_at, @t:timestamptz),
                  revocation = @r:bytea,
                  revocation_seq = nextval('device_revocation_seq')
-            WHERE device_sign = @d:bytea'''),
+            WHERE device_sign = @d:bytea
+            RETURNING revocation_seq'''),
         parameters: {
           't': _clock(),
           'r': request.revocation.writeToBuffer(),
           'd': revocation.deviceSign,
         },
       );
-      return true;
+      return updated.single.single! as int;
     });
-    if (changed) {
+    if (sequence != null) {
       _log.info(LogEvent('device_revoked', {'rid': context.requestId}));
+      _revocations.add(sequence);
     }
     return pb.RevokeDeviceResponse();
   }

@@ -74,6 +74,19 @@ nodes:
     );
   });
 
+  test('канал команд (3.6.1)', () {
+    expect(const CoordinatorConfig().channels.maxConnections, 10000);
+    final c = CoordinatorConfig.parse('channels:\n  max_connections: 50\n', {
+      'FS_COORDINATOR_CHANNELS_PING_SECONDS': '15',
+    });
+    expect(c.channels.maxConnections, 50);
+    expect(c.channels.pingInterval, const Duration(seconds: 15));
+    expect(
+      () => CoordinatorConfig.parse('channels:\n  ping_seconds: 1\n', {}),
+      throwsA(isA<ConfigException>()),
+    );
+  });
+
   test('пример настроек из docs/ops разбирается', () {
     final c = CoordinatorConfig.parse(
       File('config/coordinator.example.yaml').readAsStringSync(),

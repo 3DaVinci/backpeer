@@ -109,6 +109,7 @@ final class NodeConfig {
     this.coordinatorUrl,
     this.coordinatorCa,
     this.coordinatorKeys = const [],
+    this.commandChannel = true,
     this.controlSocket,
     this.shutdownGrace = const Duration(seconds: 30),
     this.log = const LogConfig(),
@@ -181,6 +182,7 @@ final class NodeConfig {
     'coordinator.url',
     'coordinator.ca',
     'coordinator.keys',
+    'coordinator.channel',
     'control.socket',
     'shutdown.grace_seconds',
     'log.level',
@@ -239,6 +241,10 @@ final class NodeConfig {
   /// Ключи координатора в hex для тестового стенда; пусто — вшитый список
   /// (`protocol.md`, раздел 5.1).
   final List<String> coordinatorKeys;
+
+  /// Держать канал команд координатора (WebSocket, `protocol.md`,
+  /// раздел 4.10); `false` — только heartbeat по HTTP.
+  final bool commandChannel;
 
   /// Путь к Unix-сокету локального API; `null` — `<data>/run/control.sock`.
   final String? controlSocket;
@@ -334,6 +340,7 @@ final class _Reader {
       coordinatorUrl: url,
       coordinatorCa: _string('coordinator.ca'),
       coordinatorKeys: keys,
+      commandChannel: _bool('coordinator.channel') ?? d.commandChannel,
       controlSocket: _string('control.socket'),
       shutdownGrace: Duration(
         seconds:
@@ -385,6 +392,17 @@ final class _Reader {
       throw NodeConfigException('$key: ожидается целое от $min до $max');
     }
     return n;
+  }
+
+  bool? _bool(String key) {
+    final v = _values[key];
+    if (v == null) return null;
+    if (v is bool) return v;
+    return switch ('$v') {
+      'true' => true,
+      'false' => false,
+      _ => throw NodeConfigException('$key: ожидается true или false'),
+    };
   }
 
   T? _enum<T>(String key, Map<String, T> options) {

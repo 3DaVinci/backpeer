@@ -176,8 +176,13 @@ final class _NodeStatusCommand extends _NodeSubcommand {
         : 'не зарегистрирован';
     final beat = c['lastHeartbeatAt'];
     final error = c['lastError'];
+    final channel = switch (c['channel']) {
+      {'connected': true} => ', канал команд открыт',
+      Map<String, Object?>() => ', канал команд не открыт',
+      _ => '',
+    };
     return 'Координатор ${c['url']}: $registered'
-        '${beat == null ? '' : ', связь $beat'}'
+        '${beat == null ? '' : ', связь $beat'}$channel'
         '${error == null ? '' : '; ошибка: $error'}';
   }
 

@@ -80,3 +80,11 @@ melos:
     build-exe:
       description: Собрать cli и node под текущую платформу в build/bin/.
       run: dart run tool/build_exe.dart
+
+    site:check:
+      description: Сайт (apps/site, нужен Node.js 22+) — типы, сборка и тесты, как задание site в CI.
+      run: cd apps/site && npm ci && npm run check
+
+    site:dev:
+      description: Сайт в режиме разработки на http://127.0.0.1:5173/.
+      run: cd apps/site && npm run dev

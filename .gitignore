@@ -28,3 +28,6 @@ tool/rs-vectors/target/
 
 # Python: кеш байт-кода генераторов векторов
 __pycache__/
+
+# Node.js: сайт (apps/site)
+node_modules/

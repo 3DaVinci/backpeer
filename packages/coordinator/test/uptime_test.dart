@@ -93,6 +93,49 @@ void main() {
       expect(NodeAddresses.subnetOf(''), isNull);
     });
 
+    test('публичные адреса для проверки достижимости (3.5.1)', () {
+      bool public(String ip) =>
+          NodeAddresses.isPublic(NodeAddresses.observed(ip)!);
+      for (final ip in [
+        '8.8.8.8',
+        '100.128.0.1',
+        '172.32.0.1',
+        '198.20.0.1',
+        '2a00:1450::1',
+        '::ffff:1.1.1.1',
+      ]) {
+        expect(public(ip), isTrue, reason: ip);
+      }
+      for (final ip in [
+        '10.0.0.1',
+        '127.0.0.1',
+        '100.64.0.1',
+        '169.254.1.1',
+        '172.16.0.1',
+        '192.168.1.1',
+        '0.0.0.0',
+        '224.0.0.1',
+        '::1',
+        '::',
+        'fd00::1',
+        'fe80::1',
+        'ff02::1',
+        '::ffff:192.168.0.1',
+        '192.0.2.1',
+        '198.51.100.2',
+        '203.0.113.7',
+        '198.18.0.1',
+        '2001:db8::1',
+      ]) {
+        expect(public(ip), isFalse, reason: ip);
+      }
+      expect(
+        NodeAddresses.observed('::ffff:203.0.113.5')?.address,
+        '203.0.113.5',
+      );
+      expect(NodeAddresses.observed('не адрес'), isNull);
+    });
+
     test('адреса host:port', () {
       for (final ok in [
         '203.0.113.1:7000',

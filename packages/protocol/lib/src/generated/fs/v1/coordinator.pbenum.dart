@@ -36,5 +36,42 @@ class ObjectKind extends $pb.ProtobufEnum {
   const ObjectKind._(super.value, super.name);
 }
 
+class ReachabilityStatus extends $pb.ProtobufEnum {
+  static const ReachabilityStatus REACHABILITY_STATUS_UNSPECIFIED =
+      ReachabilityStatus._(
+          0, _omitEnumNames ? '' : 'REACHABILITY_STATUS_UNSPECIFIED');
+  static const ReachabilityStatus REACHABILITY_STATUS_REACHABLE =
+      ReachabilityStatus._(
+          1, _omitEnumNames ? '' : 'REACHABILITY_STATUS_REACHABLE');
+  static const ReachabilityStatus REACHABILITY_STATUS_REFUSED =
+      ReachabilityStatus._(
+          2, _omitEnumNames ? '' : 'REACHABILITY_STATUS_REFUSED');
+  static const ReachabilityStatus REACHABILITY_STATUS_TIMEOUT =
+      ReachabilityStatus._(
+          3, _omitEnumNames ? '' : 'REACHABILITY_STATUS_TIMEOUT');
+  static const ReachabilityStatus REACHABILITY_STATUS_WRONG_PEER =
+      ReachabilityStatus._(
+          4, _omitEnumNames ? '' : 'REACHABILITY_STATUS_WRONG_PEER');
+  static const ReachabilityStatus REACHABILITY_STATUS_NOT_CHECKED =
+      ReachabilityStatus._(
+          5, _omitEnumNames ? '' : 'REACHABILITY_STATUS_NOT_CHECKED');
+
+  static const $core.List<ReachabilityStatus> values = <ReachabilityStatus>[
+    REACHABILITY_STATUS_UNSPECIFIED,
+    REACHABILITY_STATUS_REACHABLE,
+    REACHABILITY_STATUS_REFUSED,
+    REACHABILITY_STATUS_TIMEOUT,
+    REACHABILITY_STATUS_WRONG_PEER,
+    REACHABILITY_STATUS_NOT_CHECKED,
+  ];
+
+  static final $core.List<ReachabilityStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 5);
+  static ReachabilityStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ReachabilityStatus._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

@@ -156,6 +156,8 @@ final class CoordinatorConfig {
     'nodes.min_capacity_bytes',
     'nodes.max_per_account',
     'nodes.heartbeat_seconds',
+    'nodes.check_private_addresses',
+    'nodes.reachability_timeout_ms',
     'placement.min_availability',
     'placement.probation_hours',
     'placement.max_probation_share',
@@ -283,6 +285,13 @@ final class _Reader {
           seconds:
               _int('nodes.heartbeat_seconds', 10, 3600) ??
               np.heartbeatInterval.inSeconds,
+        ),
+        checkPrivateAddresses:
+            _bool('nodes.check_private_addresses') ?? np.checkPrivateAddresses,
+        reachabilityTimeout: Duration(
+          milliseconds:
+              _int('nodes.reachability_timeout_ms', 100, 60000) ??
+              np.reachabilityTimeout.inMilliseconds,
         ),
       ),
       placement: PlacementPolicy(

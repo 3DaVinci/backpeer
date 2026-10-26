@@ -1,7 +1,8 @@
 // Демон узла против настоящего координатора (задача 3.1.2): регистрация с
 // сертификатом от учётной записи владельца, heartbeat, узел в реестре,
 // ключ подписанта совпадает со списком узла; отзыв устройства доходит до
-// узла (3.3.2). Нужен FS_TEST_POSTGRES.
+// узла (3.3.2); координатор подключается к узлу по TCP и узел сообщает
+// найденный адрес (3.5.1). Нужен FS_TEST_POSTGRES.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -81,6 +82,8 @@ void main() {
 storage:
   quota_bytes: 200000000000
 listen:
+  port: 0
+  port_mapping: off
   endpoints: [127.0.0.1:7340]
 coordinator:
   url: ${live.url}
@@ -98,6 +101,19 @@ coordinator:
     }
     expect(link.registered, isTrue, reason: '${link.toJson()}');
     expect(link.toJson()['unknownCoordinatorKeys'], isEmpty);
+    // Проверка достижимости сразу после регистрации: координатор
+    // подключается к порту приёма узла.
+    final reachability = daemon.reachability!;
+    for (var i = 0; i < 100 && !reachability.reachable; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    expect(reachability.reachable, isTrue, reason: '${reachability.toJson()}');
+    expect(reachability.observedAddress, '127.0.0.1');
+    final found = '127.0.0.1:${daemon.listener!.port}';
+    expect(reachability.endpoints, ['127.0.0.1:7340', found]);
+    expect((daemon.status()['reachability']! as Map)['ports'], {
+      '${daemon.listener!.port}': 'reachable',
+    });
     await link.heartbeat();
 
     final db = Database.open(live.db.config);
@@ -115,7 +131,7 @@ coordinator:
     expect(rows, hasLength(1));
     expect(rows.single[0], owner.accountId);
     expect(rows.single[1], 200000000000);
-    expect(rows.single[2], ['127.0.0.1:7340']);
+    expect(rows.single[2], ['127.0.0.1:7340', found]);
     expect(rows.single[3], isTrue);
     // Свободное место — меньшее из квоты и диска за вычетом запаса; диск
     // мог измениться с момента heartbeat.

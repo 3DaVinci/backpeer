@@ -6,6 +6,7 @@ import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
+import 'package:node/src/net/reachability.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:protocol/protocol.dart' as pb;
@@ -24,6 +25,10 @@ import 'package:protocol/protocol.dart' as pb;
 ///   фрагментах ([damaged], `ReportDamagedFragments`), если они есть;
 ///   [reportDamaged] отправляет его сразу.
 /// - Там же — новые отзывы устройств ([revocations], `ListRevocations`).
+/// - Там же, когда пора, — проверка достижимости ([reachability],
+///   `CheckReachability`); изменились адреса узла — heartbeat с ними
+///   сразу. [recheckReachability] проверяет вне очереди (получен или снят
+///   проброс порта).
 final class CoordinatorLink {
   new({
     required this.client,
@@ -35,6 +40,7 @@ final class CoordinatorLink {
     this.damaged,
     this.revocations,
     this.endpoints = const [],
+    this.reachability,
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
     DateTime Function()? clock,
@@ -64,7 +70,12 @@ final class CoordinatorLink {
   /// Список отозванных устройств, который дополняется от координатора.
   final RevocationList? revocations;
   final CoordinatorKeySet trustedKeys;
+
+  /// Адреса узла, если нет [reachability].
   final List<String> endpoints;
+
+  /// Проверка достижимости и адреса узла (задача 3.5.1).
+  final Reachability? reachability;
   final Duration maxBackoff;
   final DateTime Function() _clock;
 
@@ -125,6 +136,7 @@ final class CoordinatorLink {
         _lastError = null;
         await reportDamaged();
         await syncRevocations();
+        if (await _checkReachability()) next = Duration.zero;
       } on CoordinatorException catch (e) {
         if (_stopped) break;
         _lastError = '${e.code.name}: ${e.detail}';
@@ -171,13 +183,32 @@ final class CoordinatorLink {
     timer.cancel();
   }
 
+  /// Адреса для координатора сейчас.
+  List<String> get currentEndpoints => reachability?.endpoints ?? endpoints;
+
+  /// Проверить достижимость вне очереди (после регистрации).
+  void recheckReachability() {
+    final r = reachability;
+    if (r == null) return;
+    r.invalidate();
+    if (!_registered) return;
+    if (_wake case final w? when !w.isCompleted) w.complete();
+  }
+
+  /// Проверка, если пора; `true` — адреса изменились.
+  Future<bool> _checkReachability() async {
+    final r = reachability;
+    if (r == null || !_registered || _stopped || !r.due) return false;
+    return await r.check(client, identity.keys.sign);
+  }
+
   /// `RegisterNode`; бросает [CoordinatorException].
   Future<void> register() async {
     final response = await client.registerNode(
       pb.RegisterNodeRequest(
         nodeCertificate: identity.certificate,
         capacityBytes: Int64(capacityBytes),
-        endpoints: endpoints,
+        endpoints: currentEndpoints,
         versions: versions,
         software: 'node $appVersion',
       ),
@@ -190,7 +221,7 @@ final class CoordinatorLink {
       LogEvent('registered', {
         'node_id': bytesToHex(identity.nodeId),
         'capacity_bytes': capacityBytes,
-        'endpoints': endpoints.length,
+        'endpoints': currentEndpoints.length,
       }),
     );
   }
@@ -204,7 +235,7 @@ final class CoordinatorLink {
         // уменьшить в настройках при уже принятых фрагментах.
         usedBytes: Int64(math.min(used, capacityBytes)),
         capacityBytes: Int64(capacityBytes),
-        endpoints: endpoints,
+        endpoints: currentEndpoints,
         freeBytes: switch (freeBytes) {
           final f? => Int64(math.min(f(), capacityBytes)),
           null => null,

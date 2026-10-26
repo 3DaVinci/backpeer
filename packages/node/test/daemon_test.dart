@@ -16,8 +16,10 @@ void main() {
   setUp(() => dir = Directory.systemTemp.createTempSync('fs-node-daemon-'));
   tearDown(() => dir.deleteSync(recursive: true));
 
-  NodeConfig config({String yaml = ''}) =>
-      NodeConfig.parse(yaml, const {}, dataDir: dir.path);
+  NodeConfig config({String yaml = ''}) => NodeConfig.parse(yaml, const {
+    'FS_NODE_LISTEN_PORT': '0',
+    'FS_NODE_LISTEN_PORT_MAPPING': 'off',
+  }, dataDir: dir.path);
 
   Future<NodeControlClient> connect() =>
       NodeControlClient.connect(ControlEndpoint.forDataDir(dir.path));

@@ -228,3 +228,31 @@ message ReportDamagedFragmentsResponse {
   // остальные — фрагменты без ссылок (например, неподтверждённых сегментов).
   uint32 known = 1;
 }
+
+// Проверка достижимости (задача 3.5.1): координатор подключается по TCP к
+// адресу, с которого пришёл запрос, на каждый порт из списка и начинает
+// рукопожатие Noise XX; порт достижим, если отвечающий во втором сообщении
+// показал статический ключ node_dh из сертификата узла (protocol.md,
+// раздел 4.9). Другие адреса координатор не проверяет: иначе узел мог бы
+// направить его соединения куда угодно.
+message CheckReachabilityRequest {
+  repeated uint32 ports = 1; // от 1 до 4 разных портов 1–65535
+}
+message CheckReachabilityResponse {
+  // Адрес, с которого пришёл запрос (IPv4 или IPv6 без скобок и порта):
+  // внешний адрес узла, каким его видит координатор.
+  string observed_address = 1;
+  repeated ReachabilityResult results = 2; // в порядке ports запроса
+}
+message ReachabilityResult {
+  uint32 port = 1;
+  ReachabilityStatus status = 2;
+}
+enum ReachabilityStatus {
+  REACHABILITY_STATUS_UNSPECIFIED = 0;
+  REACHABILITY_STATUS_REACHABLE = 1;   // ответил этот узел
+  REACHABILITY_STATUS_REFUSED = 2;     // соединение отклонено
+  REACHABILITY_STATUS_TIMEOUT = 3;     // нет ответа за отведённое время
+  REACHABILITY_STATUS_WRONG_PEER = 4;  // ответил не этот узел или не Noise
+  REACHABILITY_STATUS_NOT_CHECKED = 5; // адрес не публичный (настройка координатора)
+}

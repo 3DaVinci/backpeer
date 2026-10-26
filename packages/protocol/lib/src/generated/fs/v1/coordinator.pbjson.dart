@@ -30,6 +30,27 @@ final $typed_data.Uint8List objectKindDescriptor = $convert.base64Decode(
     'CgpPYmplY3RLaW5kEhsKF09CSkVDVF9LSU5EX1VOU1BFQ0lGSUVEEAASGAoUT0JKRUNUX0tJTk'
     'RfU05BUFNIT1QQARIVChFPQkpFQ1RfS0lORF9JTkRFWBAC');
 
+@$core.Deprecated('Use reachabilityStatusDescriptor instead')
+const ReachabilityStatus$json = {
+  '1': 'ReachabilityStatus',
+  '2': [
+    {'1': 'REACHABILITY_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'REACHABILITY_STATUS_REACHABLE', '2': 1},
+    {'1': 'REACHABILITY_STATUS_REFUSED', '2': 2},
+    {'1': 'REACHABILITY_STATUS_TIMEOUT', '2': 3},
+    {'1': 'REACHABILITY_STATUS_WRONG_PEER', '2': 4},
+    {'1': 'REACHABILITY_STATUS_NOT_CHECKED', '2': 5},
+  ],
+};
+
+/// Descriptor for `ReachabilityStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List reachabilityStatusDescriptor = $convert.base64Decode(
+    'ChJSZWFjaGFiaWxpdHlTdGF0dXMSIwofUkVBQ0hBQklMSVRZX1NUQVRVU19VTlNQRUNJRklFRB'
+    'AAEiEKHVJFQUNIQUJJTElUWV9TVEFUVVNfUkVBQ0hBQkxFEAESHwobUkVBQ0hBQklMSVRZX1NU'
+    'QVRVU19SRUZVU0VEEAISHwobUkVBQ0hBQklMSVRZX1NUQVRVU19USU1FT1VUEAMSIgoeUkVBQ0'
+    'hBQklMSVRZX1NUQVRVU19XUk9OR19QRUVSEAQSIwofUkVBQ0hBQklMSVRZX1NUQVRVU19OT1Rf'
+    'Q0hFQ0tFRBAF');
+
 @$core.Deprecated('Use registerAccountRequestDescriptor instead')
 const RegisterAccountRequest$json = {
   '1': 'RegisterAccountRequest',
@@ -767,3 +788,59 @@ const ReportDamagedFragmentsResponse$json = {
 final $typed_data.Uint8List reportDamagedFragmentsResponseDescriptor =
     $convert.base64Decode(
         'Ch5SZXBvcnREYW1hZ2VkRnJhZ21lbnRzUmVzcG9uc2USFAoFa25vd24YASABKA1SBWtub3du');
+
+@$core.Deprecated('Use checkReachabilityRequestDescriptor instead')
+const CheckReachabilityRequest$json = {
+  '1': 'CheckReachabilityRequest',
+  '2': [
+    {'1': 'ports', '3': 1, '4': 3, '5': 13, '10': 'ports'},
+  ],
+};
+
+/// Descriptor for `CheckReachabilityRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List checkReachabilityRequestDescriptor =
+    $convert.base64Decode(
+        'ChhDaGVja1JlYWNoYWJpbGl0eVJlcXVlc3QSFAoFcG9ydHMYASADKA1SBXBvcnRz');
+
+@$core.Deprecated('Use checkReachabilityResponseDescriptor instead')
+const CheckReachabilityResponse$json = {
+  '1': 'CheckReachabilityResponse',
+  '2': [
+    {'1': 'observed_address', '3': 1, '4': 1, '5': 9, '10': 'observedAddress'},
+    {
+      '1': 'results',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.ReachabilityResult',
+      '10': 'results'
+    },
+  ],
+};
+
+/// Descriptor for `CheckReachabilityResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List checkReachabilityResponseDescriptor = $convert.base64Decode(
+    'ChlDaGVja1JlYWNoYWJpbGl0eVJlc3BvbnNlEikKEG9ic2VydmVkX2FkZHJlc3MYASABKAlSD2'
+    '9ic2VydmVkQWRkcmVzcxIzCgdyZXN1bHRzGAIgAygLMhkuZnMudjEuUmVhY2hhYmlsaXR5UmVz'
+    'dWx0UgdyZXN1bHRz');
+
+@$core.Deprecated('Use reachabilityResultDescriptor instead')
+const ReachabilityResult$json = {
+  '1': 'ReachabilityResult',
+  '2': [
+    {'1': 'port', '3': 1, '4': 1, '5': 13, '10': 'port'},
+    {
+      '1': 'status',
+      '3': 2,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.ReachabilityStatus',
+      '10': 'status'
+    },
+  ],
+};
+
+/// Descriptor for `ReachabilityResult`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reachabilityResultDescriptor = $convert.base64Decode(
+    'ChJSZWFjaGFiaWxpdHlSZXN1bHQSEgoEcG9ydBgBIAEoDVIEcG9ydBIxCgZzdGF0dXMYAiABKA'
+    '4yGS5mcy52MS5SZWFjaGFiaWxpdHlTdGF0dXNSBnN0YXR1cw==');

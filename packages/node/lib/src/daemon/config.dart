@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:logging/logging.dart';
+import 'package:node/src/net/port_mapping/port_mapper.dart';
 import 'package:node/src/peers/speed_schedule.dart';
 import 'package:yaml/yaml.dart';
 
@@ -98,7 +99,9 @@ final class NodeConfig {
     this.freeReserveBytes = 2000000000,
     this.checkInterval = const Duration(days: 30),
     this.checkBytesPerSecond = 10000000,
+    this.listenHost,
     this.listenPort = 7340,
+    this.portMapping = PortMappingMode.auto,
     this.endpoints = const [],
     this.limits = const SpeedLimits(),
     this.schedule = const SpeedSchedule(),
@@ -162,8 +165,10 @@ final class NodeConfig {
     'storage.free_reserve_bytes',
     'storage.check_interval_days',
     'storage.check_bytes_per_second',
+    'listen.host',
     'listen.port',
     'listen.endpoints',
+    'listen.port_mapping',
     'limits.upload_bytes_per_second',
     'limits.download_bytes_per_second',
     'limits.schedule',
@@ -202,12 +207,20 @@ final class NodeConfig {
   /// предела.
   final int checkBytesPerSecond;
 
-  /// Порт входящих соединений (TCP и UDP, задачи 3.5 и 3.7).
+  /// Адрес приёма соединений; `null` — все адреса IPv6 и IPv4.
+  final String? listenHost;
+
+  /// Порт входящих соединений (TCP и UDP, задачи 3.5 и 3.7); 0 — любой
+  /// свободный (тесты).
   final int listenPort;
 
-  /// Адреса `хост:порт`, которые узел сообщает координатору; пусто — узел
-  /// без прямого адреса (определение адреса — задача 3.5.1).
+  /// Адреса `хост:порт`, которые узел сообщает координатору всегда, кроме
+  /// найденных проверкой достижимости (задача 3.5.1): например, имя DNS
+  /// или порт, проброшенный вручную на другой номер.
   final List<String> endpoints;
+
+  /// Автоматический проброс порта на роутере (задача 3.5.2).
+  final PortMappingMode portMapping;
 
   /// Основные пределы скорости.
   final SpeedLimits limits;
@@ -280,8 +293,14 @@ final class _Reader {
       checkBytesPerSecond:
           _int('storage.check_bytes_per_second', 0, 1 << 40) ??
           d.checkBytesPerSecond,
-      listenPort: _int('listen.port', 1, 65535) ?? d.listenPort,
+      listenHost: _string('listen.host'),
+      listenPort: _int('listen.port', 0, 65535) ?? d.listenPort,
       endpoints: _list('listen.endpoints'),
+      portMapping:
+          _enum('listen.port_mapping', {
+            for (final m in PortMappingMode.values) m.name: m,
+          }) ??
+          d.portMapping,
       limits: SpeedLimits(
         uploadBytesPerSecond:
             _int('limits.upload_bytes_per_second', 0, 1 << 40) ?? 0,

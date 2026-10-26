@@ -50,6 +50,7 @@ export 'src/net/bandwidth_limiter.dart';
 export 'src/net/byte_connection.dart';
 export 'src/net/frames.dart';
 export 'src/net/noise.dart';
+export 'src/net/noise_probe.dart';
 export 'src/net/peer_client.dart';
 export 'src/net/peer_handshake.dart';
 export 'src/net/peer_identity.dart';

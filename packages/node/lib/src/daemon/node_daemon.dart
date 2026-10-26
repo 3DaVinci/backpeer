@@ -10,6 +10,9 @@ import 'package:node/src/daemon/coordinator_link.dart';
 import 'package:node/src/daemon/identity.dart';
 import 'package:node/src/daemon/log.dart';
 import 'package:node/src/daemon/transfers.dart';
+import 'package:node/src/net/peer_listener.dart';
+import 'package:node/src/net/port_mapping/port_mapper.dart';
+import 'package:node/src/net/reachability.dart';
 import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
@@ -19,11 +22,12 @@ import 'package:protocol/protocol.dart' as pb;
 /// Состояние демона для `cli node status`.
 enum NodeState { running, paused, stopping }
 
-/// Демон хранителя (задачи 3.1.1–3.1.3, 3.2, 3.4): папка данных под
+/// Демон хранителя (задачи 3.1.1–3.1.3, 3.2, 3.4, 3.5): папка данных под
 /// блокировкой, журнал с ротацией, ключи и сертификат узла, хранилище
 /// фрагментов с фоновой проверкой целостности, операции с фрагментами для
-/// собеседников по Noise ([peers]), регистрация у координатора и
-/// heartbeat, локальный API управления.
+/// собеседников по Noise ([peers]) с приёмом TCP ([listener]), проброс
+/// порта на роутере ([portMapper]), регистрация у координатора, heartbeat
+/// и проверка достижимости ([reachability]), локальный API управления.
 ///
 /// Остановка ([stop], SIGINT, SIGTERM, метод `stop` локального API):
 /// новые передачи не начинаются, начатые завершаются (не дольше
@@ -105,7 +109,12 @@ final class NodeDaemon {
         writer: writer,
         logFile: logFile,
       );
-      await daemon._start(crypto, handleSignals, allowedUid);
+      try {
+        await daemon._start(crypto, handleSignals, allowedUid);
+      } on Object {
+        await daemon._abortStart();
+        rethrow;
+      }
       return daemon;
     } on Object catch (e, st) {
       _log.severe(LogEvent('start_failed', {'reason': '$e'}), null, st);
@@ -130,9 +139,22 @@ final class NodeDaemon {
 
   /// Операции с фрагментами для собеседников; `null` — у узла нет
   /// сертификата (рукопожатие без него невозможно). Соединения передаёт
-  /// транспорт ([PeerService.serve]): приём TCP — задача 3.5.
+  /// транспорт ([PeerService.serve]): приём TCP ([listener]), позже UDP и
+  /// relay.
   PeerService? get peers => _peers;
   PeerService? _peers;
+
+  /// Приём TCP; `null` — нет [peers].
+  PeerListener? get listener => _listener;
+  PeerListener? _listener;
+
+  /// Проброс порта на роутере; `null` — нет [listener].
+  PortMapper? get portMapper => _portMapper;
+  PortMapper? _portMapper;
+
+  /// Доступность извне и адреса узла; `null` — нет [listener].
+  Reachability? get reachability => _reachability;
+  Reachability? _reachability;
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
@@ -200,6 +222,22 @@ final class NodeDaemon {
           () => effectiveLimits.downloadBytesPerSecond,
         ),
       );
+      final listener = _listener = await PeerListener.bind(
+        config.listenHost,
+        config.listenPort,
+        _peers!.serve,
+      );
+      if (config.portMapping != PortMappingMode.off) {
+        _portMapper = PortMapper(
+          internalPort: listener.port,
+          protocols: PortMapper.protocolsFor(config.portMapping),
+          onChange: () => _link?.recheckReachability(),
+        )..start();
+      }
+      _reachability = Reachability(
+        manualEndpoints: config.endpoints,
+        ports: () => {listener.port, ?_portMapper?.externalPort}.toList(),
+      );
     }
     if (config.coordinatorUrl case final String url) {
       final SecurityContext? trusted;
@@ -223,6 +261,7 @@ final class NodeDaemon {
         damaged: storage,
         revocations: revocations,
         endpoints: config.endpoints,
+        reachability: _reachability,
         trustedKeys: trustedKeys,
       )..start();
     }
@@ -251,9 +290,25 @@ final class NodeDaemon {
         'quota_bytes': config.quotaBytes,
         'used_bytes': storage.usedBytes,
         'fragments': storage.fragmentCount,
+        'listen_port': ?_listener?.port,
         'coordinator': config.coordinatorUrl != null,
       }),
     );
+  }
+
+  /// Запуск не удался после [_start]: освободить порт, проброс и связь
+  /// с координатором; хранилище закрывает [start].
+  Future<void> _abortStart() async {
+    await _listener?.close();
+    await _peers?.close();
+    await checker.stop();
+    await _link?.stop(wait: Duration.zero);
+    _client?.close(force: true);
+    await _portMapper?.stop();
+    for (final s in _signals) {
+      await s.cancel();
+    }
+    await _control?.close();
   }
 
   void _onSignal(ProcessSignal signal) {
@@ -275,9 +330,11 @@ final class NodeDaemon {
     if (!drained && !_force) {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
+    await _listener?.close();
     await _peers?.close();
     await checker.stop();
     await _link?.stop();
+    await _portMapper?.stop();
     _client?.close(force: true);
     for (final s in _signals) {
       await s.cancel();
@@ -363,6 +420,9 @@ final class NodeDaemon {
     'limits': _limitsJson(),
     'activeTransfers': gate.active,
     'connections': _peers?.connectionCount ?? 0,
+    'listen': _listener?.toJson(),
+    'portMapping': _portMapper?.toJson(),
+    'reachability': _reachability?.toJson(),
     'coordinator': _link?.toJson(),
   };
 

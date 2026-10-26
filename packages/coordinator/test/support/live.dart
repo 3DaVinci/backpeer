@@ -28,7 +28,9 @@ final class LiveCoordinator {
       port: 0,
       database: db.config,
       limits: limits,
-      nodes: const NodePolicy(minCapacityBytes: 0),
+      // Узлы тестов — на loopback: проверка достижимости с частных
+      // адресов, как на стенде.
+      nodes: const NodePolicy(minCapacityBytes: 0, checkPrivateAddresses: true),
       placement: const PlacementPolicy(
         probation: Duration.zero,
         distinctSubnets: false,

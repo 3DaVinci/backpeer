@@ -5,6 +5,8 @@
 /// - `storage/` — файлы фрагментов, индекс в SQLite, квота и место,
 ///   фоновая проверка целостности (3.2);
 /// - `control/` — локальный API управления для CLI и приложения (3.1.3);
+/// - `net/` — приём TCP, проверка достижимости, проброс порта на роутере
+///   (UPnP IGD, PCP, NAT-PMP) (3.5);
 /// - `peers/` — собеседники по каналу Noise: отозванные устройства (3.3.2),
 ///   операции с фрагментами, пределы и расписание скорости (3.4);
 /// - `stub_nodes.dart` — узлы-заглушки этапа 2 для разработки и тестов.
@@ -20,6 +22,13 @@ export 'src/daemon/identity.dart';
 export 'src/daemon/log.dart';
 export 'src/daemon/node_daemon.dart';
 export 'src/daemon/transfers.dart';
+export 'src/net/peer_listener.dart';
+export 'src/net/port_mapping/local_network.dart';
+export 'src/net/port_mapping/pcp.dart';
+export 'src/net/port_mapping/port_mapper.dart';
+export 'src/net/port_mapping/port_mapping.dart';
+export 'src/net/port_mapping/upnp.dart';
+export 'src/net/reachability.dart';
 export 'src/peers/peer_service.dart';
 export 'src/peers/revocations.dart';
 export 'src/peers/speed_schedule.dart';

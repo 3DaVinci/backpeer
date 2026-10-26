@@ -106,6 +106,11 @@ abstract base class CoordinatorService {
     pb.ReportDamagedFragmentsRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.CheckReachabilityResponse> checkReachability(
+    CallContext context,
+    pb.CheckReachabilityRequest request,
+  ) => _unimplemented(context);
+
   static Never _unimplemented(CallContext context) => throw RpcException(
     pb.ErrorCode.ERROR_CODE_INTERNAL,
     'метод ${context.method} не реализован',

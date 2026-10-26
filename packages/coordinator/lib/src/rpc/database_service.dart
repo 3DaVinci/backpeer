@@ -181,6 +181,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   ) => nodes.reportDamaged(context, request);
 
   @override
+  Future<pb.CheckReachabilityResponse> checkReachability(
+    CallContext context,
+    pb.CheckReachabilityRequest request,
+  ) => nodes.checkReachability(context, request);
+
+  @override
   Future<pb.AllocateSegmentResponse> allocateSegment(
     CallContext context,
     pb.AllocateSegmentRequest request,

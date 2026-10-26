@@ -377,6 +377,16 @@ final class CoordinatorClient {
     key: nodeKey,
   );
 
+  Future<pb.CheckReachabilityResponse> checkReachability(
+    pb.CheckReachabilityRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'CheckReachability',
+    request,
+    pb.CheckReachabilityResponse.fromBuffer,
+    key: nodeKey,
+  );
+
   Future<pb.ListRevocationsResponse> listRevocations(
     pb.ListRevocationsRequest request, {
     required Ed25519KeyPair nodeKey,

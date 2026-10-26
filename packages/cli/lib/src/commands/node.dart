@@ -103,6 +103,13 @@ final class _NodeStatusCommand extends _NodeSubcommand {
       )
       ..info(_limits(limits))
       ..info('Соединений с собеседниками: ${s['connections'] ?? 0}')
+      ..info(
+        _network(
+          s['listen'] as Map<String, Object?>?,
+          s['portMapping'] as Map<String, Object?>?,
+          s['reachability'] as Map<String, Object?>?,
+        ),
+      )
       ..info(_coordinator(coordinator))
       ..result(s);
     if (s['damagedFragments'] case final int damaged when damaged > 0) {
@@ -135,6 +142,31 @@ final class _NodeStatusCommand extends _NodeSubcommand {
     return '$line; по расписанию сейчас отдача '
         '${_rate(e['uploadBytesPerSecond'])}, приём '
         '${_rate(e['downloadBytesPerSecond'])}';
+  }
+
+  /// Приём соединений, проброс порта и доступность извне (3.5).
+  static String _network(
+    Map<String, Object?>? listen,
+    Map<String, Object?>? mapping,
+    Map<String, Object?>? reachability,
+  ) {
+    if (listen == null) return 'Приём соединений: нет (нет сертификата узла)';
+    final parts = ['Приём соединений: порт ${listen['port']}'];
+    final m = mapping?['mapping'] as Map<String, Object?>?;
+    if (m != null) {
+      parts.add('проброс ${m['method']} → внешний порт ${m['externalPort']}');
+    } else if (mapping?['enabled'] == true) {
+      parts.add('проброса нет');
+    }
+    if (reachability != null && reachability['checkedAt'] != null) {
+      final endpoints = (reachability['endpoints'] as List<Object?>?) ?? [];
+      parts.add(
+        reachability['reachable'] == true
+            ? 'доступен извне (${endpoints.join(', ')})'
+            : 'извне недоступен',
+      );
+    }
+    return parts.join('; ');
   }
 
   static String _coordinator(Map<String, Object?>? c) {

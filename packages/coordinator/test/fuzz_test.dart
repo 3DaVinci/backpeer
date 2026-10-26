@@ -259,6 +259,9 @@ void main() {
         pb.ListRevocationsRequest(afterSequence: Int64.ZERO, limit: 5),
         node,
       ),
+      // Адрес запросов фаззера — для документации: координатор не
+      // подключается, итог NOT_CHECKED.
+      'CheckReachability': (pb.CheckReachabilityRequest(ports: [7340]), node),
     });
   });
   tearDownAll(() => h.close());

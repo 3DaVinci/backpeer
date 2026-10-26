@@ -172,4 +172,10 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.ReportDamagedFragmentsRequest.fromBuffer,
     handle: s.reportDamagedFragments,
   ),
+  RpcMethod<pb.CheckReachabilityRequest, pb.CheckReachabilityResponse>(
+    name: 'CheckReachability',
+    auth: AuthRequirement.node,
+    parse: pb.CheckReachabilityRequest.fromBuffer,
+    handle: s.checkReachability,
+  ),
 ];

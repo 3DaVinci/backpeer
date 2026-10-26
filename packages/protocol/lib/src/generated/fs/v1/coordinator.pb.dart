@@ -2923,6 +2923,206 @@ class ReportDamagedFragmentsResponse extends $pb.GeneratedMessage {
   void clearKnown() => $_clearField(1);
 }
 
+/// Проверка достижимости (задача 3.5.1): координатор подключается по TCP к
+/// адресу, с которого пришёл запрос, на каждый порт из списка и начинает
+/// рукопожатие Noise XX; порт достижим, если отвечающий во втором сообщении
+/// показал статический ключ node_dh из сертификата узла (protocol.md,
+/// раздел 4.9). Другие адреса координатор не проверяет: иначе узел мог бы
+/// направить его соединения куда угодно.
+class CheckReachabilityRequest extends $pb.GeneratedMessage {
+  factory CheckReachabilityRequest({
+    $core.Iterable<$core.int>? ports,
+  }) {
+    final result = CheckReachabilityRequest._();
+    if (ports != null) result.ports.addAll(ports);
+    return result;
+  }
+
+  CheckReachabilityRequest._();
+
+  factory CheckReachabilityRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckReachabilityRequest()..mergeFromBuffer(data, registry);
+  factory CheckReachabilityRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckReachabilityRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CheckReachabilityRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: CheckReachabilityRequest.$_createMessage)
+    ..p<$core.int>(1, _omitFieldNames ? '' : 'ports', $pb.PbFieldType.KU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckReachabilityRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckReachabilityRequest copyWith(
+          void Function(CheckReachabilityRequest) updates) =>
+      super.copyWith((message) => updates(message as CheckReachabilityRequest))
+          as CheckReachabilityRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CheckReachabilityRequest() / CheckReachabilityRequest.new instead')
+  static CheckReachabilityRequest create() => CheckReachabilityRequest._();
+  static $pb.GeneratedMessage $_createMessage() => CheckReachabilityRequest._();
+  @$core.override
+  CheckReachabilityRequest createEmptyInstance() =>
+      CheckReachabilityRequest._();
+  @$core.pragma('dart2js:noInline')
+  static CheckReachabilityRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CheckReachabilityRequest>(
+          CheckReachabilityRequest.$_createMessage);
+  static CheckReachabilityRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.int> get ports => $_getList(0);
+}
+
+class CheckReachabilityResponse extends $pb.GeneratedMessage {
+  factory CheckReachabilityResponse({
+    $core.String? observedAddress,
+    $core.Iterable<ReachabilityResult>? results,
+  }) {
+    final result = CheckReachabilityResponse._();
+    if (observedAddress != null) result.observedAddress = observedAddress;
+    if (results != null) result.results.addAll(results);
+    return result;
+  }
+
+  CheckReachabilityResponse._();
+
+  factory CheckReachabilityResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckReachabilityResponse()..mergeFromBuffer(data, registry);
+  factory CheckReachabilityResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      CheckReachabilityResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'CheckReachabilityResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: CheckReachabilityResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'observedAddress')
+    ..pPM<ReachabilityResult>(2, _omitFieldNames ? '' : 'results',
+        subBuilder: ReachabilityResult.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckReachabilityResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  CheckReachabilityResponse copyWith(
+          void Function(CheckReachabilityResponse) updates) =>
+      super.copyWith((message) => updates(message as CheckReachabilityResponse))
+          as CheckReachabilityResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use CheckReachabilityResponse() / CheckReachabilityResponse.new instead')
+  static CheckReachabilityResponse create() => CheckReachabilityResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      CheckReachabilityResponse._();
+  @$core.override
+  CheckReachabilityResponse createEmptyInstance() =>
+      CheckReachabilityResponse._();
+  @$core.pragma('dart2js:noInline')
+  static CheckReachabilityResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<CheckReachabilityResponse>(
+          CheckReachabilityResponse.$_createMessage);
+  static CheckReachabilityResponse? _defaultInstance;
+
+  /// Адрес, с которого пришёл запрос (IPv4 или IPv6 без скобок и порта):
+  /// внешний адрес узла, каким его видит координатор.
+  @$pb.TagNumber(1)
+  $core.String get observedAddress => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set observedAddress($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasObservedAddress() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearObservedAddress() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<ReachabilityResult> get results => $_getList(1);
+}
+
+class ReachabilityResult extends $pb.GeneratedMessage {
+  factory ReachabilityResult({
+    $core.int? port,
+    ReachabilityStatus? status,
+  }) {
+    final result = ReachabilityResult._();
+    if (port != null) result.port = port;
+    if (status != null) result.status = status;
+    return result;
+  }
+
+  ReachabilityResult._();
+
+  factory ReachabilityResult.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReachabilityResult()..mergeFromBuffer(data, registry);
+  factory ReachabilityResult.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReachabilityResult()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReachabilityResult',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReachabilityResult.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'port', fieldType: $pb.PbFieldType.OU3)
+    ..aE<ReachabilityStatus>(2, _omitFieldNames ? '' : 'status',
+        enumValues: ReachabilityStatus.values)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReachabilityResult clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReachabilityResult copyWith(void Function(ReachabilityResult) updates) =>
+      super.copyWith((message) => updates(message as ReachabilityResult))
+          as ReachabilityResult;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use ReachabilityResult() / ReachabilityResult.new instead')
+  static ReachabilityResult create() => ReachabilityResult._();
+  static $pb.GeneratedMessage $_createMessage() => ReachabilityResult._();
+  @$core.override
+  ReachabilityResult createEmptyInstance() => ReachabilityResult._();
+  @$core.pragma('dart2js:noInline')
+  static ReachabilityResult getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReachabilityResult>(
+          ReachabilityResult.$_createMessage);
+  static ReachabilityResult? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get port => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set port($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPort() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPort() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  ReachabilityStatus get status => $_getN(1);
+  @$pb.TagNumber(2)
+  set status(ReachabilityStatus value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStatus() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStatus() => $_clearField(2);
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

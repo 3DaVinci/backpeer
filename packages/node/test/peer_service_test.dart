@@ -1031,7 +1031,7 @@ void main() {
   });
 
   group('демон', () {
-    test('NodeDaemon.peers обслуживает соединение, пределы по '
+    test('NodeDaemon принимает соединение по TCP (3.5.1), пределы по '
         'расписанию', () async {
       final data = Directory.systemTemp.createTempSync('fs_peer_daemon_');
       addTearDown(() => data.deleteSync(recursive: true));
@@ -1039,6 +1039,8 @@ void main() {
       final daemon = await NodeDaemon.start(
         NodeConfig(
           dataDir: data.path,
+          listenPort: 0,
+          portMapping: PortMappingMode.off,
           quotaBytes: 1 << 30,
           freeReserveBytes: 0,
           coordinatorKeys: [bytesToHex(coordinator.publicKey)],
@@ -1052,12 +1054,13 @@ void main() {
       expect(daemon.effectiveLimits.uploadBytesPerSecond, 5000000);
       expect(daemon.effectiveLimits.downloadBytesPerSecond, 3000000);
       final identity = daemon.identity;
-      final (a, b) = memoryConnectionPair();
-      unawaited(daemon.peers!.serve(b));
+      final port = daemon.listener!.port;
       final c = PeerClient(
         await PeerHandshake.initiate(
           crypto,
-          a,
+          SocketConnection(
+            await Socket.connect(InternetAddress.loopbackIPv4, port),
+          ),
           local: alice.local,
           policy: PeerPolicy.node(identity.nodeId),
         ),
@@ -1085,6 +1088,7 @@ void main() {
       final status = daemon.status();
       expect(status['fragments'], 1);
       expect(status['connections'], 1);
+      expect((status['listen']! as Map)['accepted'], 1);
       expect((status['limits']! as Map)['effective'], {
         'uploadBytesPerSecond': 5000000,
         'downloadBytesPerSecond': 3000000,
@@ -1092,6 +1096,11 @@ void main() {
       await daemon.stop();
       await pumpEventQueue();
       expect(c.isClosed, isTrue);
+      await expectLater(
+        Socket.connect(InternetAddress.loopbackIPv4, port),
+        throwsA(isA<SocketException>()),
+        reason: 'после остановки порт закрыт',
+      );
     });
   });
 }

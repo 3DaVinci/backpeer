@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:coordinator/src/accounts/certificates.dart';
@@ -10,7 +11,8 @@ import 'package:coordinator/src/nodes/uptime.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
-import 'package:core/core.dart' show bytesToHex, constantTimeEquals;
+import 'package:core/core.dart'
+    show NoiseProbe, NoiseProbeResult, bytesToHex, constantTimeEquals;
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart';
@@ -255,6 +257,125 @@ final class NodeService {
     );
     return pb.ReportDamagedFragmentsResponse(known: rows.length);
   }
+
+  /// Портов в одном `CheckReachability`.
+  static const maxReachabilityPorts = 4;
+
+  int _probing = 0;
+
+  /// `CheckReachability` (задача 3.5.1): подключается к адресу, с которого
+  /// пришёл запрос, на каждый порт и проверяет, что отвечает этот узел
+  /// (первые два сообщения Noise XX, ключ `node_dh` из сертификата
+  /// узла). Другие адреса не проверяются: координатор не должен
+  /// подключаться туда, куда укажет узел. С частного адреса — без
+  /// проверки, если не включено [NodePolicy.checkPrivateAddresses].
+  Future<pb.CheckReachabilityResponse> checkReachability(
+    CallContext context,
+    pb.CheckReachabilityRequest request,
+  ) async {
+    final ports = request.ports;
+    if (ports.isEmpty || ports.length > maxReachabilityPorts) {
+      throw _bad('ports: от 1 до $maxReachabilityPorts');
+    }
+    if (ports.toSet().length != ports.length ||
+        ports.any((p) => p < 1 || p > 65535)) {
+      throw _bad('ports: разные числа от 1 до 65535');
+    }
+    final address = NodeAddresses.observed(context.clientAddress);
+    if (address == null) {
+      throw const RpcException(
+        pb.ErrorCode.ERROR_CODE_INTERNAL,
+        'адрес клиента не определён',
+      );
+    }
+    final nodeId = context.caller!.publicKey;
+    final rows = await _db.run(
+      (s) => s.execute(
+        Sql.named(
+          'SELECT certificate FROM nodes '
+          'WHERE node_id = @n:bytea AND removed_at IS NULL',
+        ),
+        parameters: {'n': nodeId},
+      ),
+    );
+    if (rows.isEmpty) {
+      throw const RpcException(
+        pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+        'узел не зарегистрирован',
+      );
+    }
+    final certificate = pb.NodeCertificate.fromBuffer(
+      pb.Signed.fromBuffer(rows.single.single! as List<int>).body,
+    );
+    final nodeDh = Uint8List.fromList(certificate.nodeDh);
+    final List<pb.ReachabilityStatus> statuses;
+    if (!policy.checkPrivateAddresses && !NodeAddresses.isPublic(address)) {
+      statuses = [
+        for (final _ in ports)
+          pb.ReachabilityStatus.REACHABILITY_STATUS_NOT_CHECKED,
+      ];
+    } else {
+      if (_probing + ports.length > policy.maxReachabilityChecks) {
+        throw const RpcException(
+          pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+          'слишком много проверок достижимости',
+          retryAfter: Duration(seconds: 30),
+        );
+      }
+      _probing += ports.length;
+      try {
+        statuses = await Future.wait([
+          for (final port in ports) _probe(address, port, nodeDh),
+        ]);
+      } finally {
+        _probing -= ports.length;
+      }
+    }
+    _log.info(
+      LogEvent('reachability_checked', {
+        'rid': context.requestId,
+        'node_id': bytesToHex(nodeId),
+        'results': [
+          for (var i = 0; i < ports.length; i++)
+            '${ports[i]}:${_statusName(statuses[i])}',
+        ],
+      }),
+    );
+    return pb.CheckReachabilityResponse(
+      observedAddress: address.address,
+      results: [
+        for (var i = 0; i < ports.length; i++)
+          pb.ReachabilityResult(port: ports[i], status: statuses[i]),
+      ],
+    );
+  }
+
+  Future<pb.ReachabilityStatus> _probe(
+    InternetAddress address,
+    int port,
+    Uint8List nodeDh,
+  ) async {
+    final result = await NoiseProbe.probe(
+      _checks.crypto,
+      address: address,
+      port: port,
+      expectedStatic: nodeDh,
+      timeout: policy.reachabilityTimeout,
+    );
+    return switch (result) {
+      NoiseProbeResult.reachable =>
+        pb.ReachabilityStatus.REACHABILITY_STATUS_REACHABLE,
+      NoiseProbeResult.refused =>
+        pb.ReachabilityStatus.REACHABILITY_STATUS_REFUSED,
+      NoiseProbeResult.timeout =>
+        pb.ReachabilityStatus.REACHABILITY_STATUS_TIMEOUT,
+      NoiseProbeResult.wrongPeer =>
+        pb.ReachabilityStatus.REACHABILITY_STATUS_WRONG_PEER,
+    };
+  }
+
+  static String _statusName(pb.ReachabilityStatus s) =>
+      s.name.replaceFirst('REACHABILITY_STATUS_', '').toLowerCase();
 
   /// Доступность узла на момент [at] (по умолчанию — сейчас) или `null`,
   /// если узла нет.

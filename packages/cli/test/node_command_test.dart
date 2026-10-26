@@ -60,7 +60,10 @@ void main() {
     final data = Directory('${dir.path}/node');
     await NodeIdentity.ensureKeys(data, crypto);
     final daemon = await NodeDaemon.start(
-      NodeConfig.parse('', const {}, dataDir: data.path),
+      NodeConfig.parse('', const {
+        'FS_NODE_LISTEN_PORT': '0',
+        'FS_NODE_LISTEN_PORT_MAPPING': 'off',
+      }, dataDir: data.path),
       crypto: crypto,
       handleSignals: false,
     );

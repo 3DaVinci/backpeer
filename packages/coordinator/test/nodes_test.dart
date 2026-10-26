@@ -1,5 +1,9 @@
 // Реестр узлов: RegisterNode, Heartbeat, доступность, кандидаты для
-// размещения (задачи 2.6.1, 2.6.2, начало 2.7.1). Нужен FS_TEST_POSTGRES.
+// размещения (задачи 2.6.1, 2.6.2, начало 2.7.1), проверка достижимости
+// (3.5.1). Нужен FS_TEST_POSTGRES.
+
+import 'dart:async';
+import 'dart:io';
 
 import 'package:coordinator/coordinator.dart';
 import 'package:core/core.dart';
@@ -393,5 +397,140 @@ void main() {
       key: node,
     );
     expect(response.revocations, isEmpty);
+  });
+
+  group('CheckReachability (3.5.1)', () {
+    late Ed25519KeyPair node;
+    late X25519KeyPair nodeDh;
+    late pb.Signed certificate;
+
+    setUp(() async {
+      node = await h.newKey();
+      nodeDh = await h.crypto.x25519FromSecret(
+        SecretBytes(h.crypto.randomBytes(32)),
+      );
+      certificate = await NodeCertificates.issue(
+        h.crypto,
+        owner,
+        nodeId: node.publicKey,
+        nodeDh: nodeDh.publicKey,
+        issuedAt: h.clock.now,
+      );
+    });
+
+    Future<pb.CheckReachabilityResponse> check(
+      DbHarness harness,
+      List<int> ports, {
+      String ip = '192.168.1.5',
+      Ed25519KeyPair? key,
+    }) => harness.call(
+      'CheckReachability',
+      pb.CheckReachabilityRequest(ports: ports),
+      pb.CheckReachabilityResponse.fromBuffer,
+      key: key ?? node,
+      ip: ip,
+    );
+
+    test('частный адрес — без проверки; поля запроса; незарегистрированный '
+        'узел', () async {
+      await h.registerNode(owner, node, certificate: certificate);
+      final r = await check(h, [7340, 41000]);
+      expect(r.observedAddress, '192.168.1.5');
+      expect(
+        [for (final x in r.results) (x.port, x.status)],
+        [
+          (7340, pb.ReachabilityStatus.REACHABILITY_STATUS_NOT_CHECKED),
+          (41000, pb.ReachabilityStatus.REACHABILITY_STATUS_NOT_CHECKED),
+        ],
+      );
+      for (final ports in [
+        <int>[],
+        [1, 2, 3, 4, 5],
+        [7340, 7340],
+        [0],
+        [65536],
+      ]) {
+        await expectLater(
+          () => check(h, ports),
+          failsWith(_badRequest),
+          reason: '$ports',
+        );
+      }
+      await expectLater(
+        () => check(h, [7340], key: owner.accountSign),
+        throwsA(isA<RpcFailure>()),
+        reason: 'ключ не узла',
+      );
+    });
+
+    test('с частными адресами по настройке: отвечает узел — reachable, '
+        'порт закрыт — refused, чужой ключ — wrong_peer', () async {
+      final local = await DbHarness.create(
+        config: const CoordinatorConfig(
+          nodes: NodePolicy(
+            minCapacityBytes: 0,
+            checkPrivateAddresses: true,
+            reachabilityTimeout: Duration(seconds: 2),
+          ),
+        ),
+      );
+      addTearDown(local.close);
+      final localOwner = await local.newAccount();
+      await local.register(localOwner, await local.newKey(), login: 'owner2');
+      final cert = await NodeCertificates.issue(
+        local.crypto,
+        localOwner,
+        nodeId: node.publicKey,
+        nodeDh: nodeDh.publicKey,
+        issuedAt: local.clock.now,
+      );
+      await local.registerNode(localOwner, node, certificate: cert);
+
+      Future<ServerSocket> responder(X25519KeyPair key) async {
+        final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        server.listen(
+          (socket) => unawaited(
+            PeerHandshake.respond(
+              local.crypto,
+              SocketConnection(socket),
+              local: LocalPeer(
+                role: pb.PeerRole.PEER_ROLE_NODE,
+                staticKey: key,
+                certificate: cert,
+                software: 'node test',
+              ),
+              policy: PeerPolicy.anyone(),
+            ).then((_) {}, onError: (Object _) {}),
+          ),
+        );
+        return server;
+      }
+
+      final good = await responder(nodeDh);
+      final other = await responder(
+        await local.crypto.x25519FromSecret(
+          SecretBytes(local.crypto.randomBytes(32)),
+        ),
+      );
+      final closed = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final closedPort = closed.port;
+      await closed.close();
+
+      final r = await check(local, [
+        good.port,
+        closedPort,
+        other.port,
+      ], ip: '::ffff:127.0.0.1');
+      expect(r.observedAddress, '127.0.0.1');
+      expect(
+        [for (final x in r.results) (x.port, x.status)],
+        [
+          (good.port, pb.ReachabilityStatus.REACHABILITY_STATUS_REACHABLE),
+          (closedPort, pb.ReachabilityStatus.REACHABILITY_STATUS_REFUSED),
+          (other.port, pb.ReachabilityStatus.REACHABILITY_STATUS_WRONG_PEER),
+        ],
+      );
+    });
   });
 }

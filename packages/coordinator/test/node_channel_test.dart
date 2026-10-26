@@ -197,13 +197,14 @@ void main() {
 
   CommandChannel channel({
     CoordinatorClient? via,
-    Future<void> Function(pb.CoordinatorChannelMessage)? onCommand,
+    Future<pb.NodeChannelMessage?> Function(pb.CoordinatorChannelMessage)?
+    onCommand,
     Duration pingInterval = const Duration(seconds: 30),
   }) {
     final c = CommandChannel(
       client: via ?? client,
       nodeKey: nodeKey,
-      onCommand: onCommand ?? (_) async {},
+      onCommand: onCommand ?? (_) async => null,
       pingInterval: pingInterval,
       replyTimeout: const Duration(seconds: 2),
       random: Random(1),
@@ -294,6 +295,7 @@ void main() {
             'неизвестная команда',
           );
         }
+        return null;
       },
     );
     await _until(() => c.connected);
@@ -411,7 +413,13 @@ void main() {
     );
     cleanup.add(() async => viaProxy.close(force: true));
     var pings = 0;
-    final c = channel(via: viaProxy, onCommand: (_) async => pings++);
+    final c = channel(
+      via: viaProxy,
+      onCommand: (_) async {
+        pings++;
+        return null;
+      },
+    );
     await _until(() => c.connected);
     proxy.drop();
     await _until(() => c.opened == 2, reason: 'переподключение');

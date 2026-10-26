@@ -434,6 +434,24 @@ final class CoordinatorClient {
     key: nodeKey,
   );
 
+  /// Адреса сводника (protocol.md, раздел 4.11). [key] — ключ узла;
+  /// `null` — ключ устройства.
+  Future<pb.GetRendezvousInfoResponse> getRendezvousInfo({
+    Ed25519KeyPair? key,
+  }) => call(
+    'GetRendezvousInfo',
+    pb.GetRendezvousInfoRequest(),
+    pb.GetRendezvousInfoResponse.fromBuffer,
+    key: key,
+  );
+
+  /// Сведение с узлом; [key] — ключ узла при ремонте, `null` — ключ
+  /// устройства.
+  Future<pb.RendezvousResponse> rendezvous(
+    pb.RendezvousRequest request, {
+    Ed25519KeyPair? key,
+  }) => call('Rendezvous', request, pb.RendezvousResponse.fromBuffer, key: key);
+
   Future<pb.ListRevocationsResponse> listRevocations(
     pb.ListRevocationsRequest request, {
     required Ed25519KeyPair nodeKey,

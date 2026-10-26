@@ -102,6 +102,7 @@ final class NodeConfig {
     this.listenHost,
     this.listenPort = 7340,
     this.portMapping = PortMappingMode.auto,
+    this.udp = true,
     this.endpoints = const [],
     this.limits = const SpeedLimits(),
     this.schedule = const SpeedSchedule(),
@@ -170,6 +171,7 @@ final class NodeConfig {
     'listen.port',
     'listen.endpoints',
     'listen.port_mapping',
+    'listen.udp',
     'limits.upload_bytes_per_second',
     'limits.download_bytes_per_second',
     'limits.schedule',
@@ -223,6 +225,11 @@ final class NodeConfig {
 
   /// Автоматический проброс порта на роутере (задача 3.5.2).
   final PortMappingMode portMapping;
+
+  /// Принимать соединения по UDP после сведения через координатор
+  /// (задача 3.7.2): сокет UDP на том же номере порта, что TCP, на всех
+  /// адресах IPv4.
+  final bool udp;
 
   /// Основные пределы скорости.
   final SpeedLimits limits;
@@ -307,6 +314,7 @@ final class _Reader {
             for (final m in PortMappingMode.values) m.name: m,
           }) ??
           d.portMapping,
+      udp: _bool('listen.udp') ?? d.udp,
       limits: SpeedLimits(
         uploadBytesPerSecond:
             _int('limits.upload_bytes_per_second', 0, 1 << 40) ?? 0,

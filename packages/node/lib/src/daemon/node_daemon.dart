@@ -13,6 +13,7 @@ import 'package:node/src/daemon/transfers.dart';
 import 'package:node/src/net/peer_listener.dart';
 import 'package:node/src/net/port_mapping/port_mapper.dart';
 import 'package:node/src/net/reachability.dart';
+import 'package:node/src/net/udp_peers.dart';
 import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
@@ -26,7 +27,8 @@ enum NodeState { running, paused, stopping }
 /// блокировкой, журнал с ротацией, ключи и сертификат узла, хранилище
 /// фрагментов с фоновой проверкой целостности, операции с фрагментами для
 /// собеседников по Noise ([peers]) с приёмом TCP ([listener]), проброс
-/// порта на роутере ([portMapper]), регистрация у координатора, heartbeat
+/// порта на роутере ([portMapper]), приём UDP после сведения узлов
+/// ([udp], 3.7), регистрация у координатора, heartbeat
 /// и проверка достижимости ([reachability]), локальный API управления.
 ///
 /// Остановка ([stop], SIGINT, SIGTERM, метод `stop` локального API):
@@ -152,6 +154,11 @@ final class NodeDaemon {
   PortMapper? get portMapper => _portMapper;
   PortMapper? _portMapper;
 
+  /// Приём по UDP после сведения узлов; `null` — нет [listener] или
+  /// `listen.udp: false`.
+  UdpPeers? get udp => _udp;
+  UdpPeers? _udp;
+
   /// Доступность извне и адреса узла; `null` — нет [listener].
   Reachability? get reachability => _reachability;
   Reachability? _reachability;
@@ -227,6 +234,15 @@ final class NodeDaemon {
         config.listenPort,
         _peers!.serve,
       );
+      if (config.udp) {
+        try {
+          _udp = await UdpPeers.bind(listener.port, _peers!.serve);
+        } on SocketException catch (e) {
+          // Номер занят по UDP: внешний адрес всё равно назовёт сводник.
+          _log.warning(LogEvent('udp_port_busy', {'reason': e.message}));
+          _udp = await UdpPeers.bind(0, _peers!.serve);
+        }
+      }
       if (config.portMapping != PortMappingMode.off) {
         _portMapper = PortMapper(
           internalPort: listener.port,
@@ -262,6 +278,7 @@ final class NodeDaemon {
         revocations: revocations,
         endpoints: config.endpoints,
         reachability: _reachability,
+        rendezvous: _udp?.handle,
         trustedKeys: trustedKeys,
         commandChannel: config.commandChannel,
       )..start();
@@ -292,6 +309,7 @@ final class NodeDaemon {
         'used_bytes': storage.usedBytes,
         'fragments': storage.fragmentCount,
         'listen_port': ?_listener?.port,
+        'udp_port': ?_udp?.port,
         'coordinator': config.coordinatorUrl != null,
       }),
     );
@@ -301,6 +319,7 @@ final class NodeDaemon {
   /// с координатором; хранилище закрывает [start].
   Future<void> _abortStart() async {
     await _listener?.close();
+    await _udp?.close();
     await _peers?.close();
     await checker.stop();
     await _link?.stop(wait: Duration.zero);
@@ -332,6 +351,7 @@ final class NodeDaemon {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
     await _listener?.close();
+    await _udp?.close();
     await _peers?.close();
     await checker.stop();
     await _link?.stop();
@@ -422,6 +442,7 @@ final class NodeDaemon {
     'activeTransfers': gate.active,
     'connections': _peers?.connectionCount ?? 0,
     'listen': _listener?.toJson(),
+    'udp': _udp?.toJson(),
     'portMapping': _portMapper?.toJson(),
     'reachability': _reachability?.toJson(),
     'coordinator': _link?.toJson(),

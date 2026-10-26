@@ -111,6 +111,16 @@ abstract base class CoordinatorService {
     pb.CheckReachabilityRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.GetRendezvousInfoResponse> getRendezvousInfo(
+    CallContext context,
+    pb.GetRendezvousInfoRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.RendezvousResponse> rendezvous(
+    CallContext context,
+    pb.RendezvousRequest request,
+  ) => _unimplemented(context);
+
   static Never _unimplemented(CallContext context) => throw RpcException(
     pb.ErrorCode.ERROR_CODE_INTERNAL,
     'метод ${context.method} не реализован',

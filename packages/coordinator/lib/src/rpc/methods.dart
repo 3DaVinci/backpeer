@@ -178,4 +178,16 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.CheckReachabilityRequest.fromBuffer,
     handle: s.checkReachability,
   ),
+  RpcMethod<pb.GetRendezvousInfoRequest, pb.GetRendezvousInfoResponse>(
+    name: 'GetRendezvousInfo',
+    auth: AuthRequirement.deviceOrNode,
+    parse: pb.GetRendezvousInfoRequest.fromBuffer,
+    handle: s.getRendezvousInfo,
+  ),
+  RpcMethod<pb.RendezvousRequest, pb.RendezvousResponse>(
+    name: 'Rendezvous',
+    auth: AuthRequirement.deviceOrNode,
+    parse: pb.RendezvousRequest.fromBuffer,
+    handle: s.rendezvous,
+  ),
 ];

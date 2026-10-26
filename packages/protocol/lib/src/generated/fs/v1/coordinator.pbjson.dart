@@ -878,6 +878,15 @@ const NodeChannelMessage$json = {
       '9': 0,
       '10': 'error'
     },
+    {
+      '1': 'rendezvous',
+      '3': 6,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.RendezvousReply',
+      '9': 0,
+      '10': 'rendezvous'
+    },
   ],
   '8': [
     {'1': 'body'},
@@ -889,7 +898,8 @@ final $typed_data.Uint8List nodeChannelMessageDescriptor = $convert.base64Decode
     'ChJOb2RlQ2hhbm5lbE1lc3NhZ2USDgoCaWQYASABKARSAmlkEhkKCHJlcGx5X3RvGAIgASgEUg'
     'dyZXBseVRvEjcKCWhlYXJ0YmVhdBgDIAEoCzIXLmZzLnYxLkhlYXJ0YmVhdFJlcXVlc3RIAFIJ'
     'aGVhcnRiZWF0EigKBGRvbmUYBCABKAsyEi5mcy52MS5Db21tYW5kRG9uZUgAUgRkb25lEiQKBW'
-    'Vycm9yGAUgASgLMgwuZnMudjEuRXJyb3JIAFIFZXJyb3JCBgoEYm9keQ==');
+    'Vycm9yGAUgASgLMgwuZnMudjEuRXJyb3JIAFIFZXJyb3ISOAoKcmVuZGV6dm91cxgGIAEoCzIW'
+    'LmZzLnYxLlJlbmRlenZvdXNSZXBseUgAUgpyZW5kZXp2b3VzQgYKBGJvZHk=');
 
 @$core.Deprecated('Use coordinatorChannelMessageDescriptor instead')
 const CoordinatorChannelMessage$json = {
@@ -933,6 +943,15 @@ const CoordinatorChannelMessage$json = {
       '9': 0,
       '10': 'syncRevocations'
     },
+    {
+      '1': 'rendezvous',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.RendezvousCommand',
+      '9': 0,
+      '10': 'rendezvous'
+    },
   ],
   '8': [
     {'1': 'body'},
@@ -946,7 +965,8 @@ final $typed_data.Uint8List coordinatorChannelMessageDescriptor = $convert.base6
     'b25zZUgAUgloZWFydGJlYXQSJAoFZXJyb3IYBCABKAsyDC5mcy52MS5FcnJvckgAUgVlcnJvch'
     'IoCgRwaW5nGAUgASgLMhIuZnMudjEuUGluZ0NvbW1hbmRIAFIEcGluZxJKChBzeW5jX3Jldm9j'
     'YXRpb25zGAYgASgLMh0uZnMudjEuU3luY1Jldm9jYXRpb25zQ29tbWFuZEgAUg9zeW5jUmV2b2'
-    'NhdGlvbnNCBgoEYm9keQ==');
+    'NhdGlvbnMSOgoKcmVuZGV6dm91cxgHIAEoCzIYLmZzLnYxLlJlbmRlenZvdXNDb21tYW5kSABS'
+    'CnJlbmRlenZvdXNCBgoEYm9keQ==');
 
 @$core.Deprecated('Use commandDoneDescriptor instead')
 const CommandDone$json = {
@@ -978,3 +998,120 @@ const SyncRevocationsCommand$json = {
 final $typed_data.Uint8List syncRevocationsCommandDescriptor =
     $convert.base64Decode(
         'ChZTeW5jUmV2b2NhdGlvbnNDb21tYW5kEhoKCHNlcXVlbmNlGAEgASgEUghzZXF1ZW5jZQ==');
+
+@$core.Deprecated('Use getRendezvousInfoRequestDescriptor instead')
+const GetRendezvousInfoRequest$json = {
+  '1': 'GetRendezvousInfoRequest',
+};
+
+/// Descriptor for `GetRendezvousInfoRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getRendezvousInfoRequestDescriptor =
+    $convert.base64Decode('ChhHZXRSZW5kZXp2b3VzSW5mb1JlcXVlc3Q=');
+
+@$core.Deprecated('Use getRendezvousInfoResponseDescriptor instead')
+const GetRendezvousInfoResponse$json = {
+  '1': 'GetRendezvousInfoResponse',
+  '2': [
+    {'1': 'servers', '3': 1, '4': 3, '5': 9, '10': 'servers'},
+  ],
+};
+
+/// Descriptor for `GetRendezvousInfoResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getRendezvousInfoResponseDescriptor =
+    $convert.base64Decode(
+        'ChlHZXRSZW5kZXp2b3VzSW5mb1Jlc3BvbnNlEhgKB3NlcnZlcnMYASADKAlSB3NlcnZlcnM=');
+
+@$core.Deprecated('Use udpBindingDescriptor instead')
+const UdpBinding$json = {
+  '1': 'UdpBinding',
+  '2': [
+    {'1': 'endpoint', '3': 1, '4': 1, '5': 9, '10': 'endpoint'},
+    {'1': 'token', '3': 2, '4': 1, '5': 12, '10': 'token'},
+  ],
+};
+
+/// Descriptor for `UdpBinding`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List udpBindingDescriptor = $convert.base64Decode(
+    'CgpVZHBCaW5kaW5nEhoKCGVuZHBvaW50GAEgASgJUghlbmRwb2ludBIUCgV0b2tlbhgCIAEoDF'
+    'IFdG9rZW4=');
+
+@$core.Deprecated('Use rendezvousRequestDescriptor instead')
+const RendezvousRequest$json = {
+  '1': 'RendezvousRequest',
+  '2': [
+    {'1': 'node_id', '3': 1, '4': 1, '5': 12, '10': 'nodeId'},
+    {
+      '1': 'binding',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.UdpBinding',
+      '10': 'binding'
+    },
+  ],
+};
+
+/// Descriptor for `RendezvousRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List rendezvousRequestDescriptor = $convert.base64Decode(
+    'ChFSZW5kZXp2b3VzUmVxdWVzdBIXCgdub2RlX2lkGAEgASgMUgZub2RlSWQSKwoHYmluZGluZx'
+    'gCIAEoCzIRLmZzLnYxLlVkcEJpbmRpbmdSB2JpbmRpbmc=');
+
+@$core.Deprecated('Use rendezvousResponseDescriptor instead')
+const RendezvousResponse$json = {
+  '1': 'RendezvousResponse',
+  '2': [
+    {'1': 'node_endpoint', '3': 1, '4': 1, '5': 9, '10': 'nodeEndpoint'},
+    {'1': 'punch_id', '3': 2, '4': 1, '5': 12, '10': 'punchId'},
+    {
+      '1': 'node_symmetric_nat',
+      '3': 3,
+      '4': 1,
+      '5': 8,
+      '10': 'nodeSymmetricNat'
+    },
+  ],
+};
+
+/// Descriptor for `RendezvousResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List rendezvousResponseDescriptor = $convert.base64Decode(
+    'ChJSZW5kZXp2b3VzUmVzcG9uc2USIwoNbm9kZV9lbmRwb2ludBgBIAEoCVIMbm9kZUVuZHBvaW'
+    '50EhkKCHB1bmNoX2lkGAIgASgMUgdwdW5jaElkEiwKEm5vZGVfc3ltbWV0cmljX25hdBgDIAEo'
+    'CFIQbm9kZVN5bW1ldHJpY05hdA==');
+
+@$core.Deprecated('Use rendezvousCommandDescriptor instead')
+const RendezvousCommand$json = {
+  '1': 'RendezvousCommand',
+  '2': [
+    {'1': 'peer_endpoint', '3': 1, '4': 1, '5': 9, '10': 'peerEndpoint'},
+    {'1': 'peer_key', '3': 2, '4': 1, '5': 12, '10': 'peerKey'},
+    {'1': 'punch_id', '3': 3, '4': 1, '5': 12, '10': 'punchId'},
+    {'1': 'servers', '3': 4, '4': 3, '5': 9, '10': 'servers'},
+  ],
+};
+
+/// Descriptor for `RendezvousCommand`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List rendezvousCommandDescriptor = $convert.base64Decode(
+    'ChFSZW5kZXp2b3VzQ29tbWFuZBIjCg1wZWVyX2VuZHBvaW50GAEgASgJUgxwZWVyRW5kcG9pbn'
+    'QSGQoIcGVlcl9rZXkYAiABKAxSB3BlZXJLZXkSGQoIcHVuY2hfaWQYAyABKAxSB3B1bmNoSWQS'
+    'GAoHc2VydmVycxgEIAMoCVIHc2VydmVycw==');
+
+@$core.Deprecated('Use rendezvousReplyDescriptor instead')
+const RendezvousReply$json = {
+  '1': 'RendezvousReply',
+  '2': [
+    {
+      '1': 'binding',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.UdpBinding',
+      '10': 'binding'
+    },
+    {'1': 'symmetric_nat', '3': 2, '4': 1, '5': 8, '10': 'symmetricNat'},
+  ],
+};
+
+/// Descriptor for `RendezvousReply`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List rendezvousReplyDescriptor = $convert.base64Decode(
+    'Cg9SZW5kZXp2b3VzUmVwbHkSKwoHYmluZGluZxgBIAEoCzIRLmZzLnYxLlVkcEJpbmRpbmdSB2'
+    'JpbmRpbmcSIwoNc3ltbWV0cmljX25hdBgCIAEoCFIMc3ltbWV0cmljTmF0');

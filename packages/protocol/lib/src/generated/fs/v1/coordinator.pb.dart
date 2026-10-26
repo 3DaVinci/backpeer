@@ -3123,7 +3123,7 @@ class ReachabilityResult extends $pb.GeneratedMessage {
   void clearStatus() => $_clearField(2);
 }
 
-enum NodeChannelMessage_Body { heartbeat, done, error, notSet }
+enum NodeChannelMessage_Body { heartbeat, done, error, rendezvous, notSet }
 
 class NodeChannelMessage extends $pb.GeneratedMessage {
   factory NodeChannelMessage({
@@ -3132,6 +3132,7 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
     HeartbeatRequest? heartbeat,
     CommandDone? done,
     $0.Error? error,
+    RendezvousReply? rendezvous,
   }) {
     final result = NodeChannelMessage._();
     if (id != null) result.id = id;
@@ -3139,6 +3140,7 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
     if (heartbeat != null) result.heartbeat = heartbeat;
     if (done != null) result.done = done;
     if (error != null) result.error = error;
+    if (rendezvous != null) result.rendezvous = rendezvous;
     return result;
   }
 
@@ -3156,13 +3158,14 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
     3: NodeChannelMessage_Body.heartbeat,
     4: NodeChannelMessage_Body.done,
     5: NodeChannelMessage_Body.error,
+    6: NodeChannelMessage_Body.rendezvous,
     0: NodeChannelMessage_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NodeChannelMessage',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
       createEmptyInstance: NodeChannelMessage.$_createMessage)
-    ..oo(0, [3, 4, 5])
+    ..oo(0, [3, 4, 5, 6])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'id', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'replyTo', $pb.PbFieldType.OU6,
@@ -3173,6 +3176,8 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
         subBuilder: CommandDone.$_createMessage)
     ..aOM<$0.Error>(5, _omitFieldNames ? '' : 'error',
         subBuilder: $0.Error.$_createMessage)
+    ..aOM<RendezvousReply>(6, _omitFieldNames ? '' : 'rendezvous',
+        subBuilder: RendezvousReply.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3200,11 +3205,13 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   NodeChannelMessage_Body whichBody() =>
       _NodeChannelMessage_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
+  @$pb.TagNumber(6)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -3257,6 +3264,17 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
   void clearError() => $_clearField(5);
   @$pb.TagNumber(5)
   $0.Error ensureError() => $_ensure(4);
+
+  @$pb.TagNumber(6)
+  RendezvousReply get rendezvous => $_getN(5);
+  @$pb.TagNumber(6)
+  set rendezvous(RendezvousReply value) => $_setField(6, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRendezvous() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRendezvous() => $_clearField(6);
+  @$pb.TagNumber(6)
+  RendezvousReply ensureRendezvous() => $_ensure(5);
 }
 
 enum CoordinatorChannelMessage_Body {
@@ -3264,6 +3282,7 @@ enum CoordinatorChannelMessage_Body {
   error,
   ping,
   syncRevocations,
+  rendezvous,
   notSet
 }
 
@@ -3275,6 +3294,7 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
     $0.Error? error,
     PingCommand? ping,
     SyncRevocationsCommand? syncRevocations,
+    RendezvousCommand? rendezvous,
   }) {
     final result = CoordinatorChannelMessage._();
     if (id != null) result.id = id;
@@ -3283,6 +3303,7 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
     if (error != null) result.error = error;
     if (ping != null) result.ping = ping;
     if (syncRevocations != null) result.syncRevocations = syncRevocations;
+    if (rendezvous != null) result.rendezvous = rendezvous;
     return result;
   }
 
@@ -3301,13 +3322,14 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
     4: CoordinatorChannelMessage_Body.error,
     5: CoordinatorChannelMessage_Body.ping,
     6: CoordinatorChannelMessage_Body.syncRevocations,
+    7: CoordinatorChannelMessage_Body.rendezvous,
     0: CoordinatorChannelMessage_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'CoordinatorChannelMessage',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
       createEmptyInstance: CoordinatorChannelMessage.$_createMessage)
-    ..oo(0, [3, 4, 5, 6])
+    ..oo(0, [3, 4, 5, 6, 7])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'id', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'replyTo', $pb.PbFieldType.OU6,
@@ -3320,6 +3342,8 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
         subBuilder: PingCommand.$_createMessage)
     ..aOM<SyncRevocationsCommand>(6, _omitFieldNames ? '' : 'syncRevocations',
         subBuilder: SyncRevocationsCommand.$_createMessage)
+    ..aOM<RendezvousCommand>(7, _omitFieldNames ? '' : 'rendezvous',
+        subBuilder: RendezvousCommand.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3352,12 +3376,14 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
   @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
   CoordinatorChannelMessage_Body whichBody() =>
       _CoordinatorChannelMessage_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
   @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -3421,6 +3447,17 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
   void clearSyncRevocations() => $_clearField(6);
   @$pb.TagNumber(6)
   SyncRevocationsCommand ensureSyncRevocations() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  RendezvousCommand get rendezvous => $_getN(6);
+  @$pb.TagNumber(7)
+  set rendezvous(RendezvousCommand value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasRendezvous() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearRendezvous() => $_clearField(7);
+  @$pb.TagNumber(7)
+  RendezvousCommand ensureRendezvous() => $_ensure(6);
 }
 
 class CommandDone extends $pb.GeneratedMessage {
@@ -3567,6 +3604,496 @@ class SyncRevocationsCommand extends $pb.GeneratedMessage {
   $core.bool hasSequence() => $_has(0);
   @$pb.TagNumber(1)
   void clearSequence() => $_clearField(1);
+}
+
+/// Адреса сводника. Подписан ключом устройства или узла.
+class GetRendezvousInfoRequest extends $pb.GeneratedMessage {
+  factory GetRendezvousInfoRequest() => GetRendezvousInfoRequest._();
+
+  GetRendezvousInfoRequest._();
+
+  factory GetRendezvousInfoRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRendezvousInfoRequest()..mergeFromBuffer(data, registry);
+  factory GetRendezvousInfoRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRendezvousInfoRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetRendezvousInfoRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetRendezvousInfoRequest.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRendezvousInfoRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRendezvousInfoRequest copyWith(
+          void Function(GetRendezvousInfoRequest) updates) =>
+      super.copyWith((message) => updates(message as GetRendezvousInfoRequest))
+          as GetRendezvousInfoRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetRendezvousInfoRequest() / GetRendezvousInfoRequest.new instead')
+  static GetRendezvousInfoRequest create() => GetRendezvousInfoRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetRendezvousInfoRequest._();
+  @$core.override
+  GetRendezvousInfoRequest createEmptyInstance() =>
+      GetRendezvousInfoRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetRendezvousInfoRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetRendezvousInfoRequest>(
+          GetRendezvousInfoRequest.$_createMessage);
+  static GetRendezvousInfoRequest? _defaultInstance;
+}
+
+class GetRendezvousInfoResponse extends $pb.GeneratedMessage {
+  factory GetRendezvousInfoResponse({
+    $core.Iterable<$core.String>? servers,
+  }) {
+    final result = GetRendezvousInfoResponse._();
+    if (servers != null) result.servers.addAll(servers);
+    return result;
+  }
+
+  GetRendezvousInfoResponse._();
+
+  factory GetRendezvousInfoResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRendezvousInfoResponse()..mergeFromBuffer(data, registry);
+  factory GetRendezvousInfoResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRendezvousInfoResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetRendezvousInfoResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetRendezvousInfoResponse.$_createMessage)
+    ..pPS(1, _omitFieldNames ? '' : 'servers')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRendezvousInfoResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRendezvousInfoResponse copyWith(
+          void Function(GetRendezvousInfoResponse) updates) =>
+      super.copyWith((message) => updates(message as GetRendezvousInfoResponse))
+          as GetRendezvousInfoResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetRendezvousInfoResponse() / GetRendezvousInfoResponse.new instead')
+  static GetRendezvousInfoResponse create() => GetRendezvousInfoResponse._();
+  static $pb.GeneratedMessage $_createMessage() =>
+      GetRendezvousInfoResponse._();
+  @$core.override
+  GetRendezvousInfoResponse createEmptyInstance() =>
+      GetRendezvousInfoResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetRendezvousInfoResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetRendezvousInfoResponse>(
+          GetRendezvousInfoResponse.$_createMessage);
+  static GetRendezvousInfoResponse? _defaultInstance;
+
+  /// Два адреса "IPv4:порт" — порты сводника; пусто — сведение выключено.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.String> get servers => $_getList(0);
+}
+
+/// Внешний UDP-адрес стороны, каким его увидел сводник.
+class UdpBinding extends $pb.GeneratedMessage {
+  factory UdpBinding({
+    $core.String? endpoint,
+    $core.List<$core.int>? token,
+  }) {
+    final result = UdpBinding._();
+    if (endpoint != null) result.endpoint = endpoint;
+    if (token != null) result.token = token;
+    return result;
+  }
+
+  UdpBinding._();
+
+  factory UdpBinding.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UdpBinding()..mergeFromBuffer(data, registry);
+  factory UdpBinding.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      UdpBinding()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'UdpBinding',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: UdpBinding.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'endpoint')
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'token', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UdpBinding clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  UdpBinding copyWith(void Function(UdpBinding) updates) =>
+      super.copyWith((message) => updates(message as UdpBinding)) as UdpBinding;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use UdpBinding() / UdpBinding.new instead')
+  static UdpBinding create() => UdpBinding._();
+  static $pb.GeneratedMessage $_createMessage() => UdpBinding._();
+  @$core.override
+  UdpBinding createEmptyInstance() => UdpBinding._();
+  @$core.pragma('dart2js:noInline')
+  static UdpBinding getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<UdpBinding>(UdpBinding.$_createMessage);
+  static UdpBinding? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get endpoint => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set endpoint($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasEndpoint() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearEndpoint() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get token => $_getN(1);
+  @$pb.TagNumber(2)
+  set token($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasToken() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearToken() => $_clearField(2);
+}
+
+/// Инициатор (клиент или узел при ремонте) просит свести его с узлом.
+/// Подписан ключом устройства или узла.
+class RendezvousRequest extends $pb.GeneratedMessage {
+  factory RendezvousRequest({
+    $core.List<$core.int>? nodeId,
+    UdpBinding? binding,
+  }) {
+    final result = RendezvousRequest._();
+    if (nodeId != null) result.nodeId = nodeId;
+    if (binding != null) result.binding = binding;
+    return result;
+  }
+
+  RendezvousRequest._();
+
+  factory RendezvousRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousRequest()..mergeFromBuffer(data, registry);
+  factory RendezvousRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RendezvousRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RendezvousRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'nodeId', $pb.PbFieldType.OY)
+    ..aOM<UdpBinding>(2, _omitFieldNames ? '' : 'binding',
+        subBuilder: UdpBinding.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousRequest copyWith(void Function(RendezvousRequest) updates) =>
+      super.copyWith((message) => updates(message as RendezvousRequest))
+          as RendezvousRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RendezvousRequest() / RendezvousRequest.new instead')
+  static RendezvousRequest create() => RendezvousRequest._();
+  static $pb.GeneratedMessage $_createMessage() => RendezvousRequest._();
+  @$core.override
+  RendezvousRequest createEmptyInstance() => RendezvousRequest._();
+  @$core.pragma('dart2js:noInline')
+  static RendezvousRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RendezvousRequest>(
+          RendezvousRequest.$_createMessage);
+  static RendezvousRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get nodeId => $_getN(0);
+  @$pb.TagNumber(1)
+  set nodeId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  UdpBinding get binding => $_getN(1);
+  @$pb.TagNumber(2)
+  set binding(UdpBinding value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBinding() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBinding() => $_clearField(2);
+  @$pb.TagNumber(2)
+  UdpBinding ensureBinding() => $_ensure(1);
+}
+
+class RendezvousResponse extends $pb.GeneratedMessage {
+  factory RendezvousResponse({
+    $core.String? nodeEndpoint,
+    $core.List<$core.int>? punchId,
+    $core.bool? nodeSymmetricNat,
+  }) {
+    final result = RendezvousResponse._();
+    if (nodeEndpoint != null) result.nodeEndpoint = nodeEndpoint;
+    if (punchId != null) result.punchId = punchId;
+    if (nodeSymmetricNat != null) result.nodeSymmetricNat = nodeSymmetricNat;
+    return result;
+  }
+
+  RendezvousResponse._();
+
+  factory RendezvousResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousResponse()..mergeFromBuffer(data, registry);
+  factory RendezvousResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RendezvousResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RendezvousResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'nodeEndpoint')
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'punchId', $pb.PbFieldType.OY)
+    ..aOB(3, _omitFieldNames ? '' : 'nodeSymmetricNat')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousResponse copyWith(void Function(RendezvousResponse) updates) =>
+      super.copyWith((message) => updates(message as RendezvousResponse))
+          as RendezvousResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RendezvousResponse() / RendezvousResponse.new instead')
+  static RendezvousResponse create() => RendezvousResponse._();
+  static $pb.GeneratedMessage $_createMessage() => RendezvousResponse._();
+  @$core.override
+  RendezvousResponse createEmptyInstance() => RendezvousResponse._();
+  @$core.pragma('dart2js:noInline')
+  static RendezvousResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<RendezvousResponse>(
+          RendezvousResponse.$_createMessage);
+  static RendezvousResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get nodeEndpoint => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set nodeEndpoint($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeEndpoint() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeEndpoint() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get punchId => $_getN(1);
+  @$pb.TagNumber(2)
+  set punchId($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPunchId() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPunchId() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get nodeSymmetricNat => $_getBF(2);
+  @$pb.TagNumber(3)
+  set nodeSymmetricNat($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasNodeSymmetricNat() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearNodeSymmetricNat() => $_clearField(3);
+}
+
+/// Команда узлу: начать пробивание к инициатору.
+class RendezvousCommand extends $pb.GeneratedMessage {
+  factory RendezvousCommand({
+    $core.String? peerEndpoint,
+    $core.List<$core.int>? peerKey,
+    $core.List<$core.int>? punchId,
+    $core.Iterable<$core.String>? servers,
+  }) {
+    final result = RendezvousCommand._();
+    if (peerEndpoint != null) result.peerEndpoint = peerEndpoint;
+    if (peerKey != null) result.peerKey = peerKey;
+    if (punchId != null) result.punchId = punchId;
+    if (servers != null) result.servers.addAll(servers);
+    return result;
+  }
+
+  RendezvousCommand._();
+
+  factory RendezvousCommand.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousCommand()..mergeFromBuffer(data, registry);
+  factory RendezvousCommand.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousCommand()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RendezvousCommand',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RendezvousCommand.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'peerEndpoint')
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'peerKey', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        3, _omitFieldNames ? '' : 'punchId', $pb.PbFieldType.OY)
+    ..pPS(4, _omitFieldNames ? '' : 'servers')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousCommand clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousCommand copyWith(void Function(RendezvousCommand) updates) =>
+      super.copyWith((message) => updates(message as RendezvousCommand))
+          as RendezvousCommand;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RendezvousCommand() / RendezvousCommand.new instead')
+  static RendezvousCommand create() => RendezvousCommand._();
+  static $pb.GeneratedMessage $_createMessage() => RendezvousCommand._();
+  @$core.override
+  RendezvousCommand createEmptyInstance() => RendezvousCommand._();
+  @$core.pragma('dart2js:noInline')
+  static RendezvousCommand getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RendezvousCommand>(
+          RendezvousCommand.$_createMessage);
+  static RendezvousCommand? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get peerEndpoint => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set peerEndpoint($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasPeerEndpoint() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearPeerEndpoint() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get peerKey => $_getN(1);
+  @$pb.TagNumber(2)
+  set peerKey($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPeerKey() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPeerKey() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.List<$core.int> get punchId => $_getN(2);
+  @$pb.TagNumber(3)
+  set punchId($core.List<$core.int> value) => $_setBytes(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasPunchId() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearPunchId() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $pb.PbList<$core.String> get servers => $_getList(3);
+}
+
+/// Ответ узла: его внешний адрес от сводника.
+class RendezvousReply extends $pb.GeneratedMessage {
+  factory RendezvousReply({
+    UdpBinding? binding,
+    $core.bool? symmetricNat,
+  }) {
+    final result = RendezvousReply._();
+    if (binding != null) result.binding = binding;
+    if (symmetricNat != null) result.symmetricNat = symmetricNat;
+    return result;
+  }
+
+  RendezvousReply._();
+
+  factory RendezvousReply.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousReply()..mergeFromBuffer(data, registry);
+  factory RendezvousReply.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RendezvousReply()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RendezvousReply',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RendezvousReply.$_createMessage)
+    ..aOM<UdpBinding>(1, _omitFieldNames ? '' : 'binding',
+        subBuilder: UdpBinding.$_createMessage)
+    ..aOB(2, _omitFieldNames ? '' : 'symmetricNat')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousReply clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RendezvousReply copyWith(void Function(RendezvousReply) updates) =>
+      super.copyWith((message) => updates(message as RendezvousReply))
+          as RendezvousReply;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RendezvousReply() / RendezvousReply.new instead')
+  static RendezvousReply create() => RendezvousReply._();
+  static $pb.GeneratedMessage $_createMessage() => RendezvousReply._();
+  @$core.override
+  RendezvousReply createEmptyInstance() => RendezvousReply._();
+  @$core.pragma('dart2js:noInline')
+  static RendezvousReply getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RendezvousReply>(
+          RendezvousReply.$_createMessage);
+  static RendezvousReply? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  UdpBinding get binding => $_getN(0);
+  @$pb.TagNumber(1)
+  set binding(UdpBinding value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBinding() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBinding() => $_clearField(1);
+  @$pb.TagNumber(1)
+  UdpBinding ensureBinding() => $_ensure(0);
+
+  @$pb.TagNumber(2)
+  $core.bool get symmetricNat => $_getBF(1);
+  @$pb.TagNumber(2)
+  set symmetricNat($core.bool value) => $_setBool(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasSymmetricNat() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearSymmetricNat() => $_clearField(2);
 }
 
 const $core.bool _omitFieldNames =

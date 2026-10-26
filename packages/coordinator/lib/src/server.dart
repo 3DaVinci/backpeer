@@ -9,6 +9,7 @@ import 'package:coordinator/src/db/postgres_key_directory.dart';
 import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
+import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/rpc/api_handler.dart';
 import 'package:coordinator/src/rpc/database_service.dart';
 import 'package:coordinator/src/rpc/methods.dart';
@@ -23,7 +24,14 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 /// Запущенный координатор: HTTP-сервер поверх базы и канал команд узлов
 /// (`GET /api/v1/NodeChannel`, [channels]).
 final class CoordinatorServer {
-  new _(this._http, this._db, this._signer, this.channels, this._watch);
+  new _(
+    this._http,
+    this._db,
+    this._signer,
+    this.channels,
+    this._watch,
+    this.rendezvous,
+  );
 
   /// Открывает базу, проверяет версию схемы и начинает слушать порт.
   /// Схема должна быть актуальной (`coordinator migrate`), если не задан
@@ -37,6 +45,7 @@ final class CoordinatorServer {
     final db = Database.open(config.database);
     final socket = config.signerSocket;
     final signer = socket == null ? null : SocketTicketSigner(socket);
+    RendezvousService? rendezvous;
     try {
       final migrator = Migrator(db);
       final version = migrate
@@ -86,6 +95,10 @@ final class CoordinatorServer {
         policy: config.channels,
         trustForwardedFor: config.trustForwardedFor,
       );
+      if (coordinatorService case final DatabaseCoordinatorService s) {
+        rendezvous = s.rendezvousService..channels = channels;
+        await rendezvous.start();
+      }
       // Новый отзыв устройства — узлы в канале дочитывают ListRevocations
       // сразу, не дожидаясь heartbeat.
       // ignore: cancel_subscriptions — отменяется в close.
@@ -124,6 +137,7 @@ final class CoordinatorServer {
           'tls': config.tlsCertificate != null,
           'schema': version,
           'signer': signer != null,
+          'rendezvous': ?rendezvous?.ports,
         }),
       );
       if (!config.placement.distinctSubnets) {
@@ -133,8 +147,9 @@ final class CoordinatorServer {
           }),
         );
       }
-      return CoordinatorServer._(http, db, signer, channels, watch);
+      return CoordinatorServer._(http, db, signer, channels, watch, rendezvous);
     } on Object {
+      await rendezvous?.close();
       await signer?.close();
       await db.close();
       rethrow;
@@ -151,11 +166,15 @@ final class CoordinatorServer {
   /// Открытые каналы команд узлов.
   final NodeChannels channels;
 
+  /// Сведение узлов; `null` — сервис без базы (тесты).
+  final RendezvousService? rendezvous;
+
   int get port => _http.port;
 
   Future<void> close() async {
     await _watch?.cancel();
     await channels.close();
+    await rendezvous?.close();
     await _http.close();
     await _signer?.close();
     await _db.close();

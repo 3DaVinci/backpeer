@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
+import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
@@ -81,6 +82,7 @@ final class CoordinatorConfig {
     this.maxObjectBytesPerAccount = 1 << 30,
     this.nodes = const NodePolicy(),
     this.channels = const ChannelPolicy(),
+    this.rendezvous = const RendezvousPolicy(),
     this.placement = const PlacementPolicy(),
     this.signerSocket,
     this.adminRole = 'fs_admin',
@@ -162,6 +164,10 @@ final class CoordinatorConfig {
     'nodes.reachability_timeout_ms',
     'channels.max_connections',
     'channels.ping_seconds',
+    'rendezvous.public_host',
+    'rendezvous.host',
+    'rendezvous.port',
+    'rendezvous.per_minute',
     'placement.min_availability',
     'placement.probation_hours',
     'placement.max_probation_share',
@@ -198,6 +204,9 @@ final class CoordinatorConfig {
   /// Канал команд узлов: предел каналов, период ping.
   final ChannelPolicy channels;
 
+  /// Сведение узлов: адрес и порты сводника, предел сведений.
+  final RendezvousPolicy rendezvous;
+
   /// Размещение: порог доступности, испытательный срок, срок талонов.
   final PlacementPolicy placement;
 
@@ -224,6 +233,7 @@ final class _Reader {
     const np = NodePolicy();
     const pp = PlacementPolicy();
     const cp = ChannelPolicy();
+    const rp = RendezvousPolicy();
     final cert = _string('tls.certificate');
     final key = _string('tls.private_key');
     if ((cert == null) != (key == null)) {
@@ -310,6 +320,12 @@ final class _Reader {
               _int('channels.ping_seconds', 5, 600) ??
               cp.pingInterval.inSeconds,
         ),
+      ),
+      rendezvous: RendezvousPolicy(
+        publicHost: _string('rendezvous.public_host'),
+        host: _string('rendezvous.host') ?? rp.host,
+        port: _int('rendezvous.port', 1, 65534) ?? rp.port,
+        perMinute: _int('rendezvous.per_minute', 1, 10000) ?? rp.perMinute,
       ),
       placement: PlacementPolicy(
         minAvailability:

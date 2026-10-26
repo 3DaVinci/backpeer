@@ -35,6 +35,7 @@ export 'src/nodes/node_address.dart';
 export 'src/nodes/node_channels.dart';
 export 'src/nodes/node_policy.dart';
 export 'src/nodes/node_service.dart';
+export 'src/nodes/rendezvous.dart';
 export 'src/nodes/uptime.dart';
 export 'src/objects/object_service.dart';
 export 'src/placement/placement.dart';

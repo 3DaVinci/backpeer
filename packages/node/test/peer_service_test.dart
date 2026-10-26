@@ -3,6 +3,9 @@
 // HasFragments только про свои, параллельные передачи по одному
 // соединению, обратное давление, таймауты, отмена, пределы соединений,
 // запросов и скорости.
+//
+// Те же тесты идут поверх потока UDP (задача 3.7.4):
+// peer_service_udp_test.dart.
 
 import 'dart:async';
 import 'dart:io';
@@ -58,7 +61,11 @@ final class _Counting implements ByteConnection {
   void destroy() => _inner.destroy();
 }
 
-void main() {
+void main() => peerServiceTests();
+
+/// Тесты операций; [udp] — соединения клиента с узлом идут потоком поверх
+/// UDP через loopback (`UdpEndpoint`), а не парой в памяти.
+void peerServiceTests({bool udp = false}) {
   late CryptoProvider crypto;
   late Ed25519KeyPair coordinator;
   late Ed25519KeyPair stranger;
@@ -148,11 +155,47 @@ void main() {
     service = makeService();
   });
 
+  final endpoints = <UdpEndpoint>[];
+
   tearDown(() async {
     await service.close();
+    for (final e in endpoints) {
+      await e.close();
+    }
+    endpoints.clear();
     await storage.close();
     dir.deleteSync(recursive: true);
   });
+
+  var punches = 0;
+
+  /// Пара соединений клиент — узел: в памяти или поток UDP. [capacity] —
+  /// для UDP окно получателя и буфер отправителя.
+  Future<(ByteConnection, ByteConnection)> pair({int? capacity}) async {
+    if (!udp) return memoryConnectionPair(capacity: capacity);
+    final options = UdpStreamOptions(
+      receiveWindow: capacity ?? 1 << 20,
+      sendBuffer: capacity ?? 1 << 20,
+    );
+    final client = await UdpEndpoint.bind(
+      host: InternetAddress.loopbackIPv4,
+      options: options,
+    );
+    final node = await UdpEndpoint.bind(
+      host: InternetAddress.loopbackIPv4,
+      options: options,
+    );
+    endpoints.addAll([client, node]);
+    final punchId = Uint8List(16)..buffer.asByteData().setUint32(0, ++punches);
+    node.allow(punchId);
+    final accepted = node.incoming.first;
+    final stream = await client.connect(
+      InternetAddress.loopbackIPv4,
+      node.port,
+      punchId: punchId,
+    );
+    return (stream as ByteConnection, await accepted as ByteConnection);
+  }
 
   var ticketCounter = 0;
 
@@ -203,7 +246,7 @@ void main() {
     void Function(_Counting client, _Counting node)? counters,
     Duration timeout = PeerClient.defaultTimeout,
   }) async {
-    final (a, b) = memoryConnectionPair(capacity: capacity);
+    final (a, b) = await pair(capacity: capacity);
     final ca = _Counting(a);
     final cb = _Counting(b);
     counters?.call(ca, cb);
@@ -308,7 +351,7 @@ void main() {
           issuedAt: DateTime.now(),
         ),
       );
-      final (a, b) = memoryConnectionPair();
+      final (a, b) = await pair();
       unawaited(service.serve(b));
       final nodeClient = PeerClient(
         await PeerHandshake.initiate(
@@ -759,7 +802,7 @@ void main() {
       service = makeService(
         limits: const PeerLimits(transferTimeout: Duration(milliseconds: 300)),
       );
-      final (a, b) = memoryConnectionPair();
+      final (a, b) = await pair();
       unawaited(service.serve(b));
       final channel = await PeerHandshake.initiate(
         crypto,
@@ -810,7 +853,7 @@ void main() {
     });
 
     test('request_id не растёт — соединение закрывается', () async {
-      final (a, b) = memoryConnectionPair();
+      final (a, b) = await pair();
       final served = service.serve(b);
       final channel = await PeerHandshake.initiate(
         crypto,
@@ -837,7 +880,7 @@ void main() {
     });
 
     test('FragmentData без PutFragment — соединение закрывается', () async {
-      final (a, b) = memoryConnectionPair();
+      final (a, b) = await pair();
       final served = service.serve(b);
       final channel = await PeerHandshake.initiate(
         crypto,
@@ -867,7 +910,7 @@ void main() {
       expect(service.connectionCount, 0);
     });
 
-    test('по TCP', () async {
+    test('по TCP', skip: udp ? 'проверяется без UDP' : null, () async {
       final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
       server.listen((s) => unawaited(service.serve(SocketConnection(s))));
       final socket = await Socket.connect(
@@ -1030,7 +1073,7 @@ void main() {
     });
   });
 
-  group('демон', () {
+  group('демон', skip: udp ? 'проверяется без UDP' : null, () {
     test('NodeDaemon принимает соединение по TCP (3.5.1), пределы по '
         'расписанию', () async {
       final data = Directory.systemTemp.createTempSync('fs_peer_daemon_');

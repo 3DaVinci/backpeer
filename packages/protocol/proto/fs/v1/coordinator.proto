@@ -275,6 +275,7 @@ message NodeChannelMessage {
     HeartbeatRequest heartbeat = 3;    // запрос: heartbeat по каналу
     CommandDone done = 4;              // ответ: команда принята
     Error error = 5;                   // ответ: команда отклонена
+    RendezvousReply rendezvous = 6;    // ответ на RendezvousCommand
   }
 }
 
@@ -286,6 +287,7 @@ message CoordinatorChannelMessage {
     Error error = 4;                   // ответ ошибкой на запрос узла
     PingCommand ping = 5;
     SyncRevocationsCommand sync_revocations = 6;
+    RendezvousCommand rendezvous = 7;
   }
 }
 
@@ -298,4 +300,50 @@ message PingCommand {}
 // у которого номер последнего полученного отзыва меньше, дочитывает список.
 message SyncRevocationsCommand {
   uint64 sequence = 1;
+}
+
+// --- Сведение узлов, UDP hole punching (задача 3.7.2) -----------------------
+//
+// protocol.md, раздел 4.11. Сводник — UDP-служба координатора на двух
+// портах: на запрос он сообщает отправителю его внешний адрес и порт с
+// подтверждением (token), которое проверяет координатор. Так ни инициатор,
+// ни узел не направят пакеты другой стороны на чужой адрес.
+
+// Адреса сводника. Подписан ключом устройства или узла.
+message GetRendezvousInfoRequest {}
+message GetRendezvousInfoResponse {
+  // Два адреса "IPv4:порт" — порты сводника; пусто — сведение выключено.
+  repeated string servers = 1;
+}
+
+// Внешний UDP-адрес стороны, каким его увидел сводник.
+message UdpBinding {
+  string endpoint = 1;               // "IPv4:порт"
+  bytes token = 2;                   // подтверждение сводника, 20 байт
+}
+
+// Инициатор (клиент или узел при ремонте) просит свести его с узлом.
+// Подписан ключом устройства или узла.
+message RendezvousRequest {
+  bytes node_id = 1;
+  UdpBinding binding = 2;            // внешний адрес инициатора
+}
+message RendezvousResponse {
+  string node_endpoint = 1;          // внешний адрес узла, "IPv4:порт"
+  bytes punch_id = 2;                // номер сведения, 16 байт
+  bool node_symmetric_nat = 3;       // у узла симметричный NAT: сведение не удастся
+}
+
+// Команда узлу: начать пробивание к инициатору.
+message RendezvousCommand {
+  string peer_endpoint = 1;          // внешний адрес инициатора
+  bytes peer_key = 2;                // ключ, которым подписан запрос инициатора
+  bytes punch_id = 3;
+  repeated string servers = 4;       // адреса сводника
+}
+
+// Ответ узла: его внешний адрес от сводника.
+message RendezvousReply {
+  UdpBinding binding = 1;
+  bool symmetric_nat = 2;
 }

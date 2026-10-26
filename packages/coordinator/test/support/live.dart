@@ -36,6 +36,12 @@ final class LiveCoordinator {
         distinctSubnets: false,
         candidatesCache: Duration.zero,
       ),
+      // Сводник на loopback, порты — любые свободные.
+      rendezvous: const RendezvousPolicy(
+        publicHost: '127.0.0.1',
+        host: '127.0.0.1',
+        port: 0,
+      ),
     );
     final signerKey = await crypto.ed25519FromSeed(
       SecretBytes(Uint8List(32)..fillRange(0, 32, 0xC0)),

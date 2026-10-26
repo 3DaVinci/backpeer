@@ -3,8 +3,10 @@ import 'package:coordinator/src/accounts/certificates.dart';
 import 'package:coordinator/src/accounts/login_service.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
+import 'package:coordinator/src/db/postgres_key_directory.dart';
 import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
+import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/objects/object_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
@@ -73,6 +75,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
             : () async => [await signer.publicKey()],
         clock: clock,
       ) {
+    rendezvousService = RendezvousService(
+      crypto: crypto,
+      keys: PostgresKeyDirectory(db),
+      policy: config.rendezvous,
+      clock: clock,
+    );
     segments = SegmentService(
       db,
       nodes,
@@ -83,6 +91,9 @@ final class DatabaseCoordinatorService extends CoordinatorService {
       clock: clock,
     );
   }
+
+  /// Сведение узлов; каналы команд ему передаёт сервер.
+  late final RendezvousService rendezvousService;
 
   final AccountService accounts;
   final LoginService login;
@@ -185,6 +196,18 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.CheckReachabilityRequest request,
   ) => nodes.checkReachability(context, request);
+
+  @override
+  Future<pb.GetRendezvousInfoResponse> getRendezvousInfo(
+    CallContext context,
+    pb.GetRendezvousInfoRequest request,
+  ) => rendezvousService.info(context, request);
+
+  @override
+  Future<pb.RendezvousResponse> rendezvous(
+    CallContext context,
+    pb.RendezvousRequest request,
+  ) => rendezvousService.rendezvous(context, request);
 
   @override
   Future<pb.AllocateSegmentResponse> allocateSegment(

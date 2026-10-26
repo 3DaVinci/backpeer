@@ -19,6 +19,10 @@ enum AuthRequirement {
   account,
   device,
   node,
+
+  /// Устройство или узел (`Rendezvous`: инициатор — клиент или узел при
+  /// ремонте).
+  deviceOrNode,
 }
 
 /// Кто подписал запрос.
@@ -105,17 +109,18 @@ final class RequestVerifier {
   static void _checkKey(AuthRequirement requirement, KeyInfo? info) {
     if (info != null && info.revoked) throw _unauthenticated('ключ отозван');
     final expected = switch (requirement) {
-      AuthRequirement.account => KeyKind.account,
-      AuthRequirement.device => KeyKind.device,
-      AuthRequirement.node => KeyKind.node,
+      AuthRequirement.account => const {KeyKind.account},
+      AuthRequirement.device => const {KeyKind.device},
+      AuthRequirement.node => const {KeyKind.node},
+      AuthRequirement.deviceOrNode => const {KeyKind.device, KeyKind.node},
       AuthRequirement.none || AuthRequirement.registering => null,
     };
     if (expected == null) return;
     if (info == null) throw _unauthenticated('ключ неизвестен');
-    if (info.kind != expected) {
+    if (!expected.contains(info.kind)) {
       throw RpcException(
         pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED,
-        'метод требует ключ вида ${expected.name}',
+        'метод требует ключ вида ${expected.map((k) => k.name).join(' или ')}',
       );
     }
   }

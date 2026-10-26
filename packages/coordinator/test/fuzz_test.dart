@@ -262,6 +262,18 @@ void main() {
       // Адрес запросов фаззера — для документации: координатор не
       // подключается, итог NOT_CHECKED.
       'CheckReachability': (pb.CheckReachabilityRequest(ports: [7340]), node),
+      'GetRendezvousInfo': (pb.GetRendezvousInfoRequest(), device),
+      // Подтверждение сводника не сходится: BAD_REQUEST до канала команд.
+      'Rendezvous': (
+        pb.RendezvousRequest(
+          nodeId: id(9),
+          binding: pb.UdpBinding(
+            endpoint: '203.0.113.20:40000',
+            token: List.filled(20, 1),
+          ),
+        ),
+        device,
+      ),
     });
   });
   tearDownAll(() => h.close());

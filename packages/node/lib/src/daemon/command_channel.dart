@@ -33,9 +33,10 @@ final class ChannelUnavailableException implements Exception {
 /// - [heartbeat] — по каналу, пока он открыт; ответ ошибкой координатора
 ///   — [CoordinatorException], как по HTTP; канала нет или ответа нет за
 ///   [replyTimeout] — [ChannelUnavailableException].
-/// - Команды координатора выполняет [onCommand]: вернул — ответ
-///   `CommandDone`, бросил [CoordinatorException] — ответ `Error` с его
-///   кодом.
+/// - Команды координатора выполняет [onCommand]: вернул `null` — ответ
+///   `CommandDone`, вернул сообщение — ответ с его телом (например,
+///   `RendezvousReply`), бросил [CoordinatorException] — ответ `Error` с
+///   его кодом.
 final class CommandChannel {
   new({
     required this.client,
@@ -54,8 +55,12 @@ final class CommandChannel {
   final CoordinatorClient client;
   final Ed25519KeyPair nodeKey;
 
-  /// Выполняет команду; бросает [CoordinatorException], чтобы отклонить.
-  final Future<void> Function(pb.CoordinatorChannelMessage command) onCommand;
+  /// Выполняет команду и возвращает тело ответа (`null` —
+  /// `CommandDone`); бросает [CoordinatorException], чтобы отклонить.
+  final Future<pb.NodeChannelMessage?> Function(
+    pb.CoordinatorChannelMessage command,
+  )
+  onCommand;
 
   /// Вызывается после каждого открытия канала.
   final void Function()? onConnected;
@@ -276,10 +281,9 @@ final class CommandChannel {
     int id,
     pb.CoordinatorChannelMessage command,
   ) async {
-    final reply = pb.NodeChannelMessage(replyTo: Int64(id));
+    var reply = pb.NodeChannelMessage();
     try {
-      await onCommand(command);
-      reply.done = pb.CommandDone();
+      reply = await onCommand(command) ?? (reply..done = pb.CommandDone());
       _commands++;
     } on CoordinatorException catch (e) {
       reply.error = pb.Error(code: e.code, message: e.detail);
@@ -290,10 +294,13 @@ final class CommandChannel {
         message: 'команда не выполнена',
       );
     }
+    reply
+      ..id = Int64.ZERO
+      ..replyTo = Int64(id);
     _log.fine(
       LogEvent('command', {
         'command': command.whichBody().name,
-        'ok': reply.hasDone(),
+        'ok': !reply.hasError(),
       }),
     );
     try {

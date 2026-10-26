@@ -12,7 +12,8 @@
 /// - `storage/` — хранилища фрагментов и объектов, локальный индекс;
 /// - `pipeline/` — конвейеры бэкапа и восстановления;
 /// - `net/` — канал Noise между клиентом и узлами, запросы с фрагментами
-///   по нему, предел скорости;
+///   по нему, предел скорости; `net/udp/` — сведение узлов и надёжный
+///   поток поверх UDP;
 /// - `password/` — оценка стойкости и требования к паролю.
 library;
 
@@ -55,6 +56,14 @@ export 'src/net/peer_client.dart';
 export 'src/net/peer_handshake.dart';
 export 'src/net/peer_identity.dart';
 export 'src/net/secure_channel.dart';
+export 'src/net/udp/congestion.dart';
+export 'src/net/udp/datagram_transport.dart';
+export 'src/net/udp/rendezvous_server.dart';
+export 'src/net/udp/simulated_network.dart';
+export 'src/net/udp/udp_connector.dart';
+export 'src/net/udp/udp_endpoint.dart';
+export 'src/net/udp/udp_packets.dart';
+export 'src/net/udp/udp_stream.dart';
 export 'src/password/estimator.dart';
 export 'src/password/policy.dart';
 export 'src/pipeline/backup.dart';

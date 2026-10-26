@@ -47,6 +47,7 @@ final class CoordinatorLink {
     this.revocations,
     this.endpoints = const [],
     this.reachability,
+    this.rendezvous,
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
     bool commandChannel = false,
@@ -94,6 +95,11 @@ final class CoordinatorLink {
 
   /// Проверка достижимости и адреса узла (задача 3.5.1).
   final Reachability? reachability;
+
+  /// Выполняет команду сведения узлов (задача 3.7.2); `null` — узел не
+  /// принимает UDP, команда отклоняется `NOT_FOUND`.
+  final Future<pb.RendezvousReply> Function(pb.RendezvousCommand command)?
+  rendezvous;
   final Duration maxBackoff;
 
   /// Наибольшая случайная задержка `ListRevocations` по команде.
@@ -226,22 +232,37 @@ final class CoordinatorLink {
     if (_wake case final w? when !w.isCompleted) w.complete();
   }
 
-  /// Команда координатора по каналу (protocol.md, раздел 4.10).
-  Future<void> _onCommand(pb.CoordinatorChannelMessage command) async {
+  /// Команда координатора по каналу (protocol.md, раздел 4.10); `null` —
+  /// ответ `CommandDone`.
+  Future<pb.NodeChannelMessage?> _onCommand(
+    pb.CoordinatorChannelMessage command,
+  ) async {
     switch (command.whichBody()) {
       case pb.CoordinatorChannelMessage_Body.ping:
-        return;
+        return null;
+      case pb.CoordinatorChannelMessage_Body.rendezvous:
+        final handler = rendezvous;
+        if (handler == null) {
+          throw const CoordinatorException(
+            pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+            'узел не принимает UDP',
+          );
+        }
+        return pb.NodeChannelMessage(
+          rendezvous: await handler(command.rendezvous),
+        );
       case pb.CoordinatorChannelMessage_Body.syncRevocations:
         final list = revocations;
         if (list == null ||
             command.syncRevocations.sequence.toInt() <= list.sequence) {
-          return;
+          return null;
         }
         final ms = revocationJitter.inMilliseconds;
         final delay = Duration(
           milliseconds: ms == 0 ? 0 : math.Random().nextInt(ms),
         );
         unawaited(Future<void>.delayed(delay, syncRevocations));
+        return null;
       case pb.CoordinatorChannelMessage_Body.heartbeat ||
           pb.CoordinatorChannelMessage_Body.error ||
           pb.CoordinatorChannelMessage_Body.notSet:

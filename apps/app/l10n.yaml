@@ -1,0 +1,9 @@
+# Локализация (задача 5.1.2): строки интерфейса — только в lib/l10n/*.arb.
+# Код перегенерируется `flutter gen-l10n` (и при `flutter pub get`);
+# сгенерированные файлы в репозитории, чтобы `dart analyze` и CI работали
+# без шага генерации.
+arb-dir: lib/l10n
+template-arb-file: app_ru.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false

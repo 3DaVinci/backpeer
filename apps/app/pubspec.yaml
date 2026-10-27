@@ -1,5 +1,5 @@
 name: app
-description: Настольное приложение (Flutter) для клиентов и хранителей.
+description: Настольное приложение (Flutter) для клиентов и хранителей — интерфейс к фоновым процессам node и агенту бэкапа.
 version: 0.0.1
 publish_to: none
 resolution: workspace
@@ -8,10 +8,22 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
+  # Каталог программы и сокет агента бэкапа (AgentPaths).
+  agent: any
+  # Каталог программы (AppHome), общий с CLI и агентом.
+  cli: any
+  # Версия программы (appVersion).
   core: any
+  # Клиент локального API фоновых процессов.
+  daemon_kit: any
   flutter:
     sdk: flutter
-  protocol: any
+  flutter_localizations:
+    sdk: flutter
+  # Сообщения и форматы чисел и дат для gen-l10n (BSD-3-Clause).
+  intl: ^0.20.2
+  # Папка данных и сокет демона хранителя (defaultNodeDataDir).
+  node: any
 
 dev_dependencies:
   flutter_test:
@@ -19,3 +31,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true

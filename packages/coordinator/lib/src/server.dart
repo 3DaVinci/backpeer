@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/auth/key_directory.dart';
 import 'package:coordinator/src/auth/request_verifier.dart';
 import 'package:coordinator/src/config.dart';
@@ -31,6 +32,7 @@ final class CoordinatorServer {
     this.channels,
     this._watch,
     this.rendezvous,
+    this.audits,
   );
 
   /// Открывает базу, проверяет версию схемы и начинает слушать порт.
@@ -53,6 +55,7 @@ final class CoordinatorServer {
     final socket = config.signerSocket;
     final signer = socket == null ? null : SocketTicketSigner(socket);
     RendezvousService? rendezvous;
+    AuditService? audits;
     try {
       final migrator = Migrator(db);
       final version = migrate
@@ -108,6 +111,7 @@ final class CoordinatorServer {
       if (coordinatorService case final DatabaseCoordinatorService s) {
         rendezvous = s.rendezvousService..channels = channels;
         await rendezvous.start();
+        audits = (s.audits..channels = channels)..start();
       }
       // Новый отзыв устройства — узлы в канале дочитывают ListRevocations
       // сразу, не дожидаясь heartbeat.
@@ -149,6 +153,7 @@ final class CoordinatorServer {
           'signer': signer != null,
           'rendezvous': ?rendezvous?.ports,
           'relays': config.relay.servers.length,
+          'audits': audits != null && config.audits.enabled,
         }),
       );
       if (!config.placement.distinctSubnets) {
@@ -158,8 +163,17 @@ final class CoordinatorServer {
           }),
         );
       }
-      return CoordinatorServer._(http, db, signer, channels, watch, rendezvous);
+      return CoordinatorServer._(
+        http,
+        db,
+        signer,
+        channels,
+        watch,
+        rendezvous,
+        audits,
+      );
     } on Object {
+      await audits?.close();
       await rendezvous?.close();
       await signer?.close();
       await db.close();
@@ -180,10 +194,14 @@ final class CoordinatorServer {
   /// Сведение узлов; `null` — сервис без базы (тесты).
   final RendezvousService? rendezvous;
 
+  /// Аудиты хранения; `null` — сервис без базы (тесты).
+  final AuditService? audits;
+
   int get port => _http.port;
 
   Future<void> close() async {
     await _watch?.cancel();
+    await audits?.close();
     await channels.close();
     await rendezvous?.close();
     await _http.close();

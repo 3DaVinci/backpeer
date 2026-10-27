@@ -1,0 +1,522 @@
+{
+  "spec": "format/merkle-audit",
+  "specVersion": 1,
+  "generator": "tool/format_vectors.py (Python, независимая реализация)",
+  "description": "Путь аудита в дереве Меркла тела (RFC 6962, PATH; protocol.md, раздел 4.13): тело bodyPattern, блок index (64 КиБ, последний короче), путь от листа к корню. Случаи reject-*: блок blockIndex (по умолчанию index), заявленный номер index и путь path не дают корень тела.",
+  "cases": [
+    {
+      "name": "one-block-block-0",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 50,
+          "length": 64
+        },
+        "index": 0
+      },
+      "expected": {
+        "leafCount": 1,
+        "blockLength": 64,
+        "blockHash": "8b9ad5c475ca7ce928057fa4c67da81a0517fcb9cad22c70c5d2ac9038e0c00a",
+        "path": [],
+        "root": "8b2382ec28abc11cbdab6bfda93168a81ab5f7683a6f15fcf662b8f90cd6333e"
+      }
+    },
+    {
+      "name": "two-blocks-short-tail-block-0",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 51,
+          "length": 65537
+        },
+        "index": 0
+      },
+      "expected": {
+        "leafCount": 2,
+        "blockLength": 65536,
+        "blockHash": "7e3a086215658a2ebffa29b9a05641c35de6cc7d771f1ce3e6abd702303bfa34",
+        "path": [
+          "a05ab62b717f84544a4f837d24470faa68394d79c0f9efd8438515f487f0ab33"
+        ],
+        "root": "7a98e32d451784cac21d8f13cc7819535af4c30737552eaf2503c707dac29bc3"
+      }
+    },
+    {
+      "name": "two-blocks-short-tail-block-1",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 51,
+          "length": 65537
+        },
+        "index": 1
+      },
+      "expected": {
+        "leafCount": 2,
+        "blockLength": 1,
+        "blockHash": "3d25b0a087233ecf30a4eb02d2f019e51816bd211509744fa6efb1769d0c6af7",
+        "path": [
+          "5450fd7ed0a28c51767bd1d430df53c21a941ac366b2891090305aec2929d892"
+        ],
+        "root": "7a98e32d451784cac21d8f13cc7819535af4c30737552eaf2503c707dac29bc3"
+      }
+    },
+    {
+      "name": "three-blocks-block-0",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 52,
+          "length": 196608
+        },
+        "index": 0
+      },
+      "expected": {
+        "leafCount": 3,
+        "blockLength": 65536,
+        "blockHash": "6657b58113d3c9d7fb567e657f8454d688ff3f206d5297a370c32f6b8ba67bec",
+        "path": [
+          "8724ec412dea1318f8564b25aa6c55bbef55f09d625b0ffd52497daa138dc21c",
+          "26d9a2ceb91939c36a6a4e7bf0b7441248ba3cb0352beec3d84475063ef82151"
+        ],
+        "root": "11cc403adbdadd2fa400afa2b135eb9c31731ad2c86c1694204b87f8d2fcf913"
+      }
+    },
+    {
+      "name": "three-blocks-block-1",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 52,
+          "length": 196608
+        },
+        "index": 1
+      },
+      "expected": {
+        "leafCount": 3,
+        "blockLength": 65536,
+        "blockHash": "cfcaa11d7af78464cdaa68e866d7820a9b45130dfccd14a06f333d49c4b40207",
+        "path": [
+          "a2bd559d93b6e85171a28eb48bb776794bf4ef14787eac20c1a9bf101f56f6c8",
+          "26d9a2ceb91939c36a6a4e7bf0b7441248ba3cb0352beec3d84475063ef82151"
+        ],
+        "root": "11cc403adbdadd2fa400afa2b135eb9c31731ad2c86c1694204b87f8d2fcf913"
+      }
+    },
+    {
+      "name": "three-blocks-block-2",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 52,
+          "length": 196608
+        },
+        "index": 2
+      },
+      "expected": {
+        "leafCount": 3,
+        "blockLength": 65536,
+        "blockHash": "2da490c5cff8b1ca95dc576f1bce68c2f010447e888ba5eb5be3682348b4ae8c",
+        "path": [
+          "b32cd2642ce3a5d328f33e2769eb847920776988365c69d0699e47c9c2d0af11"
+        ],
+        "root": "11cc403adbdadd2fa400afa2b135eb9c31731ad2c86c1694204b87f8d2fcf913"
+      }
+    },
+    {
+      "name": "five-blocks-block-0",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 53,
+          "length": 262272
+        },
+        "index": 0
+      },
+      "expected": {
+        "leafCount": 5,
+        "blockLength": 65536,
+        "blockHash": "55c7fb504b685afb12da7f5da7e9f8056325c454902f9ecd7fa78b93290930ef",
+        "path": [
+          "b07b76ef0dd91f301541fe1adfc928565b96f31ea25ab584e7eb22764c5dba68",
+          "2d1ddaae6704b87256766a424824ffe1d86527218452d1bb1df78726bb4cf90a",
+          "91cc1b969a2cb95a36604d26cdda40c5f34497ac668a011d6a59d3620e66ae86"
+        ],
+        "root": "296c012b9ea60f448936072e60fcc90d3adaa9bd8783677bdbd0effb74ccdbd6"
+      }
+    },
+    {
+      "name": "five-blocks-block-3",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 53,
+          "length": 262272
+        },
+        "index": 3
+      },
+      "expected": {
+        "leafCount": 5,
+        "blockLength": 65536,
+        "blockHash": "9440e8522a935892c62c932ab14c3e2c761ea55166fa32c149ea6f8b01a6ae6f",
+        "path": [
+          "6ced03c84de2f857c9d3221afe9f7d2466499dd23dd5311c5871e2f36c6c8907",
+          "dbf5493b481db5b09c29bbd92fc1245ff4b23c67f98adfc40d8019f0dfec4aed",
+          "91cc1b969a2cb95a36604d26cdda40c5f34497ac668a011d6a59d3620e66ae86"
+        ],
+        "root": "296c012b9ea60f448936072e60fcc90d3adaa9bd8783677bdbd0effb74ccdbd6"
+      }
+    },
+    {
+      "name": "five-blocks-block-4",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 53,
+          "length": 262272
+        },
+        "index": 4
+      },
+      "expected": {
+        "leafCount": 5,
+        "blockLength": 128,
+        "blockHash": "5399af9738b3b66216e1e5a9d3db8d6bedc5ff0bc0bc608ec11e312d516dd03b",
+        "path": [
+          "a27004a2865af11d447072abdbf4cf343e296f812293fdda041a1e02753c9c77"
+        ],
+        "root": "296c012b9ea60f448936072e60fcc90d3adaa9bd8783677bdbd0effb74ccdbd6"
+      }
+    },
+    {
+      "name": "seven-blocks-block-0",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 54,
+          "length": 458688
+        },
+        "index": 0
+      },
+      "expected": {
+        "leafCount": 7,
+        "blockLength": 65536,
+        "blockHash": "533613136c3c26b45e2ae9138d84e69e924257edf4240c3b0ad93ea99c0f1354",
+        "path": [
+          "c2e1a49010d7bcd1a09e094142d6155bed2a0756aa794a231d4573da0ce7fc68",
+          "96d0da44601e47e1cb3869b346c043fcdabe2ac7198f6606f8b029423cf8cdb6",
+          "2e58e7c47fd24db4266054545033bddbb03ff6789b8a24741fef17a79ce21aec"
+        ],
+        "root": "d11735e4067181fd02af1ba946de245401fc5d8f8496b42cb01b224aca8a113c"
+      }
+    },
+    {
+      "name": "seven-blocks-block-2",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 54,
+          "length": 458688
+        },
+        "index": 2
+      },
+      "expected": {
+        "leafCount": 7,
+        "blockLength": 65536,
+        "blockHash": "73c62fc86ddf1e7cf64fe10cc62b466a739b93356d49627ddef4a35dbfd8385c",
+        "path": [
+          "4846130d7a51cf6e497cedf360a3709cc7658ab7ab5ad377bb58eb5853e8e9e6",
+          "a152b5f4112d2513d378282ac2bb801056bc58b68baaf875b37a10c82cce03f2",
+          "2e58e7c47fd24db4266054545033bddbb03ff6789b8a24741fef17a79ce21aec"
+        ],
+        "root": "d11735e4067181fd02af1ba946de245401fc5d8f8496b42cb01b224aca8a113c"
+      }
+    },
+    {
+      "name": "seven-blocks-block-5",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 54,
+          "length": 458688
+        },
+        "index": 5
+      },
+      "expected": {
+        "leafCount": 7,
+        "blockLength": 65536,
+        "blockHash": "ad8605568db52915d8390c62cb6cd26cc2702b5b764ecde3aed577b2df383f24",
+        "path": [
+          "55818aa81e77be837da3dfecf343eb7334476c65ddb75ec0abae655204ea8f9f",
+          "8a45d38614e35cbc23b64b30a07cf796418a86ec3ab9a51ad34da5765b051539",
+          "68cfea6d2b61d5f9525b62eab8bae5fe59edeb865c45470824ae05032967a0a2"
+        ],
+        "root": "d11735e4067181fd02af1ba946de245401fc5d8f8496b42cb01b224aca8a113c"
+      }
+    },
+    {
+      "name": "seven-blocks-block-6",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 54,
+          "length": 458688
+        },
+        "index": 6
+      },
+      "expected": {
+        "leafCount": 7,
+        "blockLength": 65472,
+        "blockHash": "42a5bc0ee370189217ecc97b4406f287d9d23d0417fe70e0aaa8d12d75549714",
+        "path": [
+          "78b533d50b615b2bc82ae4f70d843ca623053cc02b6a4d2159dc24f81fd421e6",
+          "68cfea6d2b61d5f9525b62eab8bae5fe59edeb865c45470824ae05032967a0a2"
+        ],
+        "root": "d11735e4067181fd02af1ba946de245401fc5d8f8496b42cb01b224aca8a113c"
+      }
+    },
+    {
+      "name": "16MiB-block-0",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 55,
+          "length": 16777216
+        },
+        "index": 0
+      },
+      "expected": {
+        "leafCount": 256,
+        "blockLength": 65536,
+        "blockHash": "1f186e53470a9681d7b403ea3f2d52078930182fc224d25fc9bfdef960e96935",
+        "path": [
+          "67373207f703f3582114b3b3bcfb388a14f9308eec407e28e5266a86ba323a3c",
+          "7032f371ff047b38ff45fa319aac941059c2921ab02099efadb90f8e6ea51271",
+          "39c722fd53e947a0737b4aaf747d56c55a3d3f93efaf82ddd2860789bdd0aa38",
+          "394655c70317564964d5278f16efbe34cf72b7268c96115cec4a8e55a58d2f57",
+          "0d2d0801e77700ee20a7207ee0a2af5dd8f260a366da1bf0277c34bddfa21ee0",
+          "5446686f95512cec917d540d3c436b6bc52902d2c871adf7020a5ccbcb02ecbe",
+          "b5b8464ede754bdd0599878310ecc081c5b0fd9faec14f971d3f96a0716a72d7",
+          "e76e3264628f2f986a7e98ceebf0bf73e3e19832e651b13b00e4bb97c3cc38e1"
+        ],
+        "root": "92241a671dac8838daed6efc6c382e64c2d30b07c9cb109af484df1fb3070f13"
+      }
+    },
+    {
+      "name": "16MiB-block-77",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 55,
+          "length": 16777216
+        },
+        "index": 77
+      },
+      "expected": {
+        "leafCount": 256,
+        "blockLength": 65536,
+        "blockHash": "c7820b262718e21eb47ff3ce7b43368bdae071c15e1f97fead35d9e68bf49e02",
+        "path": [
+          "8216ab7751ae0aaee11fc5b4d2206ef9ae175cd693b16709123d4e1e11f2e9d4",
+          "dda5c8b10b346b206abf3e47352513d7fadeca2079f7938e5eb3b4fa59f5b0ac",
+          "a4c7ec22b5cf6d98f1af9491b498ffd185200958f850c9193a682663a2a09b4d",
+          "832255f82690bc254980744a0cc36e1016048939d8ae2e6d5f9dcc52aad5c644",
+          "e29b748ce6ad73698db2d62898523c141a816e786757050686fde9778943d500",
+          "46711d1c9c7dc875e534c24530ab3f4054b20a789d9a4c90089c862d49258786",
+          "0c71ec074701e12781bcc84543b72c178f12a0751ecafc2b75c5b76d303a521b",
+          "e76e3264628f2f986a7e98ceebf0bf73e3e19832e651b13b00e4bb97c3cc38e1"
+        ],
+        "root": "92241a671dac8838daed6efc6c382e64c2d30b07c9cb109af484df1fb3070f13"
+      }
+    },
+    {
+      "name": "16MiB-block-128",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 55,
+          "length": 16777216
+        },
+        "index": 128
+      },
+      "expected": {
+        "leafCount": 256,
+        "blockLength": 65536,
+        "blockHash": "0601b83adb288c7b13773cee09d231433b7e02058eb92013a5a3f1562cc4d9e4",
+        "path": [
+          "047cf54c84b83e12f0944840f4aa71e29d5092252b744606ab27b2d6d78db641",
+          "2dd63cb21ee44c644a126e021fb6506e72334d2ab7dc2fe568e6f35d983a9ab7",
+          "033ac8c5bd7357acaea0203c89bd7d967357df5339a5d4d1b1072ee0cfc9679e",
+          "5c44cbfccc929cc4d72c4c23729da7ad712238ba3ebada59bdaee3e1be0e5524",
+          "ce724fd5b260b9b5be8791ac55cdff65e74e6924e04b72f326e562a5b5a93843",
+          "a36ef439e0b073c5157d728b2aac0ef798a12010c9748c4650acf8251ac4d6ed",
+          "6d6f02c6c16b1a84246ac661bb0e1e07532307d86a47ff7d889f3a573fd098a6",
+          "8779a61e9013d984b97ea1753ebec5cffc9f4cc7c0c5699459a68f1891f57f9e"
+        ],
+        "root": "92241a671dac8838daed6efc6c382e64c2d30b07c9cb109af484df1fb3070f13"
+      }
+    },
+    {
+      "name": "16MiB-block-255",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 55,
+          "length": 16777216
+        },
+        "index": 255
+      },
+      "expected": {
+        "leafCount": 256,
+        "blockLength": 65536,
+        "blockHash": "58f2da877fce9b2f58ca447d2e67b90a4db622eecb8dc775e2f4a7972b25731a",
+        "path": [
+          "80fdda4f328af621c75b22e9bfd064e9c9419d0409a0c6f2feed230e7d7bc3ef",
+          "8223986ef7943a176642d326b24fc5aefa5370578133c096093f2e1427907644",
+          "6fedede2ed81d72d61c27e88cd857c2afd600f4787410a17aadd0af793279bdb",
+          "747f0f148c5469b26f9a6dcecdc678745d6b68259d95da8e70e3b590b38f86c1",
+          "725d348837e20ef3f85d651f38e2dc1a7e98f1378ae76956e6976fcbe405ecf5",
+          "cea8b45a72e950df0b810df6fc65ea06ce4d4fe22c669aab71e1ed2f4362a804",
+          "2229be356ae26841c169fa312037d30fa154be4a29ab60262ac2f897f09daf06",
+          "8779a61e9013d984b97ea1753ebec5cffc9f4cc7c0c5699459a68f1891f57f9e"
+        ],
+        "root": "92241a671dac8838daed6efc6c382e64c2d30b07c9cb109af484df1fb3070f13"
+      }
+    },
+    {
+      "name": "reject-flipped-path",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 53,
+          "length": 262272
+        },
+        "index": 3,
+        "path": [
+          "6ded03c84de2f857c9d3221afe9f7d2466499dd23dd5311c5871e2f36c6c8907",
+          "dbf5493b481db5b09c29bbd92fc1245ff4b23c67f98adfc40d8019f0dfec4aed",
+          "91cc1b969a2cb95a36604d26cdda40c5f34497ac668a011d6a59d3620e66ae86"
+        ]
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-other-block",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 53,
+          "length": 262272
+        },
+        "index": 3,
+        "path": [
+          "6ced03c84de2f857c9d3221afe9f7d2466499dd23dd5311c5871e2f36c6c8907",
+          "dbf5493b481db5b09c29bbd92fc1245ff4b23c67f98adfc40d8019f0dfec4aed",
+          "91cc1b969a2cb95a36604d26cdda40c5f34497ac668a011d6a59d3620e66ae86"
+        ],
+        "blockIndex": 2
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-wrong-index",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 54,
+          "length": 458688
+        },
+        "index": 3,
+        "path": [
+          "4846130d7a51cf6e497cedf360a3709cc7658ab7ab5ad377bb58eb5853e8e9e6",
+          "a152b5f4112d2513d378282ac2bb801056bc58b68baaf875b37a10c82cce03f2",
+          "2e58e7c47fd24db4266054545033bddbb03ff6789b8a24741fef17a79ce21aec"
+        ]
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-short-path",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 54,
+          "length": 458688
+        },
+        "index": 5,
+        "path": [
+          "55818aa81e77be837da3dfecf343eb7334476c65ddb75ec0abae655204ea8f9f",
+          "8a45d38614e35cbc23b64b30a07cf796418a86ec3ab9a51ad34da5765b051539"
+        ]
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-long-path",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 52,
+          "length": 196608
+        },
+        "index": 2,
+        "path": [
+          "b32cd2642ce3a5d328f33e2769eb847920776988365c69d0699e47c9c2d0af11",
+          "b32cd2642ce3a5d328f33e2769eb847920776988365c69d0699e47c9c2d0af11"
+        ]
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-swapped-path",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 55,
+          "length": 16777216
+        },
+        "index": 77,
+        "path": [
+          "dda5c8b10b346b206abf3e47352513d7fadeca2079f7938e5eb3b4fa59f5b0ac",
+          "8216ab7751ae0aaee11fc5b4d2206ef9ae175cd693b16709123d4e1e11f2e9d4",
+          "a4c7ec22b5cf6d98f1af9491b498ffd185200958f850c9193a682663a2a09b4d",
+          "832255f82690bc254980744a0cc36e1016048939d8ae2e6d5f9dcc52aad5c644",
+          "e29b748ce6ad73698db2d62898523c141a816e786757050686fde9778943d500",
+          "46711d1c9c7dc875e534c24530ab3f4054b20a789d9a4c90089c862d49258786",
+          "0c71ec074701e12781bcc84543b72c178f12a0751ecafc2b75c5b76d303a521b",
+          "e76e3264628f2f986a7e98ceebf0bf73e3e19832e651b13b00e4bb97c3cc38e1"
+        ]
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    },
+    {
+      "name": "reject-index-out-of-range",
+      "input": {
+        "bodyPattern": {
+          "type": "splitmix64-le",
+          "seed": 52,
+          "length": 196608
+        },
+        "index": 3,
+        "path": [
+          "b32cd2642ce3a5d328f33e2769eb847920776988365c69d0699e47c9c2d0af11"
+        ]
+      },
+      "expected": {
+        "error": "integrity"
+      }
+    }
+  ]
+}

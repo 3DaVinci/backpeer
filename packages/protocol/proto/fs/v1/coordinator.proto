@@ -276,6 +276,7 @@ message NodeChannelMessage {
     CommandDone done = 4;              // ответ: команда принята
     Error error = 5;                   // ответ: команда отклонена
     RendezvousReply rendezvous = 6;    // ответ на RendezvousCommand
+    AuditReply audit = 7;              // ответ на AuditCommand
   }
 }
 
@@ -288,6 +289,7 @@ message CoordinatorChannelMessage {
     PingCommand ping = 5;
     SyncRevocationsCommand sync_revocations = 6;
     RendezvousCommand rendezvous = 7;
+    AuditCommand audit = 8;
   }
 }
 
@@ -346,6 +348,26 @@ message RendezvousCommand {
 message RendezvousReply {
   UdpBinding binding = 1;
   bool symmetric_nat = 2;
+}
+
+// --- Аудиты (задачи 4.1.1–4.1.4) --------------------------------------------
+//
+// protocol.md, раздел 4.13. Координатор просит у узла случайный блок
+// хранимого фрагмента; узел отвечает блоком и путём в дереве Меркла тела
+// (data-format.md, раздел 5), координатор сверяет их с body_root из
+// AllocateSegmentRequest.body_roots. Пересылать фрагмент целиком не нужно,
+// а ответить, не храня блок, нельзя.
+
+// Команда узлу: доказать хранение блока block_index фрагмента fragment_id.
+message AuditCommand {
+  bytes fragment_id = 1;             // 32 байта
+  uint32 block_index = 2;            // номер блока тела, от 0
+}
+
+// Ответ узла. Фрагмента нет или он повреждён — Error с NOT_FOUND.
+message AuditReply {
+  bytes block = 1;                   // блок тела: 65 536 байт, последний короче
+  repeated bytes path = 2;           // путь от листа к корню, по 32 байта (RFC 6962)
 }
 
 // --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------

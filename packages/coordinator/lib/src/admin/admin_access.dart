@@ -47,7 +47,8 @@ abstract final class AdminAccess {
                           capacity_bytes, used_bytes, assigned_bytes,
                           endpoints, versions, software, subnet,
                           last_heartbeat_at, availability, excluded_at,
-                          excluded_reason, relay, relay_until)
+                          excluded_reason, relay, relay_until,
+                          audits_passed, audits_failed, last_audit_at)
               ON nodes TO $role''',
           'GRANT UPDATE (excluded_at, excluded_reason) ON nodes TO $role',
           '''
@@ -59,6 +60,8 @@ abstract final class AdminAccess {
               ON fragments TO $role''',
           // Метрики relay и трафика (задача 3.8.3): объёмы без содержимого.
           'GRANT SELECT ON relay_usage, relay_reports, traffic_daily TO $role',
+          // Итоги аудитов (задача 4.1.3): какие блоки и когда проверялись.
+          'GRANT SELECT ON audits TO $role',
           'GRANT SELECT, INSERT ON admin_audit TO $role',
           'GRANT USAGE ON SEQUENCE admin_audit_id_seq TO $role',
           // На случай прав, выданных вручную: журнал роль не меняет.

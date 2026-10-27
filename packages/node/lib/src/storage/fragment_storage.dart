@@ -260,6 +260,7 @@ final class FragmentStorage implements DamagedFragments {
       size: f.size,
       bodyRoot: header.bodyRoot,
       receivedAt: now,
+      leaves: f._verifier.leaves,
     )) {
       throw const FragmentStorageException(
         pb.ErrorCode.ERROR_CODE_ALREADY_EXISTS,
@@ -296,6 +297,111 @@ final class FragmentStorage implements DamagedFragments {
       );
     }
     return files.fileOf(fragmentId).openRead();
+  }
+
+  /// Доказательство хранения для аудита координатора (задача 4.1.2;
+  /// protocol.md, раздел 4.13): блок [blockIndex] тела и путь к нему в
+  /// дереве Меркла. Читается только этот блок: хэши листьев лежат в
+  /// индексе (у фрагментов, принятых до миграции 3, считаются по файлу
+  /// один раз и запоминаются).
+  ///
+  /// Отказы — [FragmentStorageException]: фрагмента нет или он повреждён —
+  /// `NOT_FOUND`; блока с таким номером нет — `BAD_REQUEST`. Блок не
+  /// сходится с хэшем листа, файл пропал или обрезан — фрагмент
+  /// помечается повреждённым ([onDamaged]) и ответ тот же `NOT_FOUND`.
+  Future<AuditProof> prove(List<int> fragmentId, int blockIndex) async {
+    _checkOpen();
+    final r = index.get(fragmentId);
+    if (r == null || r.state != FragmentState.stored) {
+      throw const FragmentStorageException(
+        pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+        'фрагмента нет',
+      );
+    }
+    final bodyLength = r.size - FragmentHeader.length;
+    final count = merkleLeafCount(bodyLength);
+    if (blockIndex < 0 || blockIndex >= count) {
+      throw FragmentStorageException(
+        pb.ErrorCode.ERROR_CODE_BAD_REQUEST,
+        'блока $blockIndex нет: у фрагмента $count',
+      );
+    }
+    final leaves = await _leavesOf(r, count);
+    final length = merkleBlockLength(bodyLength, blockIndex);
+    final Uint8List block;
+    try {
+      final raf = await files.fileOf(fragmentId).open();
+      try {
+        await raf.setPosition(
+          FragmentHeader.length + (blockIndex << merkleBlockLog2),
+        );
+        block = await raf.read(length);
+      } finally {
+        await raf.close();
+      }
+    } on FileSystemException {
+      throw _damage(fragmentId, 'файл пропал');
+    }
+    if (block.length != length ||
+        !constantTimeEquals(
+          merkleLeafHash(_crypto, block),
+          leaves[blockIndex],
+        )) {
+      throw _damage(fragmentId, 'блок $blockIndex не сходится с деревом');
+    }
+    return AuditProof(block, merkleAuditPath(_crypto, leaves, blockIndex));
+  }
+
+  /// Вызывается, когда аудит нашёл повреждённый фрагмент.
+  void Function(Uint8List fragmentId)? onDamaged;
+
+  Future<List<Uint8List>> _leavesOf(FragmentRecord r, int count) async {
+    final stored = index.leaves(r.fragmentId);
+    if (stored != null && stored.length == 32 * count) {
+      final leaves = splitMerkleLeaves(stored);
+      if (constantTimeEquals(merkleRootOfLeaves(_crypto, leaves), r.bodyRoot)) {
+        return leaves;
+      }
+    }
+    // Хэшей нет (фрагмент принят до миграции 3) или они испорчены:
+    // посчитать по файлу и запомнить.
+    final builder = MerkleBuilder(_crypto);
+    var skip = FragmentHeader.length;
+    try {
+      await for (final chunk in files.fileOf(r.fragmentId).openRead()) {
+        if (skip >= chunk.length) {
+          skip -= chunk.length;
+          continue;
+        }
+        builder.add(skip == 0 ? chunk : chunk.sublist(skip));
+        skip = 0;
+      }
+    } on FileSystemException {
+      throw _damage(r.fragmentId, 'файл пропал');
+    }
+    if (builder.length != r.size - FragmentHeader.length ||
+        !constantTimeEquals(builder.finish(), r.bodyRoot)) {
+      throw _damage(r.fragmentId, 'корень дерева тела не сходится');
+    }
+    final leaves = builder.leaves;
+    index.setLeaves(r.fragmentId, leaves);
+    return splitMerkleLeaves(leaves);
+  }
+
+  FragmentStorageException _damage(List<int> fragmentId, String reason) {
+    markDamaged(fragmentId, 'аудит: $reason');
+    _log.warning(
+      LogEvent('fragment_damaged', {
+        'fragment_id': bytesToHex(fragmentId),
+        'reason': reason,
+        'source': 'audit',
+      }),
+    );
+    onDamaged?.call(Uint8List.fromList(fragmentId));
+    return const FragmentStorageException(
+      pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+      'фрагмент повреждён',
+    );
   }
 
   /// Какие из [fragmentIds] хранятся и загружены учётной записью
@@ -373,6 +479,14 @@ final class FragmentStorage implements DamagedFragments {
       );
     }
   }
+}
+
+/// Ответ на аудит: блок тела и путь Меркла от листа к корню.
+final class AuditProof {
+  const new(this.block, this.path);
+
+  final Uint8List block;
+  final List<Uint8List> path;
 }
 
 /// Принимаемый фрагмент: части по порядку ([add]), затем [commit] или

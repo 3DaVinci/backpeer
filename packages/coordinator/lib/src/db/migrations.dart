@@ -275,6 +275,49 @@ const List<Migration> schemaMigrations = [
       PRIMARY KEY (account_id, day, method)
     )''',
   ]),
+  Migration(10, 'аудиты', [
+    // Планировщик аудитов (задача 4.1.3): когда проверять узел (NULL —
+    // сразу), итоги проверок для репутации (4.2.1).
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN audit_next_at timestamptz,
+      ADD COLUMN last_audit_at timestamptz,
+      ADD COLUMN audits_passed bigint NOT NULL DEFAULT 0
+        CHECK (audits_passed >= 0),
+      ADD COLUMN audits_failed bigint NOT NULL DEFAULT 0
+        CHECK (audits_failed >= 0)''',
+    '''
+    CREATE INDEX nodes_audit_due ON nodes (audit_next_at NULLS FIRST)
+      WHERE removed_at IS NULL''',
+    // Случайный фрагмент узла — первый с fragment_id не меньше случайного
+    // значения: поиск по индексу, без обхода фрагментов узла.
+    '''
+    CREATE INDEX fragments_audit ON fragments (node_id, fragment_id)
+      WHERE stored AND damaged_at IS NULL''',
+    // Фрагмент провалил аудит и ждёт повторной проверки (задача 4.1.4);
+    // второй провал — фрагмент потерян (damaged_at).
+    'ALTER TABLE fragments ADD COLUMN audit_failed_at timestamptz',
+    '''
+    CREATE INDEX fragments_recheck ON fragments (node_id, audit_failed_at)
+      WHERE audit_failed_at IS NOT NULL''',
+    // Журнал проверок: окно последних итогов узла (исключение из
+    // размещения), доля пройденных и время ответа (репутация, 4.2.1).
+    // Записи старше audits.retention_days удаляются.
+    '''
+    CREATE TABLE audits (
+      id bigserial PRIMARY KEY,
+      node_id bytea NOT NULL REFERENCES nodes (node_id),
+      fragment_id bytea NOT NULL CHECK (length(fragment_id) = 32),
+      block_index integer NOT NULL CHECK (block_index >= 0),
+      at timestamptz NOT NULL,
+      passed boolean NOT NULL,
+      recheck boolean NOT NULL,
+      reason text,
+      latency_ms integer NOT NULL CHECK (latency_ms >= 0)
+    )''',
+    'CREATE INDEX audits_node ON audits (node_id, at DESC, id DESC)',
+    'CREATE INDEX audits_at ON audits (at)',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

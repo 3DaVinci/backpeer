@@ -291,6 +291,22 @@ log:
     );
     expect(backup.segmentsStored, greaterThan(0));
     expect(first.segments.rejectedPlacements, 0);
+
+    // Аудиты (4.1.2, 4.1.3): каждый узел, в том числе без адресов,
+    // отвечает по каналу команд блоком и путём Меркла. Планировщик идёт и
+    // в фоне, поэтому проверяется итог, а не число аудитов прохода.
+    final db = Database.open(live.db.config);
+    addTearDown(db.close);
+    await db.run((s) => s.execute('UPDATE nodes SET audit_next_at = NULL'));
+    await live.server.audits!.runOnce();
+    final audited = await db.run(
+      (s) => s.execute(
+        'SELECT count(DISTINCT node_id), count(*) FILTER (WHERE NOT passed) '
+        'FROM audits',
+      ),
+    );
+    expect(audited.single[0], 5);
+    expect(audited.single[1], 0);
     final traffic = first.meter.toJson();
     expect(traffic['direct'], greaterThan(0), reason: '$traffic');
     expect(

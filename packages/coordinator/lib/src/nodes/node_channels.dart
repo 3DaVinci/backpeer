@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/auth/key_directory.dart';
 import 'package:coordinator/src/auth/request_verifier.dart';
 import 'package:coordinator/src/log.dart';
@@ -49,7 +50,7 @@ final class ChannelPolicy {
 ///
 /// Каналы живут в памяти процесса: команда доходит до узлов, подключённых
 /// к этому экземпляру координатора.
-final class NodeChannels {
+final class NodeChannels implements NodeCommands {
   new({
     required this.service,
     required this.verifier,
@@ -68,8 +69,12 @@ final class NodeChannels {
   final ChannelPolicy policy;
   final bool trustForwardedFor;
 
-  /// Наибольшее сообщение в канале, как тело запроса API.
+  /// Наибольшее сообщение координатора в канале, как тело запроса API.
   static const int maxMessageBytes = 64 * 1024;
+
+  /// Наибольшее сообщение узла: ответ на аудит несёт блок 64 КиБ и путь
+  /// (protocol.md, разделы 4.10, 4.13).
+  static const int maxNodeMessageBytes = 128 * 1024;
 
   /// Коды закрытия WebSocket (RFC 6455, раздел 7.4).
   static const closeNormal = 1000;
@@ -91,6 +96,7 @@ final class NodeChannels {
   /// Открытых каналов.
   int get count => _channels.length;
 
+  @override
   bool isConnected(List<int> nodeId) =>
       _channels.containsKey(bytesToHex(nodeId));
 
@@ -101,6 +107,7 @@ final class NodeChannels {
   /// Отправляет команду [command] узлу [nodeId] и ждёт ответа. `null` —
   /// канала нет или он закрылся до ответа; нет ответа за
   /// [ChannelPolicy.commandTimeout] — [TimeoutException].
+  @override
   Future<pb.NodeChannelMessage?> send(
     List<int> nodeId,
     pb.CoordinatorChannelMessage command,
@@ -329,8 +336,8 @@ final class _NodeChannel {
           );
           break;
         }
-        if (data.length > NodeChannels.maxMessageBytes) {
-          await close(NodeChannels.closeTooBig, 'сообщение больше 64 КиБ');
+        if (data.length > NodeChannels.maxNodeMessageBytes) {
+          await close(NodeChannels.closeTooBig, 'сообщение больше 128 КиБ');
           break;
         }
         final pb.NodeChannelMessage message;

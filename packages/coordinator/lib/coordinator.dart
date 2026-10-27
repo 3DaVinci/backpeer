@@ -9,6 +9,8 @@
 /// - `placement/` — выбор узлов для фрагментов сегмента;
 /// - `segments/` — размещение сегментов, талоны, сборка мусора;
 /// - `relay/` — пропуска relay, учёт трафика через relay, метрики;
+/// - `audits/` — аудиты хранения: планировщик, проверка ответа, реакция
+///   на провалы;
 /// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
 ///   ключей;
 /// - `signer/` — процесс-подписант талонов и клиент к нему для веб-сервера;
@@ -25,6 +27,7 @@ export 'src/accounts/login_service.dart';
 export 'src/admin/admin_access.dart';
 export 'src/admin/admin_cli.dart';
 export 'src/admin/admin_service.dart';
+export 'src/audits/audit_service.dart';
 export 'src/auth/key_directory.dart';
 export 'src/auth/replay_cache.dart';
 export 'src/auth/request_verifier.dart';

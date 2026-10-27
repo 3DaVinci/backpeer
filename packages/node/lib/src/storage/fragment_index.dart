@@ -58,7 +58,8 @@ final class FragmentRecord {
 }
 
 /// Индекс хранителя в SQLite (задача 3.2.2): фрагменты (кто загрузил,
-/// размер, `body_root`, время приёма, состояние), использованные талоны
+/// размер, `body_root`, хэши листьев дерева тела, время приёма,
+/// состояние), использованные талоны
 /// до их истечения (protocol.md, раздел 5) и отозванные устройства
 /// (раздел 4.7). Файлы фрагментов —
 /// `FragmentFiles`; индекс — источник правды о том, что узел хранит.
@@ -128,10 +129,12 @@ final class FragmentIndex {
     required int size,
     required List<int> bodyRoot,
     required DateTime receivedAt,
+    List<int>? leaves,
   }) {
     _db.execute(
       'INSERT OR IGNORE INTO fragments (fragment_id, account_id, size, '
-      'body_root, received_at, state, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'body_root, received_at, state, checked_at, leaves) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
         fragmentId,
         accountId,
@@ -140,10 +143,27 @@ final class FragmentIndex {
         receivedAt.millisecondsSinceEpoch,
         FragmentState.pending.index,
         receivedAt.millisecondsSinceEpoch,
+        leaves,
       ],
     );
     return _db.updatedRows == 1;
   }
+
+  /// Хэши листьев дерева тела (по 32 байта подряд) или `null`: фрагмент
+  /// принят до миграции 3 или его нет.
+  Uint8List? leaves(List<int> fragmentId) {
+    final rows = _db.select(
+      'SELECT leaves FROM fragments WHERE fragment_id = ?',
+      [fragmentId],
+    );
+    return rows.isEmpty ? null : rows.single['leaves'] as Uint8List?;
+  }
+
+  /// Запоминает хэши листьев, посчитанные по файлу фрагмента.
+  void setLeaves(List<int> fragmentId, List<int> leaves) => _db.execute(
+    'UPDATE fragments SET leaves = ? WHERE fragment_id = ?',
+    [leaves, fragmentId],
+  );
 
   void setState(List<int> fragmentId, FragmentState state) => _db.execute(
     'UPDATE fragments SET state = ? WHERE fragment_id = ?',
@@ -402,5 +422,12 @@ const _migrations = [
     name TEXT PRIMARY KEY,
     value INTEGER NOT NULL
   ) WITHOUT ROWID;
+  ''',
+  // 3: хэши листьев дерева тела — ответ на аудит без чтения всего
+  // фрагмента (задача 4.1.2). У принятых раньше — NULL, считаются по файлу
+  // при первом аудите.
+  '''
+  ALTER TABLE fragments ADD COLUMN leaves BLOB
+    CHECK (leaves IS NULL OR (length(leaves) > 0 AND length(leaves) % 32 = 0));
   ''',
 ];

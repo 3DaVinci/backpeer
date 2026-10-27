@@ -72,7 +72,8 @@ final class CommandChannel {
   final math.Random _random;
   final DateTime Function() _clock;
 
-  /// Наибольшее сообщение в канале (protocol.md, раздел 4.10).
+  /// Наибольшее сообщение координатора в канале (protocol.md, раздел 4.10);
+  /// свои сообщения узел шлёт до 128 КиБ (ответ на аудит).
   static const int maxMessageBytes = 64 * 1024;
 
   static final Logger _log = Logger('coordinator.channel');

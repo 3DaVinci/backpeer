@@ -48,6 +48,9 @@ final class FragmentVerifier {
   /// Заголовок, если его 96 байт уже пришли.
   FragmentHeader? get header => _header;
 
+  /// Хэши листьев дерева тела после [finish] ([MerkleBuilder.leaves]).
+  Uint8List get leaves => _merkle.leaves;
+
   void add(List<int> data) {
     if (_received + data.length > expectedSize) {
       throw FragmentStorageException(

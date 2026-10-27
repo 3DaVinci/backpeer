@@ -17,6 +17,7 @@ import 'package:node/src/net/relay_peers.dart';
 import 'package:node/src/net/udp_peers.dart';
 import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
+import 'package:node/src/storage/audits.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:node/src/storage/integrity_checker.dart';
 import 'package:protocol/protocol.dart' as pb;
@@ -286,6 +287,7 @@ final class NodeDaemon {
         endpoints: config.endpoints,
         reachability: _reachability,
         rendezvous: _udp?.handle,
+        audit: (command) => answerAudit(storage, command),
         trustedKeys: trustedKeys,
         commandChannel: config.commandChannel,
       )..start();
@@ -306,9 +308,12 @@ final class NodeDaemon {
         )..start();
       }
     }
-    checker.onDamaged = (_) {
+    void report() {
       if (_link case final link?) unawaited(link.reportDamaged());
-    };
+    }
+
+    checker.onDamaged = (_) => report();
+    storage.onDamaged = (_) => report();
     checker.start();
     _control = await ControlServer.bind(
       ControlEndpoint.forDataDir(

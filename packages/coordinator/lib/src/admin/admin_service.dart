@@ -389,7 +389,8 @@ final class AdminService {
         SELECT n.node_id, n.account_id, a.login, n.subnet, n.availability,
                n.capacity_bytes, n.used_bytes, n.assigned_bytes,
                n.last_heartbeat_at, n.registered_at, n.removed_at,
-               n.excluded_at, n.excluded_reason, n.endpoints, n.software
+               n.excluded_at, n.excluded_reason, n.endpoints, n.software,
+               n.audits_passed, n.audits_failed, n.last_audit_at
           FROM nodes n JOIN admin_accounts a USING (account_id)
           WHERE (@a:bytea IS NULL OR n.account_id = @a:bytea)
             AND (@n:bytea IS NULL OR n.node_id = @n:bytea)
@@ -413,6 +414,9 @@ final class AdminService {
             excludedReason as String?,
             endpoints as List<Object?>,
             software as String,
+            auditsPassed as int,
+            auditsFailed as int,
+            lastAudit as DateTime?,
           ]
           in rows)
         {
@@ -435,6 +439,9 @@ final class AdminService {
           'excludedReason': excludedReason,
           'endpoints': endpoints.cast<String>(),
           'software': software,
+          'auditsPassed': auditsPassed,
+          'auditsFailed': auditsFailed,
+          'lastAuditAt': _iso(lastAudit),
         },
     ];
   }

@@ -3,7 +3,7 @@
 /// - `daemon/` — настройки, журнал, ключи узла, связь с координатором,
 ///   жизненный цикл демона (задачи 3.1.1, 3.1.2);
 /// - `storage/` — файлы фрагментов, индекс в SQLite, квота и место,
-///   фоновая проверка целостности (3.2);
+///   фоновая проверка целостности (3.2), ответ на аудит (4.1.2);
 /// - `control/` — локальный API управления для CLI и приложения (3.1.3);
 /// - `net/` — приём TCP, проверка достижимости, проброс порта на роутере
 ///   (UPnP IGD, PCP, NAT-PMP) (3.5), приём UDP после сведения узлов (3.7),
@@ -36,6 +36,7 @@ export 'src/net/udp_peers.dart';
 export 'src/peers/peer_service.dart';
 export 'src/peers/revocations.dart';
 export 'src/peers/speed_schedule.dart';
+export 'src/storage/audits.dart';
 export 'src/storage/fragment_files.dart';
 export 'src/storage/fragment_index.dart';
 export 'src/storage/fragment_storage.dart';

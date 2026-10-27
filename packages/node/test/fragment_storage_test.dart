@@ -1,5 +1,5 @@
 // Хранилище фрагментов узла: раскладка и атомарная запись (3.2.1), индекс
-// и талоны (3.2.2), квота и место (3.2.3).
+// и талоны (3.2.2), квота и место (3.2.3), ответ на аудит (4.1.2).
 
 import 'dart:async';
 import 'dart:convert';
@@ -444,6 +444,144 @@ void main() {
       final available = diskAvailableBytes(dir.path);
       expect(available, greaterThan(0));
       expect(s.diskAvailable, isNull, reason: 'в тестах подменено');
+    });
+  });
+
+  group('аудит (4.1.2)', () {
+    bool verifies(Fragment f, int index, AuditProof proof) =>
+        verifyMerkleAuditPath(
+          crypto,
+          root: f.header.bodyRoot,
+          leafCount: merkleLeafCount(f.body.length),
+          index: index,
+          block: proof.block,
+          path: proof.path,
+        );
+
+    test('фрагмент 16 МиБ: блок и путь сходятся с body_root', () async {
+      final s = storage();
+      final f = testFragment(crypto, blobLength: 16 << 20);
+      await put(s, f.bytes);
+      final id = fragmentIdOf(crypto, f);
+      final count = merkleLeafCount(f.body.length);
+      expect(count, 256);
+      expect(s.index.leaves(id)!.length, 32 * count);
+      for (final i in [0, 1, 100, 254, 255]) {
+        final proof = await s.prove(id, i);
+        expect(proof.block.length, merkleBlockSize);
+        expect(proof.path, hasLength(8));
+        expect(verifies(f, i, proof), isTrue);
+        expect(verifies(f, (i + 1) % count, proof), isFalse);
+      }
+    });
+
+    test('читается только запрошенный блок: порча другого блока не мешает, '
+        'порча этого — фрагмент повреждён', () async {
+      final s = storage();
+      final f = testFragment(crypto, blobLength: (1 << 20) + 1000);
+      await put(s, f.bytes);
+      final id = fragmentIdOf(crypto, f);
+      final last = merkleLeafCount(f.body.length) - 1;
+      final tail = await s.prove(id, last);
+      expect(tail.block.length, f.body.length - last * merkleBlockSize);
+      expect(verifies(f, last, tail), isTrue);
+
+      final damaged = <String>[];
+      s.onDamaged = (id) => damaged.add(bytesToHex(id));
+      s.files.fileOf(id).openSync(mode: FileMode.append)
+        ..setPositionSync(96 + 3 * merkleBlockSize + 10)
+        ..writeByteSync(f.body[3 * merkleBlockSize + 10] ^ 1)
+        ..closeSync();
+      expect(verifies(f, 5, await s.prove(id, 5)), isTrue);
+      await expectLater(
+        s.prove(id, 3),
+        _failsWith(pb.ErrorCode.ERROR_CODE_NOT_FOUND),
+      );
+      expect(damaged, [bytesToHex(id)]);
+      expect(s.record(id)!.state, FragmentState.damaged);
+      expect(s.record(id)!.damage, startsWith('аудит:'));
+      expect(s.unreportedDamaged(), hasLength(1));
+      // Повреждённый фрагмент на аудит больше не отвечает.
+      await expectLater(
+        s.prove(id, 5),
+        _failsWith(pb.ErrorCode.ERROR_CODE_NOT_FOUND),
+      );
+    });
+
+    test('хэшей листьев нет или они испорчены — считаются по файлу', () async {
+      final s = storage();
+      final f = testFragment(crypto, blobLength: 300000);
+      await put(s, f.bytes);
+      final id = fragmentIdOf(crypto, f);
+      final good = s.index.leaves(id)!;
+      s.index.setLeaves(id, Uint8List(32));
+      expect(verifies(f, 2, await s.prove(id, 2)), isTrue);
+      expect(s.index.leaves(id), good);
+      s.index.setLeaves(id, Uint8List(good.length));
+      expect(verifies(f, 0, await s.prove(id, 0)), isTrue);
+      expect(s.index.leaves(id), good);
+    });
+
+    test('нет фрагмента, нет блока, пропал файл', () async {
+      final s = storage();
+      final f = testFragment(crypto, blobLength: 100000);
+      await put(s, f.bytes);
+      final id = fragmentIdOf(crypto, f);
+      await expectLater(
+        s.prove(Uint8List(32), 0),
+        _failsWith(pb.ErrorCode.ERROR_CODE_NOT_FOUND),
+      );
+      await expectLater(
+        s.prove(id, merkleLeafCount(f.body.length)),
+        _failsWith(pb.ErrorCode.ERROR_CODE_BAD_REQUEST),
+      );
+      await expectLater(
+        answerAudit(s, pb.AuditCommand(fragmentId: [1, 2, 3])),
+        throwsA(
+          isA<CoordinatorException>().having(
+            (e) => e.code,
+            'code',
+            pb.ErrorCode.ERROR_CODE_BAD_REQUEST,
+          ),
+        ),
+      );
+      final reply = await answerAudit(
+        s,
+        pb.AuditCommand(fragmentId: id, blockIndex: 1),
+      );
+      expect(
+        verifies(
+          f,
+          1,
+          AuditProof(Uint8List.fromList(reply.block), [
+            for (final p in reply.path) Uint8List.fromList(p),
+          ]),
+        ),
+        isTrue,
+      );
+      s.files.fileOf(id).deleteSync();
+      await expectLater(
+        answerAudit(s, pb.AuditCommand(fragmentId: id)),
+        throwsA(
+          isA<CoordinatorException>().having(
+            (e) => e.code,
+            'code',
+            pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+          ),
+        ),
+      );
+      expect(s.record(id)!.state, FragmentState.damaged);
+    });
+
+    test('хэши листьев переживают перезапуск', () async {
+      final s = storage();
+      final f = testFragment(crypto, blobLength: 70000);
+      await put(s, f.bytes);
+      await reopen(s);
+      final again = storage();
+      final id = fragmentIdOf(crypto, f);
+      expect(again.index.leaves(id), hasLength(64));
+      expect(verifies(f, 1, await again.prove(id, 1)), isTrue);
     });
   });
 }

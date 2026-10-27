@@ -204,6 +204,57 @@ def merkle_root(body: bytes) -> bytes:
     return mth(leaves)
 
 
+def merkle_leaves(body: bytes) -> list:
+    return [H(b"\x00" + body[i:i + BLOCK]) for i in range(0, len(body), BLOCK)]
+
+
+def mth(nodes: list) -> bytes:
+    if len(nodes) == 1:
+        return nodes[0]
+    j = 1
+    while j * 2 < len(nodes):
+        j *= 2
+    return H(b"\x01" + mth(nodes[:j]) + mth(nodes[j:]))
+
+
+def audit_path(m: int, nodes: list) -> list:
+    """PATH(m, D[n]) из RFC 6962, раздел 2.1.1: от листа к корню."""
+    if len(nodes) == 1:
+        return []
+    j = 1
+    while j * 2 < len(nodes):
+        j *= 2
+    if m < j:
+        return audit_path(m, nodes[:j]) + [mth(nodes[j:])]
+    return audit_path(m - j, nodes[j:]) + [mth(nodes[:j])]
+
+
+def verify_audit_path(root: bytes, n: int, m: int, block: bytes, path: list) -> bool:
+    """Проверка по определению: корень, собранный от листа по PATH."""
+    if not 0 <= m < n:
+        return False
+    try:
+        expected = audit_path(m, [b"?" * 32] * n)
+    except RecursionError:
+        return False
+    if len(path) != len(expected):
+        return False
+
+    def rebuild(m, lo, hi, it):
+        if hi - lo == 1:
+            return H(b"\x00" + block)
+        j = 1
+        while j * 2 < hi - lo:
+            j *= 2
+        if m < j:
+            left = rebuild(m, lo, lo + j, it)
+            return H(b"\x01" + left + next(it))
+        right = rebuild(m - j, lo + j, hi, it)
+        return H(b"\x01" + next(it) + right)
+
+    return rebuild(m, 0, n, iter(path)) == root
+
+
 def shard_size_for(blob_length: int, k: int) -> int:
     per = -(-blob_length // k)
     return -(-per // 64) * 64
@@ -360,6 +411,58 @@ def main() -> None:
                       "expected": {"root": merkle_root(body)}})
     write("merkle.json", "format/merkle", "Корень дерева Меркла тела фрагмента (data-format.md, раздел 5).",
           cases)
+
+    # Путь аудита (protocol.md, раздел 4.13)
+    cases = []
+    bodies = {}
+    for name, seed, length, indexes in [("one-block", 50, 64, [0]),
+                                        ("two-blocks-short-tail", 51, BLOCK + 1, [0, 1]),
+                                        ("three-blocks", 52, 3 * BLOCK, [0, 1, 2]),
+                                        ("five-blocks", 53, 4 * BLOCK + 128, [0, 3, 4]),
+                                        ("seven-blocks", 54, 7 * BLOCK - 64, [0, 2, 5, 6]),
+                                        ("16MiB", 55, 256 * BLOCK, [0, 77, 128, 255])]:
+        body = cv.splitmix64_bytes(seed, length)
+        bodies[name] = (seed, length, body)
+        leaves = merkle_leaves(body)
+        root = mth(leaves)
+        for m in indexes:
+            block = body[m * BLOCK:(m + 1) * BLOCK]
+            path = audit_path(m, leaves)
+            assert verify_audit_path(root, len(leaves), m, block, path)
+            cases.append({"name": f"{name}-block-{m}",
+                          "input": {"bodyPattern": cv.pattern(seed, length), "index": m},
+                          "expected": {"leafCount": len(leaves), "blockLength": len(block),
+                                       "blockHash": H(block), "path": path, "root": root}})
+
+    def audit_reject(name, base, m, path_edit=None, block_index=None, index=None):
+        seed, length, body = bodies[base]
+        leaves = merkle_leaves(body)
+        root = mth(leaves)
+        path = audit_path(m, leaves)
+        if path_edit is not None:
+            path = path_edit(path)
+        b = m if block_index is None else block_index
+        block = body[b * BLOCK:(b + 1) * BLOCK]
+        claimed = m if index is None else index
+        assert not verify_audit_path(root, len(leaves), claimed, block, path), name
+        case = {"bodyPattern": cv.pattern(seed, length), "index": claimed, "path": path}
+        if block_index is not None:
+            case["blockIndex"] = block_index
+        cases.append({"name": name, "input": case, "expected": {"error": "integrity"}})
+
+    flip = lambda p: [bytes([p[0][0] ^ 1]) + p[0][1:]] + p[1:]
+    audit_reject("reject-flipped-path", "five-blocks", 3, path_edit=flip)
+    audit_reject("reject-other-block", "five-blocks", 3, block_index=2)
+    audit_reject("reject-wrong-index", "seven-blocks", 2, index=3)
+    audit_reject("reject-short-path", "seven-blocks", 5, path_edit=lambda p: p[:-1])
+    audit_reject("reject-long-path", "three-blocks", 2, path_edit=lambda p: p + [p[-1]])
+    audit_reject("reject-swapped-path", "16MiB", 77, path_edit=lambda p: [p[1], p[0]] + p[2:])
+    audit_reject("reject-index-out-of-range", "three-blocks", 2, index=3)
+    write("merkle-audit.json", "format/merkle-audit",
+          "Путь аудита в дереве Меркла тела (RFC 6962, PATH; protocol.md, раздел 4.13): тело "
+          "bodyPattern, блок index (64 КиБ, последний короче), путь от листа к корню. Случаи "
+          "reject-*: блок blockIndex (по умолчанию index), заявленный номер index и путь path "
+          "не дают корень тела.", cases)
 
     # Фрагменты: тот же сегмент, k=4, n=6 и k=10, n=16
     cases = []

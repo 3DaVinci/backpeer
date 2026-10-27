@@ -54,6 +54,7 @@ void main() {
       expect(await tables(), [
         'accounts',
         'admin_audit',
+        'audits',
         'devices',
         'fragments',
         'login_attempts',

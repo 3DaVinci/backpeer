@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
@@ -86,6 +87,7 @@ final class CoordinatorConfig {
     this.rendezvous = const RendezvousPolicy(),
     this.placement = const PlacementPolicy(),
     this.relay = const RelayPolicy(),
+    this.audits = const AuditPolicy(),
     this.signerSocket,
     this.adminRole = 'fs_admin',
     this.logLevel = Level.INFO,
@@ -183,6 +185,17 @@ final class CoordinatorConfig {
     'relay.account_bytes_per_day',
     'relay.report_seconds',
     'relay.per_minute',
+    'audits.enabled',
+    'audits.interval_minutes',
+    'audits.new_node_interval_minutes',
+    'audits.new_node_days',
+    'audits.suspect_interval_minutes',
+    'audits.recheck_minutes',
+    'audits.window',
+    'audits.exclude_failures',
+    'audits.max_per_second',
+    'audits.max_concurrent',
+    'audits.retention_days',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -222,6 +235,9 @@ final class CoordinatorConfig {
   /// Relay: серверы, ключ пропусков, пределы трафика.
   final RelayPolicy relay;
 
+  /// Аудиты хранения: частота, повторная проверка, исключение узлов.
+  final AuditPolicy audits;
+
   /// Unix-сокет подписанта талонов; без него методы размещения отвечают
   /// `UNAVAILABLE`.
   final String? signerSocket;
@@ -247,6 +263,7 @@ final class _Reader {
     const cp = ChannelPolicy();
     const rp = RendezvousPolicy();
     const relay = RelayPolicy();
+    const ap = AuditPolicy();
     final cert = _string('tls.certificate');
     final key = _string('tls.private_key');
     if ((cert == null) != (key == null)) {
@@ -383,6 +400,7 @@ final class _Reader {
         ),
         perMinute: _int('relay.per_minute', 1, 10000) ?? relay.perMinute,
       ),
+      audits: _audits(ap),
       signerSocket: _string('signer.socket'),
       adminRole: _role('admin.role') ?? d.adminRole,
       logLevel:
@@ -393,6 +411,45 @@ final class _Reader {
             'severe': Level.SEVERE,
           }) ??
           d.logLevel,
+    );
+  }
+
+  AuditPolicy _audits(AuditPolicy ap) {
+    Duration minutes(String key, int max, Duration d) =>
+        Duration(minutes: _int(key, 1, max) ?? d.inMinutes);
+    final window = _int('audits.window', 1, 1000) ?? ap.window;
+    final exclude =
+        _int('audits.exclude_failures', 1, 1000) ?? ap.excludeFailures;
+    if (exclude > window) {
+      throw const ConfigException(
+        'audits.exclude_failures не больше audits.window',
+      );
+    }
+    return AuditPolicy(
+      enabled: _bool('audits.enabled') ?? ap.enabled,
+      interval: minutes('audits.interval_minutes', 30 * 24 * 60, ap.interval),
+      newNodeInterval: minutes(
+        'audits.new_node_interval_minutes',
+        30 * 24 * 60,
+        ap.newNodeInterval,
+      ),
+      newNodeAge: Duration(
+        days: _int('audits.new_node_days', 0, 365) ?? ap.newNodeAge.inDays,
+      ),
+      suspectInterval: minutes(
+        'audits.suspect_interval_minutes',
+        24 * 60,
+        ap.suspectInterval,
+      ),
+      recheckDelay: minutes('audits.recheck_minutes', 24 * 60, ap.recheckDelay),
+      window: window,
+      excludeFailures: exclude,
+      maxPerSecond: _int('audits.max_per_second', 1, 10000) ?? ap.maxPerSecond,
+      maxConcurrent:
+          _int('audits.max_concurrent', 1, 10000) ?? ap.maxConcurrent,
+      retention: Duration(
+        days: _int('audits.retention_days', 1, 3650) ?? ap.retention.inDays,
+      ),
     );
   }
 

@@ -904,6 +904,15 @@ const NodeChannelMessage$json = {
       '9': 0,
       '10': 'rendezvous'
     },
+    {
+      '1': 'audit',
+      '3': 7,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.AuditReply',
+      '9': 0,
+      '10': 'audit'
+    },
   ],
   '8': [
     {'1': 'body'},
@@ -916,7 +925,8 @@ final $typed_data.Uint8List nodeChannelMessageDescriptor = $convert.base64Decode
     'dyZXBseVRvEjcKCWhlYXJ0YmVhdBgDIAEoCzIXLmZzLnYxLkhlYXJ0YmVhdFJlcXVlc3RIAFIJ'
     'aGVhcnRiZWF0EigKBGRvbmUYBCABKAsyEi5mcy52MS5Db21tYW5kRG9uZUgAUgRkb25lEiQKBW'
     'Vycm9yGAUgASgLMgwuZnMudjEuRXJyb3JIAFIFZXJyb3ISOAoKcmVuZGV6dm91cxgGIAEoCzIW'
-    'LmZzLnYxLlJlbmRlenZvdXNSZXBseUgAUgpyZW5kZXp2b3VzQgYKBGJvZHk=');
+    'LmZzLnYxLlJlbmRlenZvdXNSZXBseUgAUgpyZW5kZXp2b3VzEikKBWF1ZGl0GAcgASgLMhEuZn'
+    'MudjEuQXVkaXRSZXBseUgAUgVhdWRpdEIGCgRib2R5');
 
 @$core.Deprecated('Use coordinatorChannelMessageDescriptor instead')
 const CoordinatorChannelMessage$json = {
@@ -969,6 +979,15 @@ const CoordinatorChannelMessage$json = {
       '9': 0,
       '10': 'rendezvous'
     },
+    {
+      '1': 'audit',
+      '3': 8,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.AuditCommand',
+      '9': 0,
+      '10': 'audit'
+    },
   ],
   '8': [
     {'1': 'body'},
@@ -983,7 +1002,8 @@ final $typed_data.Uint8List coordinatorChannelMessageDescriptor = $convert.base6
     'IoCgRwaW5nGAUgASgLMhIuZnMudjEuUGluZ0NvbW1hbmRIAFIEcGluZxJKChBzeW5jX3Jldm9j'
     'YXRpb25zGAYgASgLMh0uZnMudjEuU3luY1Jldm9jYXRpb25zQ29tbWFuZEgAUg9zeW5jUmV2b2'
     'NhdGlvbnMSOgoKcmVuZGV6dm91cxgHIAEoCzIYLmZzLnYxLlJlbmRlenZvdXNDb21tYW5kSABS'
-    'CnJlbmRlenZvdXNCBgoEYm9keQ==');
+    'CnJlbmRlenZvdXMSKwoFYXVkaXQYCCABKAsyEy5mcy52MS5BdWRpdENvbW1hbmRIAFIFYXVkaX'
+    'RCBgoEYm9keQ==');
 
 @$core.Deprecated('Use commandDoneDescriptor instead')
 const CommandDone$json = {
@@ -1132,6 +1152,33 @@ const RendezvousReply$json = {
 final $typed_data.Uint8List rendezvousReplyDescriptor = $convert.base64Decode(
     'Cg9SZW5kZXp2b3VzUmVwbHkSKwoHYmluZGluZxgBIAEoCzIRLmZzLnYxLlVkcEJpbmRpbmdSB2'
     'JpbmRpbmcSIwoNc3ltbWV0cmljX25hdBgCIAEoCFIMc3ltbWV0cmljTmF0');
+
+@$core.Deprecated('Use auditCommandDescriptor instead')
+const AuditCommand$json = {
+  '1': 'AuditCommand',
+  '2': [
+    {'1': 'fragment_id', '3': 1, '4': 1, '5': 12, '10': 'fragmentId'},
+    {'1': 'block_index', '3': 2, '4': 1, '5': 13, '10': 'blockIndex'},
+  ],
+};
+
+/// Descriptor for `AuditCommand`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List auditCommandDescriptor = $convert.base64Decode(
+    'CgxBdWRpdENvbW1hbmQSHwoLZnJhZ21lbnRfaWQYASABKAxSCmZyYWdtZW50SWQSHwoLYmxvY2'
+    'tfaW5kZXgYAiABKA1SCmJsb2NrSW5kZXg=');
+
+@$core.Deprecated('Use auditReplyDescriptor instead')
+const AuditReply$json = {
+  '1': 'AuditReply',
+  '2': [
+    {'1': 'block', '3': 1, '4': 1, '5': 12, '10': 'block'},
+    {'1': 'path', '3': 2, '4': 3, '5': 12, '10': 'path'},
+  ],
+};
+
+/// Descriptor for `AuditReply`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List auditReplyDescriptor = $convert.base64Decode(
+    'CgpBdWRpdFJlcGx5EhQKBWJsb2NrGAEgASgMUgVibG9jaxISCgRwYXRoGAIgAygMUgRwYXRo');
 
 @$core.Deprecated('Use getRelayPassRequestDescriptor instead')
 const GetRelayPassRequest$json = {

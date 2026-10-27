@@ -1,5 +1,5 @@
 // Рабочий код форматов data-format.md, разделы 3–5, на векторах
-// format/segment.json, merkle.json, fragment.json.
+// format/segment.json, merkle.json, merkle-audit.json, fragment.json.
 
 import 'dart:convert';
 import 'dart:math';
@@ -175,6 +175,105 @@ void main() {
         ..finish();
       expect(b.finish, throwsStateError);
       expect(() => b.add([2]), throwsStateError);
+    });
+  });
+
+  group('merkle-audit', () {
+    final bodies = <String, Uint8List>{};
+    Uint8List bodyOf(Map<String, Object?> pattern) => bodies.putIfAbsent(
+      '${pattern['seed']}/${pattern['length']}',
+      () => patternBytes(pattern),
+    );
+    Uint8List blockOf(Uint8List body, int index) => Uint8List.sublistView(
+      body,
+      index * merkleBlockSize,
+      min(body.length, (index + 1) * merkleBlockSize),
+    );
+
+    for (final c in vectorCases(loadVectors('format/merkle-audit.json'))) {
+      test(c['name'], () {
+        final input = map(c['input']);
+        final expected = map(c['expected']);
+        final body = bodyOf(map(input['bodyPattern']));
+        final index = input['index']! as int;
+        final leafCount = merkleLeafCount(body.length);
+        final root = merkleRoot(crypto, body);
+        if (expected.containsKey('error')) {
+          final path = [
+            for (final p in input['path']! as List) hexToBytes(p! as String),
+          ];
+          final blockIndex = input['blockIndex'] as int? ?? index;
+          expect(
+            verifyMerkleAuditPath(
+              crypto,
+              root: root,
+              leafCount: leafCount,
+              index: index,
+              block: blockOf(body, blockIndex),
+              path: path,
+            ),
+            isFalse,
+          );
+          return;
+        }
+        final builder = MerkleBuilder(crypto)..add(body);
+        expect(bytesToHex(builder.finish()), expected['root']);
+        final leaves = splitMerkleLeaves(builder.leaves);
+        expect(leaves.length, expected['leafCount']);
+        expect(leafCount, expected['leafCount']);
+        expect(
+          bytesToHex(merkleRootOfLeaves(crypto, leaves)),
+          expected['root'],
+        );
+        final block = blockOf(body, index);
+        expect(block.length, expected['blockLength']);
+        expect(merkleBlockLength(body.length, index), expected['blockLength']);
+        expect(h(Uint8List.fromList(block)), expected['blockHash']);
+        final path = merkleAuditPath(crypto, leaves, index);
+        expect(path.map(bytesToHex).toList(), expected['path']);
+        expect(
+          verifyMerkleAuditPath(
+            crypto,
+            root: root,
+            leafCount: leafCount,
+            index: index,
+            block: block,
+            path: path,
+          ),
+          isTrue,
+        );
+      });
+    }
+
+    test('путь к каждому листу деревьев из 1–40 листьев', () {
+      final r = Random(4);
+      for (var n = 1; n <= 40; n++) {
+        // Блоки по 1 байту вместо 64 КиБ: форма дерева та же.
+        final blocks = [
+          for (var i = 0; i < n; i++) [r.nextInt(256), i],
+        ];
+        final leaves = [for (final b in blocks) merkleLeafHash(crypto, b)];
+        final root = merkleRootOfLeaves(crypto, leaves);
+        for (var i = 0; i < n; i++) {
+          final path = merkleAuditPath(crypto, leaves, i);
+          bool ok(int index, List<int> block, List<List<int>> p) =>
+              verifyMerkleAuditPath(
+                crypto,
+                root: root,
+                leafCount: n,
+                index: index,
+                block: block,
+                path: p,
+              );
+          expect(ok(i, blocks[i], path), isTrue, reason: 'n=$n, i=$i');
+          if (n > 1) {
+            expect(ok((i + 1) % n, blocks[i], path), isFalse);
+            expect(ok(i, blocks[(i + 1) % n], path), isFalse);
+            expect(ok(i, blocks[i], path.sublist(1)), isFalse);
+          }
+          expect(ok(i, blocks[i], [...path, root]), isFalse);
+        }
+      }
     });
   });
 

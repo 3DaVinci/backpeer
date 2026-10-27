@@ -1,6 +1,7 @@
 import 'package:coordinator/src/accounts/account_service.dart';
 import 'package:coordinator/src/accounts/certificates.dart';
 import 'package:coordinator/src/accounts/login_service.dart';
+import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
@@ -84,6 +85,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         policy: config.relay,
         passKey: relayPassKey,
         clock: clock,
+      ),
+      audits = AuditService(
+        db,
+        crypto: crypto,
+        policy: config.audits,
+        clock: clock,
       ) {
     rendezvousService = RendezvousService(
       crypto: crypto,
@@ -114,6 +121,9 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   /// Пропуска relay, отчёты relay и трафика; ключ пропусков — из
   /// `relay.pass_key_file` (`CoordinatorServer.start`).
   final RelayService relay;
+
+  /// Аудиты хранения; каналы команд ему передаёт сервер.
+  final AuditService audits;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(

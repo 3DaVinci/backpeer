@@ -372,7 +372,7 @@ void main() {
     expect(text.closeCode, NodeChannels.closeUnsupportedData);
 
     final tooBig = await client.openNodeChannel(nodeKey: nodeKey);
-    tooBig.add(Uint8List(NodeChannels.maxMessageBytes + 1));
+    tooBig.add(Uint8List(NodeChannels.maxNodeMessageBytes + 1));
     await tooBig.drain<void>().timeout(const Duration(seconds: 5));
     expect(tooBig.closeCode, NodeChannels.closeTooBig);
   });

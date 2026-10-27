@@ -48,6 +48,7 @@ final class CoordinatorLink {
     this.endpoints = const [],
     this.reachability,
     this.rendezvous,
+    this.audit,
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
     bool commandChannel = false,
@@ -100,6 +101,10 @@ final class CoordinatorLink {
   /// принимает UDP, команда отклоняется `NOT_FOUND`.
   final Future<pb.RendezvousReply> Function(pb.RendezvousCommand command)?
   rendezvous;
+
+  /// Отвечает на аудит (задача 4.1.2; protocol.md, раздел 4.13); `null` —
+  /// хранилища нет, команда отклоняется `NOT_FOUND`.
+  final Future<pb.AuditReply> Function(pb.AuditCommand command)? audit;
   final Duration maxBackoff;
 
   /// Наибольшая случайная задержка `ListRevocations` по команде.
@@ -251,6 +256,15 @@ final class CoordinatorLink {
         return pb.NodeChannelMessage(
           rendezvous: await handler(command.rendezvous),
         );
+      case pb.CoordinatorChannelMessage_Body.audit:
+        final handler = audit;
+        if (handler == null) {
+          throw const CoordinatorException(
+            pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+            'узел не хранит фрагменты',
+          );
+        }
+        return pb.NodeChannelMessage(audit: await handler(command.audit));
       case pb.CoordinatorChannelMessage_Body.syncRevocations:
         final list = revocations;
         if (list == null ||

@@ -3123,7 +3123,14 @@ class ReachabilityResult extends $pb.GeneratedMessage {
   void clearStatus() => $_clearField(2);
 }
 
-enum NodeChannelMessage_Body { heartbeat, done, error, rendezvous, notSet }
+enum NodeChannelMessage_Body {
+  heartbeat,
+  done,
+  error,
+  rendezvous,
+  audit,
+  notSet
+}
 
 class NodeChannelMessage extends $pb.GeneratedMessage {
   factory NodeChannelMessage({
@@ -3133,6 +3140,7 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
     CommandDone? done,
     $0.Error? error,
     RendezvousReply? rendezvous,
+    AuditReply? audit,
   }) {
     final result = NodeChannelMessage._();
     if (id != null) result.id = id;
@@ -3141,6 +3149,7 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
     if (done != null) result.done = done;
     if (error != null) result.error = error;
     if (rendezvous != null) result.rendezvous = rendezvous;
+    if (audit != null) result.audit = audit;
     return result;
   }
 
@@ -3159,13 +3168,14 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
     4: NodeChannelMessage_Body.done,
     5: NodeChannelMessage_Body.error,
     6: NodeChannelMessage_Body.rendezvous,
+    7: NodeChannelMessage_Body.audit,
     0: NodeChannelMessage_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'NodeChannelMessage',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
       createEmptyInstance: NodeChannelMessage.$_createMessage)
-    ..oo(0, [3, 4, 5, 6])
+    ..oo(0, [3, 4, 5, 6, 7])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'id', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'replyTo', $pb.PbFieldType.OU6,
@@ -3178,6 +3188,8 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
         subBuilder: $0.Error.$_createMessage)
     ..aOM<RendezvousReply>(6, _omitFieldNames ? '' : 'rendezvous',
         subBuilder: RendezvousReply.$_createMessage)
+    ..aOM<AuditReply>(7, _omitFieldNames ? '' : 'audit',
+        subBuilder: AuditReply.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3206,12 +3218,14 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
   @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
   NodeChannelMessage_Body whichBody() =>
       _NodeChannelMessage_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(3)
   @$pb.TagNumber(4)
   @$pb.TagNumber(5)
   @$pb.TagNumber(6)
+  @$pb.TagNumber(7)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -3275,6 +3289,17 @@ class NodeChannelMessage extends $pb.GeneratedMessage {
   void clearRendezvous() => $_clearField(6);
   @$pb.TagNumber(6)
   RendezvousReply ensureRendezvous() => $_ensure(5);
+
+  @$pb.TagNumber(7)
+  AuditReply get audit => $_getN(6);
+  @$pb.TagNumber(7)
+  set audit(AuditReply value) => $_setField(7, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAudit() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAudit() => $_clearField(7);
+  @$pb.TagNumber(7)
+  AuditReply ensureAudit() => $_ensure(6);
 }
 
 enum CoordinatorChannelMessage_Body {
@@ -3283,6 +3308,7 @@ enum CoordinatorChannelMessage_Body {
   ping,
   syncRevocations,
   rendezvous,
+  audit,
   notSet
 }
 
@@ -3295,6 +3321,7 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
     PingCommand? ping,
     SyncRevocationsCommand? syncRevocations,
     RendezvousCommand? rendezvous,
+    AuditCommand? audit,
   }) {
     final result = CoordinatorChannelMessage._();
     if (id != null) result.id = id;
@@ -3304,6 +3331,7 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
     if (ping != null) result.ping = ping;
     if (syncRevocations != null) result.syncRevocations = syncRevocations;
     if (rendezvous != null) result.rendezvous = rendezvous;
+    if (audit != null) result.audit = audit;
     return result;
   }
 
@@ -3323,13 +3351,14 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
     5: CoordinatorChannelMessage_Body.ping,
     6: CoordinatorChannelMessage_Body.syncRevocations,
     7: CoordinatorChannelMessage_Body.rendezvous,
+    8: CoordinatorChannelMessage_Body.audit,
     0: CoordinatorChannelMessage_Body.notSet
   };
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(
       _omitMessageNames ? '' : 'CoordinatorChannelMessage',
       package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
       createEmptyInstance: CoordinatorChannelMessage.$_createMessage)
-    ..oo(0, [3, 4, 5, 6, 7])
+    ..oo(0, [3, 4, 5, 6, 7, 8])
     ..a<$fixnum.Int64>(1, _omitFieldNames ? '' : 'id', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'replyTo', $pb.PbFieldType.OU6,
@@ -3344,6 +3373,8 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
         subBuilder: SyncRevocationsCommand.$_createMessage)
     ..aOM<RendezvousCommand>(7, _omitFieldNames ? '' : 'rendezvous',
         subBuilder: RendezvousCommand.$_createMessage)
+    ..aOM<AuditCommand>(8, _omitFieldNames ? '' : 'audit',
+        subBuilder: AuditCommand.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -3377,6 +3408,7 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(5)
   @$pb.TagNumber(6)
   @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
   CoordinatorChannelMessage_Body whichBody() =>
       _CoordinatorChannelMessage_BodyByTag[$_whichOneof(0)]!;
   @$pb.TagNumber(3)
@@ -3384,6 +3416,7 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
   @$pb.TagNumber(5)
   @$pb.TagNumber(6)
   @$pb.TagNumber(7)
+  @$pb.TagNumber(8)
   void clearBody() => $_clearField($_whichOneof(0));
 
   @$pb.TagNumber(1)
@@ -3458,6 +3491,17 @@ class CoordinatorChannelMessage extends $pb.GeneratedMessage {
   void clearRendezvous() => $_clearField(7);
   @$pb.TagNumber(7)
   RendezvousCommand ensureRendezvous() => $_ensure(6);
+
+  @$pb.TagNumber(8)
+  AuditCommand get audit => $_getN(7);
+  @$pb.TagNumber(8)
+  set audit(AuditCommand value) => $_setField(8, value);
+  @$pb.TagNumber(8)
+  $core.bool hasAudit() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearAudit() => $_clearField(8);
+  @$pb.TagNumber(8)
+  AuditCommand ensureAudit() => $_ensure(7);
 }
 
 class CommandDone extends $pb.GeneratedMessage {
@@ -4094,6 +4138,141 @@ class RendezvousReply extends $pb.GeneratedMessage {
   $core.bool hasSymmetricNat() => $_has(1);
   @$pb.TagNumber(2)
   void clearSymmetricNat() => $_clearField(2);
+}
+
+/// Команда узлу: доказать хранение блока block_index фрагмента fragment_id.
+class AuditCommand extends $pb.GeneratedMessage {
+  factory AuditCommand({
+    $core.List<$core.int>? fragmentId,
+    $core.int? blockIndex,
+  }) {
+    final result = AuditCommand._();
+    if (fragmentId != null) result.fragmentId = fragmentId;
+    if (blockIndex != null) result.blockIndex = blockIndex;
+    return result;
+  }
+
+  AuditCommand._();
+
+  factory AuditCommand.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AuditCommand()..mergeFromBuffer(data, registry);
+  factory AuditCommand.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AuditCommand()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AuditCommand',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: AuditCommand.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'fragmentId', $pb.PbFieldType.OY)
+    ..aI(2, _omitFieldNames ? '' : 'blockIndex', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AuditCommand clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AuditCommand copyWith(void Function(AuditCommand) updates) =>
+      super.copyWith((message) => updates(message as AuditCommand))
+          as AuditCommand;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AuditCommand() / AuditCommand.new instead')
+  static AuditCommand create() => AuditCommand._();
+  static $pb.GeneratedMessage $_createMessage() => AuditCommand._();
+  @$core.override
+  AuditCommand createEmptyInstance() => AuditCommand._();
+  @$core.pragma('dart2js:noInline')
+  static AuditCommand getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<AuditCommand>(
+          AuditCommand.$_createMessage);
+  static AuditCommand? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get fragmentId => $_getN(0);
+  @$pb.TagNumber(1)
+  set fragmentId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasFragmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearFragmentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get blockIndex => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set blockIndex($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBlockIndex() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBlockIndex() => $_clearField(2);
+}
+
+/// Ответ узла. Фрагмента нет или он повреждён — Error с NOT_FOUND.
+class AuditReply extends $pb.GeneratedMessage {
+  factory AuditReply({
+    $core.List<$core.int>? block,
+    $core.Iterable<$core.List<$core.int>>? path,
+  }) {
+    final result = AuditReply._();
+    if (block != null) result.block = block;
+    if (path != null) result.path.addAll(path);
+    return result;
+  }
+
+  AuditReply._();
+
+  factory AuditReply.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AuditReply()..mergeFromBuffer(data, registry);
+  factory AuditReply.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      AuditReply()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'AuditReply',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: AuditReply.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'block', $pb.PbFieldType.OY)
+    ..p<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'path', $pb.PbFieldType.PY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AuditReply clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  AuditReply copyWith(void Function(AuditReply) updates) =>
+      super.copyWith((message) => updates(message as AuditReply)) as AuditReply;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use AuditReply() / AuditReply.new instead')
+  static AuditReply create() => AuditReply._();
+  static $pb.GeneratedMessage $_createMessage() => AuditReply._();
+  @$core.override
+  AuditReply createEmptyInstance() => AuditReply._();
+  @$core.pragma('dart2js:noInline')
+  static AuditReply getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<AuditReply>(AuditReply.$_createMessage);
+  static AuditReply? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get block => $_getN(0);
+  @$pb.TagNumber(1)
+  set block($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasBlock() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearBlock() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<$core.List<$core.int>> get path => $_getList(1);
 }
 
 /// Пропуск к relay. Узел (ключ узла, node_id — свой) получает пропуск

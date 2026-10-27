@@ -1,0 +1,70 @@
+// Relay: ретранслятор соединений к узлам без входящих соединений
+// (docs/spec/protocol.md, раздел 4.12; задачи 3.8.1, 3.8.2).
+//
+// Соединение с relay — TCP. До начала ретрансляции стороны обмениваются
+// кадрами "u16be длина || сообщение" (не длиннее 4096 байт); после
+// RelayOpened без ошибки соединение клиента и соединение приёма узла
+// склеиваются, и дальше идут байты Noise без кадров relay. Управляющее
+// соединение узла остаётся в кадрах (RelayControl).
+syntax = "proto3";
+
+package fs.v1;
+
+import "fs/v1/common.proto";
+
+enum RelayRole {
+  RELAY_ROLE_UNSPECIFIED = 0;
+  RELAY_ROLE_LISTEN = 1;   // узел: держит управляющее соединение и принимает
+  RELAY_ROLE_CONNECT = 2;  // клиент или узел при ремонте: подключается к узлу
+}
+
+// Пропуск к relay: тело Signed, контекст "relay-pass", подписан ключом
+// пропусков координатора. Выдаёт GetRelayPass (coordinator.proto).
+message RelayPass {
+  RelayRole role = 1;
+  bytes holder = 2;              // Ed25519-ключ владельца пропуска: им подписано доказательство
+  bytes node_id = 3;             // узел; у LISTEN — сам holder
+  bytes account_id = 4;          // учётная запись holder — за неё ведётся учёт трафика
+  string relay = 5;              // имя relay, для которого пропуск
+  bytes pass_id = 6;             // 16 байт
+  uint64 expires_at_unix_ms = 7;
+  uint64 max_bytes = 8;          // предел байт по пропуску в обе стороны; 0 — без предела (LISTEN)
+}
+
+// Relay → подключившемуся, первым кадром.
+message RelayChallenge {
+  uint32 version = 1;            // 1
+  bytes nonce = 2;               // 32 случайных байта
+  string relay = 3;              // имя relay
+}
+
+// Подключившийся → relay.
+message RelayOpen {
+  Signed pass = 1;
+  // Ed25519-подпись holder, контекст "relay-open", над
+  // nonce || BLAKE2b-256(pass.body) || accept.
+  bytes proof = 2;
+  // Только у LISTEN: номер сеанса из RelayIncoming, который узел
+  // принимает этим соединением; пусто — управляющее соединение.
+  bytes accept = 3;
+}
+
+// Relay → подключившемуся: итог открытия.
+message RelayOpened {
+  Error error = 1;               // не задано — открыто
+}
+
+// Управляющее соединение узла после RelayOpened, в обе стороны.
+message RelayControl {
+  oneof body {
+    RelayIncoming incoming = 1;  // relay → узел: к узлу подключаются
+    uint64 ping = 2;             // любая сторона; ответ — pong с тем же числом
+    uint64 pong = 3;
+  }
+}
+
+// К узлу подключается holder пропуска CONNECT: узел открывает новое
+// соединение к relay с accept = session_id.
+message RelayIncoming {
+  bytes session_id = 1;          // 16 байт
+}

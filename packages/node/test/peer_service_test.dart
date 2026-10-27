@@ -5,7 +5,8 @@
 // запросов и скорости.
 //
 // Те же тесты идут поверх потока UDP (задача 3.7.4):
-// peer_service_udp_test.dart.
+// peer_service_udp_test.dart, и через relay (задача 3.8.1):
+// peer_service_relay_test.dart.
 
 import 'dart:async';
 import 'dart:io';
@@ -15,6 +16,7 @@ import 'package:core/core.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:node/node.dart';
 import 'package:protocol/protocol.dart' as pb;
+import 'package:relay/relay.dart';
 import 'package:test/test.dart';
 
 import 'support.dart';
@@ -64,8 +66,10 @@ final class _Counting implements ByteConnection {
 void main() => peerServiceTests();
 
 /// Тесты операций; [udp] — соединения клиента с узлом идут потоком поверх
-/// UDP через loopback (`UdpEndpoint`), а не парой в памяти.
-void peerServiceTests({bool udp = false}) {
+/// UDP через loopback (`UdpEndpoint`), [relay] — через relay на loopback
+/// (узел и клиент оба только подключаются к нему), а не парой в памяти.
+void peerServiceTests({bool udp = false, bool relay = false}) {
+  final network = udp || relay;
   late CryptoProvider crypto;
   late Ed25519KeyPair coordinator;
   late Ed25519KeyPair stranger;
@@ -156,6 +160,24 @@ void peerServiceTests({bool udp = false}) {
   });
 
   final endpoints = <UdpEndpoint>[];
+  final relayListeners = <RelayListener>[];
+  RelayServer? relayServer;
+  late Ed25519KeyPair relayPassKey;
+
+  setUpAll(() async {
+    if (!relay) return;
+    relayPassKey = await crypto.ed25519FromSeed(
+      SecretBytes(crypto.randomBytes(32)),
+    );
+    relayServer = await RelayServer.bind(
+      crypto: crypto,
+      name: 'test',
+      passKeys: CoordinatorKeySet([relayPassKey.publicKey]),
+      host: '127.0.0.1',
+    );
+  });
+
+  tearDownAll(() async => await relayServer?.close());
 
   tearDown(() async {
     await service.close();
@@ -163,15 +185,69 @@ void peerServiceTests({bool udp = false}) {
       await e.close();
     }
     endpoints.clear();
+    for (final l in relayListeners) {
+      l.close();
+    }
+    relayListeners.clear();
     await storage.close();
     dir.deleteSync(recursive: true);
   });
 
   var punches = 0;
 
-  /// Пара соединений клиент — узел: в памяти или поток UDP. [capacity] —
-  /// для UDP окно получателя и буфер отправителя.
+  var relayPasses = 0;
+
+  /// Пропуск relay [role] для ключа [holder].
+  Future<pb.Signed> relayPass(pb.RelayRole role, Ed25519KeyPair holder) =>
+      RelayPasses.issue(
+        crypto,
+        relayPassKey,
+        pb.RelayPass(
+          role: role,
+          holder: holder.publicKey,
+          nodeId: node.sign.publicKey,
+          accountId: alice.account.accountId,
+          relay: 'test',
+          passId: Uint8List(16)
+            ..buffer.asByteData().setUint32(0, ++relayPasses),
+          expiresAtUnixMs: Int64(
+            DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+          ),
+        ),
+      );
+
+  /// Предел памяти в тестах обратного давления меньше буферов ядра у
+  /// двух соединений TCP через relay: на них проверяется пара в памяти и
+  /// UDP с заданным окном.
+  final tcpBuffers = relay ? 'буферы TCP через relay больше предела' : null;
+
+  /// Клиент и узел через relay: узел держит управляющее соединение и
+  /// принимает сеанс, клиент подключается по пропуску CONNECT.
+  Future<(ByteConnection, ByteConnection)> relayPair() async {
+    final server = relayServer!;
+    final listener = await RelayListener.open(
+      crypto,
+      host: '127.0.0.1',
+      port: server.port,
+      pass: await relayPass(pb.RelayRole.RELAY_ROLE_LISTEN, node.sign),
+      key: node.sign,
+    );
+    relayListeners.add(listener);
+    final accepted = listener.incoming.first.then(listener.accept);
+    final client = await RelayClient.connect(
+      crypto,
+      host: '127.0.0.1',
+      port: server.port,
+      pass: await relayPass(pb.RelayRole.RELAY_ROLE_CONNECT, alice.keys.sign),
+      key: alice.keys.sign,
+    );
+    return (client, await accepted);
+  }
+
+  /// Пара соединений клиент — узел: в памяти, поток UDP или через relay.
+  /// [capacity] — для UDP окно получателя и буфер отправителя.
   Future<(ByteConnection, ByteConnection)> pair({int? capacity}) async {
+    if (relay) return await relayPair();
     if (!udp) return memoryConnectionPair(capacity: capacity);
     final options = UdpStreamOptions(
       receiveWindow: capacity ?? 1 << 20,
@@ -735,68 +811,83 @@ void peerServiceTests({bool udp = false}) {
       await c.close();
     });
 
-    test('клиент не читает выдачу: узел не копит её в памяти', () async {
-      final big = testFragment(crypto, seed: 3, blobLength: 8 << 20);
-      final id = fragmentIdOf(crypto, big);
-      final uploader = await connect(alice);
-      await uploader.putFragment(
-        await put(alice, id: id, size: big.bytes.length),
-        big.bytes,
-      );
-      late _Counting nodeSide;
-      final c = await connect(
-        alice,
-        capacity: 1 << 16,
-        counters: (_, n) => nodeSide = n,
-      );
-      final before = nodeSide.sent;
-      final chunks = <Uint8List>[];
-      final t = await ticket(
-        pb.TicketOperation.TICKET_OPERATION_GET,
-        alice,
-        id: id,
-        size: big.bytes.length,
-      );
-      // Подписка завершается сама вместе с потоком.
-      // ignore: cancel_subscriptions
-      late final StreamSubscription<Uint8List> sub;
-      sub = c.getFragment(t).listen((chunk) {
-        chunks.add(chunk);
-        // Потребитель встаёт после первой части.
-        if (chunks.length == 1) sub.pause();
-      });
-      final done = sub.asFuture<void>();
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-      // Отправлено не больше буфера клиента (1 МиБ), соединения (64 КиБ) и
-      // нескольких частей в пути — далеко не 8 МиБ.
-      expect(nodeSide.sent - before, lessThan(2 << 20));
-      expect(service.gate.active, 1);
-      sub.resume();
-      await done;
-      expect(BytesBuilder()..addAllChunks(chunks), hasLength(big.bytes.length));
-      await uploader.close();
-      await c.close();
-    });
+    test(
+      'клиент не читает выдачу: узел не копит её в памяти',
+      skip: tcpBuffers,
+      () async {
+        final big = testFragment(crypto, seed: 3, blobLength: 8 << 20);
+        final id = fragmentIdOf(crypto, big);
+        final uploader = await connect(alice);
+        await uploader.putFragment(
+          await put(alice, id: id, size: big.bytes.length),
+          big.bytes,
+        );
+        late _Counting nodeSide;
+        final c = await connect(
+          alice,
+          capacity: 1 << 16,
+          counters: (_, n) => nodeSide = n,
+        );
+        final before = nodeSide.sent;
+        final chunks = <Uint8List>[];
+        final t = await ticket(
+          pb.TicketOperation.TICKET_OPERATION_GET,
+          alice,
+          id: id,
+          size: big.bytes.length,
+        );
+        // Подписка завершается сама вместе с потоком.
+        // ignore: cancel_subscriptions
+        late final StreamSubscription<Uint8List> sub;
+        sub = c.getFragment(t).listen((chunk) {
+          chunks.add(chunk);
+          // Потребитель встаёт после первой части.
+          if (chunks.length == 1) sub.pause();
+        });
+        final done = sub.asFuture<void>();
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        // Отправлено не больше буфера клиента (1 МиБ), соединения (64 КиБ) и
+        // нескольких частей в пути — далеко не 8 МиБ.
+        expect(nodeSide.sent - before, lessThan(2 << 20));
+        expect(service.gate.active, 1);
+        sub.resume();
+        await done;
+        expect(
+          BytesBuilder()..addAllChunks(chunks),
+          hasLength(big.bytes.length),
+        );
+        await uploader.close();
+        await c.close();
+      },
+    );
 
-    test('узел пишет медленно: клиент упирается в соединение', () async {
-      service = makeService(download: 1 << 20);
-      final big = testFragment(crypto, seed: 4, blobLength: 4 << 20);
-      late _Counting clientSide;
-      final c = await connect(
-        alice,
-        capacity: 1 << 16,
-        counters: (cl, _) => clientSide = cl,
-      );
-      final upload = c.putFragment(
-        await put(alice, id: fragmentIdOf(crypto, big), size: big.bytes.length),
-        big.bytes,
-      );
-      await Future<void>.delayed(const Duration(seconds: 1));
-      // За секунду при 1 МиБ/с принято около 1 МиБ; в очереди узла — не
-      // больше его буфера (1 МиБ), в соединении — 64 КиБ.
-      expect(clientSide.sent, lessThan(3 << 20));
-      expect(await upload, fragmentIdOf(crypto, big));
-    });
+    test(
+      'узел пишет медленно: клиент упирается в соединение',
+      skip: tcpBuffers,
+      () async {
+        service = makeService(download: 1 << 20);
+        final big = testFragment(crypto, seed: 4, blobLength: 4 << 20);
+        late _Counting clientSide;
+        final c = await connect(
+          alice,
+          capacity: 1 << 16,
+          counters: (cl, _) => clientSide = cl,
+        );
+        final upload = c.putFragment(
+          await put(
+            alice,
+            id: fragmentIdOf(crypto, big),
+            size: big.bytes.length,
+          ),
+          big.bytes,
+        );
+        await Future<void>.delayed(const Duration(seconds: 1));
+        // За секунду при 1 МиБ/с принято около 1 МиБ; в очереди узла — не
+        // больше его буфера (1 МиБ), в соединении — 64 КиБ.
+        expect(clientSide.sent, lessThan(3 << 20));
+        expect(await upload, fragmentIdOf(crypto, big));
+      },
+    );
 
     test('загрузка встала — UNAVAILABLE, приём отброшен', () async {
       service = makeService(
@@ -910,7 +1001,7 @@ void peerServiceTests({bool udp = false}) {
       expect(service.connectionCount, 0);
     });
 
-    test('по TCP', skip: udp ? 'проверяется без UDP' : null, () async {
+    test('по TCP', skip: network ? 'проверяется в памяти' : null, () async {
       final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
       server.listen((s) => unawaited(service.serve(SocketConnection(s))));
       final socket = await Socket.connect(
@@ -1073,7 +1164,7 @@ void peerServiceTests({bool udp = false}) {
     });
   });
 
-  group('демон', skip: udp ? 'проверяется без UDP' : null, () {
+  group('демон', skip: network ? 'проверяется в памяти' : null, () {
     test('NodeDaemon принимает соединение по TCP (3.5.1), пределы по '
         'расписанию', () async {
       final data = Directory.systemTemp.createTempSync('fs_peer_daemon_');

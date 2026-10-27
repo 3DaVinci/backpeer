@@ -4,11 +4,11 @@ import 'package:coordinator/src/accounts/login_service.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
-import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/objects/object_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
+import 'package:coordinator/src/relay/relay_service.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/service.dart';
 import 'package:coordinator/src/segments/segment_service.dart';
@@ -26,6 +26,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CoordinatorConfig config = const CoordinatorConfig(),
     TicketSigner? signer,
     Placement? placement,
+    Ed25519KeyPair? relayPassKey,
     DateTime Function()? clock,
   }) : this._parts(
          db,
@@ -34,6 +35,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
          config,
          signer,
          placement,
+         relayPassKey,
          clock,
        );
 
@@ -44,6 +46,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CoordinatorConfig config,
     TicketSigner? signer,
     Placement? placement,
+    Ed25519KeyPair? relayPassKey,
     DateTime Function()? clock,
   ) : accounts = AccountService(
         db,
@@ -74,6 +77,13 @@ final class DatabaseCoordinatorService extends CoordinatorService {
             ? null
             : () async => [await signer.publicKey()],
         clock: clock,
+      ),
+      relay = RelayService(
+        db: db,
+        crypto: crypto,
+        policy: config.relay,
+        passKey: relayPassKey,
+        clock: clock,
       ) {
     rendezvousService = RendezvousService(
       crypto: crypto,
@@ -100,6 +110,10 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   final ObjectService objects;
   final NodeService nodes;
   late final SegmentService segments;
+
+  /// Пропуска relay, отчёты relay и трафика; ключ пропусков — из
+  /// `relay.pass_key_file` (`CoordinatorServer.start`).
+  final RelayService relay;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(
@@ -208,6 +222,24 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.RendezvousRequest request,
   ) => rendezvousService.rendezvous(context, request);
+
+  @override
+  Future<pb.GetRelayPassResponse> getRelayPass(
+    CallContext context,
+    pb.GetRelayPassRequest request,
+  ) => relay.getPass(context, request);
+
+  @override
+  Future<pb.ReportRelayUsageResponse> reportRelayUsage(
+    CallContext context,
+    pb.ReportRelayUsageRequest request,
+  ) => relay.report(context, request);
+
+  @override
+  Future<pb.ReportTrafficResponse> reportTraffic(
+    CallContext context,
+    pb.ReportTrafficRequest request,
+  ) => relay.traffic(context, request);
 
   @override
   Future<pb.AllocateSegmentResponse> allocateSegment(

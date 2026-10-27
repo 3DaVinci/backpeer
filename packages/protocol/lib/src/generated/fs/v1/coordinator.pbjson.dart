@@ -51,6 +51,23 @@ final $typed_data.Uint8List reachabilityStatusDescriptor = $convert.base64Decode
     'hBQklMSVRZX1NUQVRVU19XUk9OR19QRUVSEAQSIwofUkVBQ0hBQklMSVRZX1NUQVRVU19OT1Rf'
     'Q0hFQ0tFRBAF');
 
+@$core.Deprecated('Use connectionMethodDescriptor instead')
+const ConnectionMethod$json = {
+  '1': 'ConnectionMethod',
+  '2': [
+    {'1': 'CONNECTION_METHOD_UNSPECIFIED', '2': 0},
+    {'1': 'CONNECTION_METHOD_DIRECT', '2': 1},
+    {'1': 'CONNECTION_METHOD_UDP', '2': 2},
+    {'1': 'CONNECTION_METHOD_RELAY', '2': 3},
+  ],
+};
+
+/// Descriptor for `ConnectionMethod`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List connectionMethodDescriptor = $convert.base64Decode(
+    'ChBDb25uZWN0aW9uTWV0aG9kEiEKHUNPTk5FQ1RJT05fTUVUSE9EX1VOU1BFQ0lGSUVEEAASHA'
+    'oYQ09OTkVDVElPTl9NRVRIT0RfRElSRUNUEAESGQoVQ09OTkVDVElPTl9NRVRIT0RfVURQEAIS'
+    'GwoXQ09OTkVDVElPTl9NRVRIT0RfUkVMQVkQAw==');
+
 @$core.Deprecated('Use registerAccountRequestDescriptor instead')
 const RegisterAccountRequest$json = {
   '1': 'RegisterAccountRequest',
@@ -1115,3 +1132,138 @@ const RendezvousReply$json = {
 final $typed_data.Uint8List rendezvousReplyDescriptor = $convert.base64Decode(
     'Cg9SZW5kZXp2b3VzUmVwbHkSKwoHYmluZGluZxgBIAEoCzIRLmZzLnYxLlVkcEJpbmRpbmdSB2'
     'JpbmRpbmcSIwoNc3ltbWV0cmljX25hdBgCIAEoCFIMc3ltbWV0cmljTmF0');
+
+@$core.Deprecated('Use getRelayPassRequestDescriptor instead')
+const GetRelayPassRequest$json = {
+  '1': 'GetRelayPassRequest',
+  '2': [
+    {'1': 'node_id', '3': 1, '4': 1, '5': 12, '10': 'nodeId'},
+  ],
+};
+
+/// Descriptor for `GetRelayPassRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getRelayPassRequestDescriptor =
+    $convert.base64Decode(
+        'ChNHZXRSZWxheVBhc3NSZXF1ZXN0EhcKB25vZGVfaWQYASABKAxSBm5vZGVJZA==');
+
+@$core.Deprecated('Use getRelayPassResponseDescriptor instead')
+const GetRelayPassResponse$json = {
+  '1': 'GetRelayPassResponse',
+  '2': [
+    {'1': 'relay_endpoint', '3': 1, '4': 1, '5': 9, '10': 'relayEndpoint'},
+    {'1': 'pass', '3': 2, '4': 1, '5': 11, '6': '.fs.v1.Signed', '10': 'pass'},
+  ],
+};
+
+/// Descriptor for `GetRelayPassResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getRelayPassResponseDescriptor = $convert.base64Decode(
+    'ChRHZXRSZWxheVBhc3NSZXNwb25zZRIlCg5yZWxheV9lbmRwb2ludBgBIAEoCVINcmVsYXlFbm'
+    'Rwb2ludBIhCgRwYXNzGAIgASgLMg0uZnMudjEuU2lnbmVkUgRwYXNz');
+
+@$core.Deprecated('Use reportRelayUsageRequestDescriptor instead')
+const ReportRelayUsageRequest$json = {
+  '1': 'ReportRelayUsageRequest',
+  '2': [
+    {'1': 'relay', '3': 1, '4': 1, '5': 9, '10': 'relay'},
+    {
+      '1': 'usage',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.RelayAccountUsage',
+      '10': 'usage'
+    },
+    {'1': 'listeners', '3': 3, '4': 1, '5': 13, '10': 'listeners'},
+    {'1': 'sessions', '3': 4, '4': 1, '5': 13, '10': 'sessions'},
+    {'1': 'sessions_opened', '3': 5, '4': 1, '5': 4, '10': 'sessionsOpened'},
+    {'1': 'bytes', '3': 6, '4': 1, '5': 4, '10': 'bytes'},
+  ],
+};
+
+/// Descriptor for `ReportRelayUsageRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportRelayUsageRequestDescriptor = $convert.base64Decode(
+    'ChdSZXBvcnRSZWxheVVzYWdlUmVxdWVzdBIUCgVyZWxheRgBIAEoCVIFcmVsYXkSLgoFdXNhZ2'
+    'UYAiADKAsyGC5mcy52MS5SZWxheUFjY291bnRVc2FnZVIFdXNhZ2USHAoJbGlzdGVuZXJzGAMg'
+    'ASgNUglsaXN0ZW5lcnMSGgoIc2Vzc2lvbnMYBCABKA1SCHNlc3Npb25zEicKD3Nlc3Npb25zX2'
+    '9wZW5lZBgFIAEoBFIOc2Vzc2lvbnNPcGVuZWQSFAoFYnl0ZXMYBiABKARSBWJ5dGVz');
+
+@$core.Deprecated('Use relayAccountUsageDescriptor instead')
+const RelayAccountUsage$json = {
+  '1': 'RelayAccountUsage',
+  '2': [
+    {'1': 'account_id', '3': 1, '4': 1, '5': 12, '10': 'accountId'},
+    {'1': 'bytes', '3': 2, '4': 1, '5': 4, '10': 'bytes'},
+    {'1': 'sessions', '3': 3, '4': 1, '5': 13, '10': 'sessions'},
+  ],
+};
+
+/// Descriptor for `RelayAccountUsage`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List relayAccountUsageDescriptor = $convert.base64Decode(
+    'ChFSZWxheUFjY291bnRVc2FnZRIdCgphY2NvdW50X2lkGAEgASgMUglhY2NvdW50SWQSFAoFYn'
+    'l0ZXMYAiABKARSBWJ5dGVzEhoKCHNlc3Npb25zGAMgASgNUghzZXNzaW9ucw==');
+
+@$core.Deprecated('Use reportRelayUsageResponseDescriptor instead')
+const ReportRelayUsageResponse$json = {
+  '1': 'ReportRelayUsageResponse',
+  '2': [
+    {'1': 'next_report_ms', '3': 1, '4': 1, '5': 13, '10': 'nextReportMs'},
+  ],
+};
+
+/// Descriptor for `ReportRelayUsageResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportRelayUsageResponseDescriptor =
+    $convert.base64Decode(
+        'ChhSZXBvcnRSZWxheVVzYWdlUmVzcG9uc2USJAoObmV4dF9yZXBvcnRfbXMYASABKA1SDG5leH'
+        'RSZXBvcnRNcw==');
+
+@$core.Deprecated('Use reportTrafficRequestDescriptor instead')
+const ReportTrafficRequest$json = {
+  '1': 'ReportTrafficRequest',
+  '2': [
+    {
+      '1': 'traffic',
+      '3': 1,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.TrafficByMethod',
+      '10': 'traffic'
+    },
+  ],
+};
+
+/// Descriptor for `ReportTrafficRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportTrafficRequestDescriptor = $convert.base64Decode(
+    'ChRSZXBvcnRUcmFmZmljUmVxdWVzdBIwCgd0cmFmZmljGAEgAygLMhYuZnMudjEuVHJhZmZpY0'
+    'J5TWV0aG9kUgd0cmFmZmlj');
+
+@$core.Deprecated('Use trafficByMethodDescriptor instead')
+const TrafficByMethod$json = {
+  '1': 'TrafficByMethod',
+  '2': [
+    {
+      '1': 'method',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.ConnectionMethod',
+      '10': 'method'
+    },
+    {'1': 'bytes', '3': 2, '4': 1, '5': 4, '10': 'bytes'},
+    {'1': 'connections', '3': 3, '4': 1, '5': 13, '10': 'connections'},
+  ],
+};
+
+/// Descriptor for `TrafficByMethod`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List trafficByMethodDescriptor = $convert.base64Decode(
+    'Cg9UcmFmZmljQnlNZXRob2QSLwoGbWV0aG9kGAEgASgOMhcuZnMudjEuQ29ubmVjdGlvbk1ldG'
+    'hvZFIGbWV0aG9kEhQKBWJ5dGVzGAIgASgEUgVieXRlcxIgCgtjb25uZWN0aW9ucxgDIAEoDVIL'
+    'Y29ubmVjdGlvbnM=');
+
+@$core.Deprecated('Use reportTrafficResponseDescriptor instead')
+const ReportTrafficResponse$json = {
+  '1': 'ReportTrafficResponse',
+};
+
+/// Descriptor for `ReportTrafficResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportTrafficResponseDescriptor =
+    $convert.base64Decode('ChVSZXBvcnRUcmFmZmljUmVzcG9uc2U=');

@@ -13,6 +13,7 @@ import 'package:node/src/daemon/transfers.dart';
 import 'package:node/src/net/peer_listener.dart';
 import 'package:node/src/net/port_mapping/port_mapper.dart';
 import 'package:node/src/net/reachability.dart';
+import 'package:node/src/net/relay_peers.dart';
 import 'package:node/src/net/udp_peers.dart';
 import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
@@ -28,7 +29,8 @@ enum NodeState { running, paused, stopping }
 /// фрагментов с фоновой проверкой целостности, операции с фрагментами для
 /// собеседников по Noise ([peers]) с приёмом TCP ([listener]), проброс
 /// порта на роутере ([portMapper]), приём UDP после сведения узлов
-/// ([udp], 3.7), регистрация у координатора, heartbeat
+/// ([udp], 3.7), приём через relay, когда узел недоступен извне ([relay],
+/// 3.8), регистрация у координатора, heartbeat
 /// и проверка достижимости ([reachability]), локальный API управления.
 ///
 /// Остановка ([stop], SIGINT, SIGTERM, метод `stop` локального API):
@@ -141,8 +143,8 @@ final class NodeDaemon {
 
   /// Операции с фрагментами для собеседников; `null` — у узла нет
   /// сертификата (рукопожатие без него невозможно). Соединения передаёт
-  /// транспорт ([PeerService.serve]): приём TCP ([listener]), позже UDP и
-  /// relay.
+  /// транспорт ([PeerService.serve]): приём TCP ([listener]), UDP ([udp])
+  /// и relay ([relay]).
   PeerService? get peers => _peers;
   PeerService? _peers;
 
@@ -158,6 +160,11 @@ final class NodeDaemon {
   /// `listen.udp: false`.
   UdpPeers? get udp => _udp;
   UdpPeers? _udp;
+
+  /// Приём через relay; `null` — нет [listener], координатора или
+  /// `listen.relay: off`.
+  RelayPeers? get relay => _relay;
+  RelayPeers? _relay;
 
   /// Доступность извне и адреса узла; `null` — нет [listener].
   Reachability? get reachability => _reachability;
@@ -282,6 +289,22 @@ final class NodeDaemon {
         trustedKeys: trustedKeys,
         commandChannel: config.commandChannel,
       )..start();
+      final peers = _peers;
+      final reachability = _reachability;
+      if (peers != null && config.relay != RelayMode.off) {
+        final link = _link!;
+        _relay = RelayPeers(
+          client: client,
+          nodeKey: identity.keys.sign,
+          serve: peers.serve,
+          wanted: () =>
+              link.registered &&
+              (config.relay == RelayMode.on ||
+                  (reachability != null &&
+                      reachability.checked &&
+                      reachability.endpoints.isEmpty)),
+        )..start();
+      }
     }
     checker.onDamaged = (_) {
       if (_link case final link?) unawaited(link.reportDamaged());
@@ -310,6 +333,7 @@ final class NodeDaemon {
         'fragments': storage.fragmentCount,
         'listen_port': ?_listener?.port,
         'udp_port': ?_udp?.port,
+        'relay': config.relay.name,
         'coordinator': config.coordinatorUrl != null,
       }),
     );
@@ -318,6 +342,7 @@ final class NodeDaemon {
   /// Запуск не удался после [_start]: освободить порт, проброс и связь
   /// с координатором; хранилище закрывает [start].
   Future<void> _abortStart() async {
+    await _relay?.stop();
     await _listener?.close();
     await _udp?.close();
     await _peers?.close();
@@ -350,6 +375,7 @@ final class NodeDaemon {
     if (!drained && !_force) {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
+    await _relay?.stop();
     await _listener?.close();
     await _udp?.close();
     await _peers?.close();
@@ -443,6 +469,7 @@ final class NodeDaemon {
     'connections': _peers?.connectionCount ?? 0,
     'listen': _listener?.toJson(),
     'udp': _udp?.toJson(),
+    'relay': _relay?.toJson(),
     'portMapping': _portMapper?.toJson(),
     'reachability': _reachability?.toJson(),
     'coordinator': _link?.toJson(),

@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:coordinator/src/auth/key_directory.dart';
 import 'package:coordinator/src/auth/request_verifier.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/migrations.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
-import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
@@ -35,13 +35,20 @@ final class CoordinatorServer {
 
   /// Открывает базу, проверяет версию схемы и начинает слушать порт.
   /// Схема должна быть актуальной (`coordinator migrate`), если не задан
-  /// [migrate].
+  /// [migrate]. Ключ пропусков relay читается из `relay.pass_key_file`.
   static Future<CoordinatorServer> start(
     CoordinatorConfig config, {
     required CryptoProvider crypto,
     CoordinatorService Function(Database db)? service,
     bool migrate = false,
   }) async {
+    final relayPassKey = switch (config.relay.passKeyFile) {
+      final path? when service == null => await Ed25519KeyFile.load(
+        path,
+        crypto,
+      ),
+      _ => null,
+    };
     final db = Database.open(config.database);
     final socket = config.signerSocket;
     final signer = socket == null ? null : SocketTicketSigner(socket);
@@ -65,10 +72,13 @@ final class CoordinatorServer {
             crypto: crypto,
             config: config,
             signer: signer,
+            relayPassKey: relayPassKey,
           );
       final verifier = RequestVerifier(
         crypto: crypto,
-        keys: PostgresKeyDirectory(db),
+        keys: RelayKeyDirectory(PostgresKeyDirectory(db), [
+          for (final r in config.relay.servers) r.publicKey,
+        ]),
       );
       final ipLimiter = RateLimiter(
         perSecond: limits.ipPerSecond,
@@ -138,6 +148,7 @@ final class CoordinatorServer {
           'schema': version,
           'signer': signer != null,
           'rendezvous': ?rendezvous?.ports,
+          'relays': config.relay.servers.length,
         }),
       );
       if (!config.placement.distinctSubnets) {

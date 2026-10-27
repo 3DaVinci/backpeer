@@ -452,6 +452,42 @@ final class CoordinatorClient {
     Ed25519KeyPair? key,
   }) => call('Rendezvous', request, pb.RendezvousResponse.fromBuffer, key: key);
 
+  /// Пропуск к relay (protocol.md, раздел 4.12): узлу — LISTEN к себе
+  /// ([key] — ключ узла, `node_id` — свой), инициатору — CONNECT к узлу.
+  /// [key] `null` — ключ устройства.
+  Future<pb.GetRelayPassResponse> getRelayPass(
+    pb.GetRelayPassRequest request, {
+    Ed25519KeyPair? key,
+  }) => call(
+    'GetRelayPass',
+    request,
+    pb.GetRelayPassResponse.fromBuffer,
+    key: key,
+  );
+
+  /// Отчёт relay о трафике; подписан ключом relay.
+  Future<pb.ReportRelayUsageResponse> reportRelayUsage(
+    pb.ReportRelayUsageRequest request, {
+    required Ed25519KeyPair relayKey,
+  }) => call(
+    'ReportRelayUsage',
+    request,
+    pb.ReportRelayUsageResponse.fromBuffer,
+    key: relayKey,
+  );
+
+  /// Отчёт о трафике фрагментов по способам подключения; [key] — ключ
+  /// узла, `null` — ключ устройства.
+  Future<pb.ReportTrafficResponse> reportTraffic(
+    pb.ReportTrafficRequest request, {
+    Ed25519KeyPair? key,
+  }) => call(
+    'ReportTraffic',
+    request,
+    pb.ReportTrafficResponse.fromBuffer,
+    key: key,
+  );
+
   Future<pb.ListRevocationsResponse> listRevocations(
     pb.ListRevocationsRequest request, {
     required Ed25519KeyPair nodeKey,

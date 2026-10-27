@@ -50,6 +50,9 @@ final class Reachability {
   /// Внешний адрес узла, каким его видит координатор.
   String? get observedAddress => _observed;
 
+  /// Проверка уже была (успешная).
+  bool get checked => _checkedAt != null;
+
   /// Хотя бы один порт отвечает извне.
   bool get reachable => _results.values.any(_ok);
 

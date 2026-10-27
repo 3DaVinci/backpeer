@@ -233,6 +233,48 @@ const List<Migration> schemaMigrations = [
     CREATE INDEX fragments_damaged ON fragments (damaged_at)
       WHERE damaged_at IS NOT NULL''',
   ]),
+  Migration(9, 'relay', [
+    // Relay узла за NAT (задача 3.8.2): какой назначен и до какого времени
+    // действует пропуск LISTEN. Клиент получает пропуск CONNECT к этому
+    // relay, пока срок не прошёл.
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN relay text,
+      ADD COLUMN relay_until timestamptz''',
+    // Трафик через relay по учётным записям за сутки UTC — по отчётам
+    // relay; ограничивает выдачу пропусков (relay.account_bytes_per_day).
+    '''
+    CREATE TABLE relay_usage (
+      account_id bytea NOT NULL REFERENCES accounts (account_id),
+      day date NOT NULL,
+      bytes bigint NOT NULL DEFAULT 0 CHECK (bytes >= 0),
+      sessions bigint NOT NULL DEFAULT 0 CHECK (sessions >= 0),
+      PRIMARY KEY (account_id, day)
+    )''',
+    // Отчёты relay (задача 3.8.3): узлы на связи, сеансы, трафик.
+    '''
+    CREATE TABLE relay_reports (
+      id bigserial PRIMARY KEY,
+      relay text NOT NULL,
+      at timestamptz NOT NULL DEFAULT now(),
+      listeners integer NOT NULL,
+      sessions integer NOT NULL,
+      sessions_opened bigint NOT NULL,
+      bytes bigint NOT NULL
+    )''',
+    'CREATE INDEX relay_reports_at ON relay_reports (at)',
+    // Трафик фрагментов по способам подключения за сутки UTC — по отчётам
+    // клиентов и узлов: доля relay (контрольная точка 3.10.4).
+    '''
+    CREATE TABLE traffic_daily (
+      account_id bytea NOT NULL REFERENCES accounts (account_id),
+      day date NOT NULL,
+      method smallint NOT NULL CHECK (method BETWEEN 1 AND 3),
+      bytes bigint NOT NULL DEFAULT 0 CHECK (bytes >= 0),
+      connections bigint NOT NULL DEFAULT 0 CHECK (connections >= 0),
+      PRIMARY KEY (account_id, day, method)
+    )''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

@@ -1,0 +1,16 @@
+# Пример настроек relay (docs/ops/relay.md).
+name: eu1
+# Открытый ключ пропусков координатора (relay.pass_key_file); в кавычках:
+# ключ из одних цифр YAML прочитал бы как число.
+pass_keys:
+  - "0000000000000000000000000000000000000000000000000000000000000000"
+key_file: /var/lib/fs-relay/relay.key
+listen:
+  port: 7350
+coordinator:
+  url: https://coordinator.example.org
+limits:
+  max_connections: 10000
+  idle_seconds: 600
+log:
+  level: info

@@ -1,7 +1,7 @@
 // API координатора. Транспорт — HTTPS, тело запроса и ответа — Protobuf
 // (docs/spec/protocol.md, раздел 4). Каждый RPC — POST /api/v1/<Метод>.
-// В этой версии описаны методы этапов 1–3; аудиты, ремонт и relay
-// зарезервированы и появятся в следующих версиях протокола.
+// В этой версии описаны методы этапов 1–3; аудиты и ремонт зарезервированы
+// и появятся в следующих версиях протокола.
 syntax = "proto3";
 
 package fs.v1;
@@ -347,3 +347,60 @@ message RendezvousReply {
   UdpBinding binding = 1;
   bool symmetric_nat = 2;
 }
+
+// --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------
+//
+// protocol.md, раздел 4.12. Relay — отдельный сервер; координатор выдаёт
+// пропуска к нему (RelayPass, relay.proto), ведёт объём трафика через relay
+// на учётную запись и собирает метрики: отчёты relay и отчёты клиентов о
+// трафике по способам подключения.
+
+// Пропуск к relay. Узел (ключ узла, node_id — свой) получает пропуск
+// LISTEN: держать управляющее соединение и принимать через relay.
+// Устройство или узел при ремонте (node_id — другой узел) — CONNECT к узлу.
+message GetRelayPassRequest {
+  bytes node_id = 1;
+}
+message GetRelayPassResponse {
+  string relay_endpoint = 1;         // "хост:порт" relay для TCP
+  Signed pass = 2;                   // RelayPass, контекст "relay-pass"
+}
+
+// Отчёт relay о трафике с прошлого отчёта. Подписан ключом relay.
+message ReportRelayUsageRequest {
+  string relay = 1;                  // имя relay
+  repeated RelayAccountUsage usage = 2;
+  uint32 listeners = 3;              // узлов с управляющим соединением сейчас
+  uint32 sessions = 4;               // сеансов ретрансляции сейчас
+  uint64 sessions_opened = 5;        // новых сеансов с прошлого отчёта
+  uint64 bytes = 6;                  // байт через relay с прошлого отчёта, в обе стороны
+}
+message RelayAccountUsage {
+  bytes account_id = 1;              // из пропуска CONNECT
+  uint64 bytes = 2;
+  uint32 sessions = 3;
+}
+message ReportRelayUsageResponse {
+  uint32 next_report_ms = 1;         // через сколько прислать следующий
+}
+
+// Способ, которым клиент или узел соединился с узлом.
+enum ConnectionMethod {
+  CONNECTION_METHOD_UNSPECIFIED = 0;
+  CONNECTION_METHOD_DIRECT = 1;      // прямой TCP
+  CONNECTION_METHOD_UDP = 2;         // поток поверх UDP после сведения
+  CONNECTION_METHOD_RELAY = 3;
+}
+
+// Отчёт клиента или узла о трафике фрагментов с прошлого отчёта: доля
+// relay в трафике сети (контрольная точка 3.10.4). Подписан ключом
+// устройства или узла.
+message ReportTrafficRequest {
+  repeated TrafficByMethod traffic = 1; // не больше одной записи на способ
+}
+message TrafficByMethod {
+  ConnectionMethod method = 1;
+  uint64 bytes = 2;                  // в обе стороны
+  uint32 connections = 3;            // новых соединений
+}
+message ReportTrafficResponse {}

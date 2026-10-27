@@ -73,5 +73,32 @@ class ReachabilityStatus extends $pb.ProtobufEnum {
   const ReachabilityStatus._(super.value, super.name);
 }
 
+/// Способ, которым клиент или узел соединился с узлом.
+class ConnectionMethod extends $pb.ProtobufEnum {
+  static const ConnectionMethod CONNECTION_METHOD_UNSPECIFIED =
+      ConnectionMethod._(
+          0, _omitEnumNames ? '' : 'CONNECTION_METHOD_UNSPECIFIED');
+  static const ConnectionMethod CONNECTION_METHOD_DIRECT =
+      ConnectionMethod._(1, _omitEnumNames ? '' : 'CONNECTION_METHOD_DIRECT');
+  static const ConnectionMethod CONNECTION_METHOD_UDP =
+      ConnectionMethod._(2, _omitEnumNames ? '' : 'CONNECTION_METHOD_UDP');
+  static const ConnectionMethod CONNECTION_METHOD_RELAY =
+      ConnectionMethod._(3, _omitEnumNames ? '' : 'CONNECTION_METHOD_RELAY');
+
+  static const $core.List<ConnectionMethod> values = <ConnectionMethod>[
+    CONNECTION_METHOD_UNSPECIFIED,
+    CONNECTION_METHOD_DIRECT,
+    CONNECTION_METHOD_UDP,
+    CONNECTION_METHOD_RELAY,
+  ];
+
+  static final $core.List<ConnectionMethod?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static ConnectionMethod? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const ConnectionMethod._(super.value, super.name);
+}
+
 const $core.bool _omitEnumNames =
     $core.bool.fromEnvironment('protobuf.omit_enum_names');

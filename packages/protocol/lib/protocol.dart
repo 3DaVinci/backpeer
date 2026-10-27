@@ -10,3 +10,4 @@ export 'src/generated/fs/v1/common.pb.dart';
 export 'src/generated/fs/v1/coordinator.pb.dart';
 export 'src/generated/fs/v1/manifest.pb.dart';
 export 'src/generated/fs/v1/peer.pb.dart';
+export 'src/generated/fs/v1/relay.pb.dart';

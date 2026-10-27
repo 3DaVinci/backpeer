@@ -3,7 +3,6 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:coordinator/src/auth/key_directory.dart';
-import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/rpc/call_context.dart';

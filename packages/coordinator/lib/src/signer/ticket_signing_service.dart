@@ -1,6 +1,5 @@
 import 'dart:typed_data';
 
-import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/signer/signer_wire.dart';
 import 'package:core/core.dart';

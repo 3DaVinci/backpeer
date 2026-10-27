@@ -2,7 +2,8 @@ import 'dart:collection';
 import 'dart:math' as math;
 
 /// Ограничение частоты «ведром токенов» по строковому ключу (IP-адрес или
-/// ключ подписи, protocol.md, раздел 4.5). Ведро вмещает [burst] запросов
+/// ключ подписи, protocol.md, раздел 4.5; соединения с relay — по IP,
+/// раздел 4.12). Ведро вмещает [burst] запросов
 /// и пополняется со скоростью [perSecond].
 final class RateLimiter {
   new({

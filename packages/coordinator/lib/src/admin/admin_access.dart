@@ -47,7 +47,8 @@ abstract final class AdminAccess {
                           capacity_bytes, used_bytes, assigned_bytes,
                           endpoints, versions, software, subnet,
                           last_heartbeat_at, availability, excluded_at,
-                          excluded_reason) ON nodes TO $role''',
+                          excluded_reason, relay, relay_until)
+              ON nodes TO $role''',
           'GRANT UPDATE (excluded_at, excluded_reason) ON nodes TO $role',
           '''
             GRANT SELECT (account_id, kind, object_id, size, sequence,
@@ -56,6 +57,8 @@ abstract final class AdminAccess {
           '''
             GRANT SELECT (account_id, segment_id, idx, node_id, stored)
               ON fragments TO $role''',
+          // Метрики relay и трафика (задача 3.8.3): объёмы без содержимого.
+          'GRANT SELECT ON relay_usage, relay_reports, traffic_daily TO $role',
           'GRANT SELECT, INSERT ON admin_audit TO $role',
           'GRANT USAGE ON SEQUENCE admin_audit_id_seq TO $role',
           // На случай прав, выданных вручную: журнал роль не меняет.

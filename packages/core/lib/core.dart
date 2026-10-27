@@ -12,8 +12,9 @@
 /// - `storage/` — хранилища фрагментов и объектов, локальный индекс;
 /// - `pipeline/` — конвейеры бэкапа и восстановления;
 /// - `net/` — канал Noise между клиентом и узлами, запросы с фрагментами
-///   по нему, предел скорости; `net/udp/` — сведение узлов и надёжный
-///   поток поверх UDP;
+///   по нему, предел скорости, учёт трафика по способам подключения;
+///   `net/udp/` — сведение узлов и надёжный поток поверх UDP;
+///   `net/relay/` — соединения через relay;
 /// - `password/` — оценка стойкости и требования к паролю.
 library;
 
@@ -55,7 +56,11 @@ export 'src/net/noise_probe.dart';
 export 'src/net/peer_client.dart';
 export 'src/net/peer_handshake.dart';
 export 'src/net/peer_identity.dart';
+export 'src/net/relay/relay_client.dart';
+export 'src/net/relay/relay_socket.dart';
+export 'src/net/relay/relay_wire.dart';
 export 'src/net/secure_channel.dart';
+export 'src/net/traffic_meter.dart';
 export 'src/net/udp/congestion.dart';
 export 'src/net/udp/datagram_transport.dart';
 export 'src/net/udp/rendezvous_server.dart';
@@ -84,6 +89,7 @@ export 'src/snapshot/walker.dart';
 export 'src/storage/device_key_store.dart';
 export 'src/storage/fragment_store.dart';
 export 'src/storage/index_recovery.dart';
+export 'src/storage/key_file.dart';
 export 'src/storage/local_folder_store.dart';
 export 'src/storage/local_index.dart';
 export 'src/storage/local_object_store.dart';
@@ -92,3 +98,4 @@ export 'src/storage/object_store.dart';
 export 'src/storage/placement.dart';
 export 'src/storage/private_file.dart';
 export 'src/util/bytes.dart';
+export 'src/util/rate_limiter.dart';

@@ -134,7 +134,27 @@ void main() {
   final samples = <String, (GeneratedMessage, Ed25519KeyPair?)>{};
 
   setUpAll(() async {
-    h = await DbHarness.create();
+    final crypto = await SodiumCryptoProvider.load();
+    Future<Ed25519KeyPair> key() =>
+        crypto.ed25519FromSeed(SecretBytes(crypto.randomBytes(32)));
+    final relayKey = await key();
+    h = await DbHarness.create(
+      config: CoordinatorConfig(
+        nodes: DbHarness.testConfig.nodes,
+        placement: DbHarness.testConfig.placement,
+        relay: RelayPolicy(
+          servers: [
+            RelayServerInfo(
+              name: 'r1',
+              endpoint: '203.0.113.30:7350',
+              publicKey: relayKey.publicKey,
+            ),
+          ],
+          passKeyFile: '-',
+        ),
+      ),
+      relayPassKey: await key(),
+    );
     final account = await h.newAccount();
     final device = await h.newKey();
     await h.register(account, device, login: 'alice', password: 'пароль');
@@ -271,6 +291,42 @@ void main() {
             endpoint: '203.0.113.20:40000',
             token: List.filled(20, 1),
           ),
+        ),
+        device,
+      ),
+      // Узел не на relay: NOT_FOUND после проверки полей.
+      'GetRelayPass': (pb.GetRelayPassRequest(nodeId: id(9)), device),
+      'ReportRelayUsage': (
+        pb.ReportRelayUsageRequest(
+          relay: 'r1',
+          usage: [
+            pb.RelayAccountUsage(
+              accountId: account.accountId,
+              bytes: Int64(1000),
+              sessions: 2,
+            ),
+          ],
+          listeners: 3,
+          sessions: 1,
+          sessionsOpened: Int64(2),
+          bytes: Int64(1000),
+        ),
+        relayKey,
+      ),
+      'ReportTraffic': (
+        pb.ReportTrafficRequest(
+          traffic: [
+            pb.TrafficByMethod(
+              method: pb.ConnectionMethod.CONNECTION_METHOD_RELAY,
+              bytes: Int64(1000),
+              connections: 1,
+            ),
+            pb.TrafficByMethod(
+              method: pb.ConnectionMethod.CONNECTION_METHOD_DIRECT,
+              bytes: Int64(5000),
+              connections: 2,
+            ),
+          ],
         ),
         device,
       ),

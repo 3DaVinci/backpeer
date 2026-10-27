@@ -4096,6 +4096,586 @@ class RendezvousReply extends $pb.GeneratedMessage {
   void clearSymmetricNat() => $_clearField(2);
 }
 
+/// Пропуск к relay. Узел (ключ узла, node_id — свой) получает пропуск
+/// LISTEN: держать управляющее соединение и принимать через relay.
+/// Устройство или узел при ремонте (node_id — другой узел) — CONNECT к узлу.
+class GetRelayPassRequest extends $pb.GeneratedMessage {
+  factory GetRelayPassRequest({
+    $core.List<$core.int>? nodeId,
+  }) {
+    final result = GetRelayPassRequest._();
+    if (nodeId != null) result.nodeId = nodeId;
+    return result;
+  }
+
+  GetRelayPassRequest._();
+
+  factory GetRelayPassRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRelayPassRequest()..mergeFromBuffer(data, registry);
+  factory GetRelayPassRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRelayPassRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetRelayPassRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetRelayPassRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'nodeId', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRelayPassRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRelayPassRequest copyWith(void Function(GetRelayPassRequest) updates) =>
+      super.copyWith((message) => updates(message as GetRelayPassRequest))
+          as GetRelayPassRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use GetRelayPassRequest() / GetRelayPassRequest.new instead')
+  static GetRelayPassRequest create() => GetRelayPassRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetRelayPassRequest._();
+  @$core.override
+  GetRelayPassRequest createEmptyInstance() => GetRelayPassRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetRelayPassRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetRelayPassRequest>(
+          GetRelayPassRequest.$_createMessage);
+  static GetRelayPassRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get nodeId => $_getN(0);
+  @$pb.TagNumber(1)
+  set nodeId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeId() => $_clearField(1);
+}
+
+class GetRelayPassResponse extends $pb.GeneratedMessage {
+  factory GetRelayPassResponse({
+    $core.String? relayEndpoint,
+    $0.Signed? pass,
+  }) {
+    final result = GetRelayPassResponse._();
+    if (relayEndpoint != null) result.relayEndpoint = relayEndpoint;
+    if (pass != null) result.pass = pass;
+    return result;
+  }
+
+  GetRelayPassResponse._();
+
+  factory GetRelayPassResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRelayPassResponse()..mergeFromBuffer(data, registry);
+  factory GetRelayPassResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetRelayPassResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetRelayPassResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetRelayPassResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'relayEndpoint')
+    ..aOM<$0.Signed>(2, _omitFieldNames ? '' : 'pass',
+        subBuilder: $0.Signed.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRelayPassResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetRelayPassResponse copyWith(void Function(GetRelayPassResponse) updates) =>
+      super.copyWith((message) => updates(message as GetRelayPassResponse))
+          as GetRelayPassResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetRelayPassResponse() / GetRelayPassResponse.new instead')
+  static GetRelayPassResponse create() => GetRelayPassResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetRelayPassResponse._();
+  @$core.override
+  GetRelayPassResponse createEmptyInstance() => GetRelayPassResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetRelayPassResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetRelayPassResponse>(
+          GetRelayPassResponse.$_createMessage);
+  static GetRelayPassResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get relayEndpoint => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set relayEndpoint($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRelayEndpoint() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRelayEndpoint() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $0.Signed get pass => $_getN(1);
+  @$pb.TagNumber(2)
+  set pass($0.Signed value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasPass() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearPass() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $0.Signed ensurePass() => $_ensure(1);
+}
+
+/// Отчёт relay о трафике с прошлого отчёта. Подписан ключом relay.
+class ReportRelayUsageRequest extends $pb.GeneratedMessage {
+  factory ReportRelayUsageRequest({
+    $core.String? relay,
+    $core.Iterable<RelayAccountUsage>? usage,
+    $core.int? listeners,
+    $core.int? sessions,
+    $fixnum.Int64? sessionsOpened,
+    $fixnum.Int64? bytes,
+  }) {
+    final result = ReportRelayUsageRequest._();
+    if (relay != null) result.relay = relay;
+    if (usage != null) result.usage.addAll(usage);
+    if (listeners != null) result.listeners = listeners;
+    if (sessions != null) result.sessions = sessions;
+    if (sessionsOpened != null) result.sessionsOpened = sessionsOpened;
+    if (bytes != null) result.bytes = bytes;
+    return result;
+  }
+
+  ReportRelayUsageRequest._();
+
+  factory ReportRelayUsageRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportRelayUsageRequest()..mergeFromBuffer(data, registry);
+  factory ReportRelayUsageRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportRelayUsageRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportRelayUsageRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReportRelayUsageRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'relay')
+    ..pPM<RelayAccountUsage>(2, _omitFieldNames ? '' : 'usage',
+        subBuilder: RelayAccountUsage.$_createMessage)
+    ..aI(3, _omitFieldNames ? '' : 'listeners', fieldType: $pb.PbFieldType.OU3)
+    ..aI(4, _omitFieldNames ? '' : 'sessions', fieldType: $pb.PbFieldType.OU3)
+    ..a<$fixnum.Int64>(
+        5, _omitFieldNames ? '' : 'sessionsOpened', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'bytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportRelayUsageRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportRelayUsageRequest copyWith(
+          void Function(ReportRelayUsageRequest) updates) =>
+      super.copyWith((message) => updates(message as ReportRelayUsageRequest))
+          as ReportRelayUsageRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportRelayUsageRequest() / ReportRelayUsageRequest.new instead')
+  static ReportRelayUsageRequest create() => ReportRelayUsageRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ReportRelayUsageRequest._();
+  @$core.override
+  ReportRelayUsageRequest createEmptyInstance() => ReportRelayUsageRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReportRelayUsageRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportRelayUsageRequest>(
+          ReportRelayUsageRequest.$_createMessage);
+  static ReportRelayUsageRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get relay => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set relay($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasRelay() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearRelay() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $pb.PbList<RelayAccountUsage> get usage => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $core.int get listeners => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set listeners($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasListeners() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearListeners() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get sessions => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set sessions($core.int value) => $_setUnsignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasSessions() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearSessions() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get sessionsOpened => $_getI64(4);
+  @$pb.TagNumber(5)
+  set sessionsOpened($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasSessionsOpened() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearSessionsOpened() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get bytes => $_getI64(5);
+  @$pb.TagNumber(6)
+  set bytes($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBytes() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBytes() => $_clearField(6);
+}
+
+class RelayAccountUsage extends $pb.GeneratedMessage {
+  factory RelayAccountUsage({
+    $core.List<$core.int>? accountId,
+    $fixnum.Int64? bytes,
+    $core.int? sessions,
+  }) {
+    final result = RelayAccountUsage._();
+    if (accountId != null) result.accountId = accountId;
+    if (bytes != null) result.bytes = bytes;
+    if (sessions != null) result.sessions = sessions;
+    return result;
+  }
+
+  RelayAccountUsage._();
+
+  factory RelayAccountUsage.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RelayAccountUsage()..mergeFromBuffer(data, registry);
+  factory RelayAccountUsage.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      RelayAccountUsage()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'RelayAccountUsage',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: RelayAccountUsage.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'accountId', $pb.PbFieldType.OY)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'bytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aI(3, _omitFieldNames ? '' : 'sessions', fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RelayAccountUsage clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  RelayAccountUsage copyWith(void Function(RelayAccountUsage) updates) =>
+      super.copyWith((message) => updates(message as RelayAccountUsage))
+          as RelayAccountUsage;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use RelayAccountUsage() / RelayAccountUsage.new instead')
+  static RelayAccountUsage create() => RelayAccountUsage._();
+  static $pb.GeneratedMessage $_createMessage() => RelayAccountUsage._();
+  @$core.override
+  RelayAccountUsage createEmptyInstance() => RelayAccountUsage._();
+  @$core.pragma('dart2js:noInline')
+  static RelayAccountUsage getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<RelayAccountUsage>(
+          RelayAccountUsage.$_createMessage);
+  static RelayAccountUsage? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get accountId => $_getN(0);
+  @$pb.TagNumber(1)
+  set accountId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAccountId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAccountId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get bytes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set bytes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBytes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBytes() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get sessions => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set sessions($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasSessions() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSessions() => $_clearField(3);
+}
+
+class ReportRelayUsageResponse extends $pb.GeneratedMessage {
+  factory ReportRelayUsageResponse({
+    $core.int? nextReportMs,
+  }) {
+    final result = ReportRelayUsageResponse._();
+    if (nextReportMs != null) result.nextReportMs = nextReportMs;
+    return result;
+  }
+
+  ReportRelayUsageResponse._();
+
+  factory ReportRelayUsageResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportRelayUsageResponse()..mergeFromBuffer(data, registry);
+  factory ReportRelayUsageResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportRelayUsageResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportRelayUsageResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReportRelayUsageResponse.$_createMessage)
+    ..aI(1, _omitFieldNames ? '' : 'nextReportMs',
+        fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportRelayUsageResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportRelayUsageResponse copyWith(
+          void Function(ReportRelayUsageResponse) updates) =>
+      super.copyWith((message) => updates(message as ReportRelayUsageResponse))
+          as ReportRelayUsageResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportRelayUsageResponse() / ReportRelayUsageResponse.new instead')
+  static ReportRelayUsageResponse create() => ReportRelayUsageResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ReportRelayUsageResponse._();
+  @$core.override
+  ReportRelayUsageResponse createEmptyInstance() =>
+      ReportRelayUsageResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReportRelayUsageResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportRelayUsageResponse>(
+          ReportRelayUsageResponse.$_createMessage);
+  static ReportRelayUsageResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.int get nextReportMs => $_getIZ(0);
+  @$pb.TagNumber(1)
+  set nextReportMs($core.int value) => $_setUnsignedInt32(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNextReportMs() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNextReportMs() => $_clearField(1);
+}
+
+/// Отчёт клиента или узла о трафике фрагментов с прошлого отчёта: доля
+/// relay в трафике сети (контрольная точка 3.10.4). Подписан ключом
+/// устройства или узла.
+class ReportTrafficRequest extends $pb.GeneratedMessage {
+  factory ReportTrafficRequest({
+    $core.Iterable<TrafficByMethod>? traffic,
+  }) {
+    final result = ReportTrafficRequest._();
+    if (traffic != null) result.traffic.addAll(traffic);
+    return result;
+  }
+
+  ReportTrafficRequest._();
+
+  factory ReportTrafficRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportTrafficRequest()..mergeFromBuffer(data, registry);
+  factory ReportTrafficRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportTrafficRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportTrafficRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReportTrafficRequest.$_createMessage)
+    ..pPM<TrafficByMethod>(1, _omitFieldNames ? '' : 'traffic',
+        subBuilder: TrafficByMethod.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportTrafficRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportTrafficRequest copyWith(void Function(ReportTrafficRequest) updates) =>
+      super.copyWith((message) => updates(message as ReportTrafficRequest))
+          as ReportTrafficRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportTrafficRequest() / ReportTrafficRequest.new instead')
+  static ReportTrafficRequest create() => ReportTrafficRequest._();
+  static $pb.GeneratedMessage $_createMessage() => ReportTrafficRequest._();
+  @$core.override
+  ReportTrafficRequest createEmptyInstance() => ReportTrafficRequest._();
+  @$core.pragma('dart2js:noInline')
+  static ReportTrafficRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportTrafficRequest>(
+          ReportTrafficRequest.$_createMessage);
+  static ReportTrafficRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $pb.PbList<TrafficByMethod> get traffic => $_getList(0);
+}
+
+class TrafficByMethod extends $pb.GeneratedMessage {
+  factory TrafficByMethod({
+    ConnectionMethod? method,
+    $fixnum.Int64? bytes,
+    $core.int? connections,
+  }) {
+    final result = TrafficByMethod._();
+    if (method != null) result.method = method;
+    if (bytes != null) result.bytes = bytes;
+    if (connections != null) result.connections = connections;
+    return result;
+  }
+
+  TrafficByMethod._();
+
+  factory TrafficByMethod.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TrafficByMethod()..mergeFromBuffer(data, registry);
+  factory TrafficByMethod.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      TrafficByMethod()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'TrafficByMethod',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: TrafficByMethod.$_createMessage)
+    ..aE<ConnectionMethod>(1, _omitFieldNames ? '' : 'method',
+        enumValues: ConnectionMethod.values)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'bytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aI(3, _omitFieldNames ? '' : 'connections',
+        fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrafficByMethod clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  TrafficByMethod copyWith(void Function(TrafficByMethod) updates) =>
+      super.copyWith((message) => updates(message as TrafficByMethod))
+          as TrafficByMethod;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use TrafficByMethod() / TrafficByMethod.new instead')
+  static TrafficByMethod create() => TrafficByMethod._();
+  static $pb.GeneratedMessage $_createMessage() => TrafficByMethod._();
+  @$core.override
+  TrafficByMethod createEmptyInstance() => TrafficByMethod._();
+  @$core.pragma('dart2js:noInline')
+  static TrafficByMethod getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<TrafficByMethod>(
+          TrafficByMethod.$_createMessage);
+  static TrafficByMethod? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  ConnectionMethod get method => $_getN(0);
+  @$pb.TagNumber(1)
+  set method(ConnectionMethod value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasMethod() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearMethod() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get bytes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set bytes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasBytes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearBytes() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get connections => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set connections($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasConnections() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearConnections() => $_clearField(3);
+}
+
+class ReportTrafficResponse extends $pb.GeneratedMessage {
+  factory ReportTrafficResponse() => ReportTrafficResponse._();
+
+  ReportTrafficResponse._();
+
+  factory ReportTrafficResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportTrafficResponse()..mergeFromBuffer(data, registry);
+  factory ReportTrafficResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      ReportTrafficResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'ReportTrafficResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: ReportTrafficResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportTrafficResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  ReportTrafficResponse copyWith(
+          void Function(ReportTrafficResponse) updates) =>
+      super.copyWith((message) => updates(message as ReportTrafficResponse))
+          as ReportTrafficResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use ReportTrafficResponse() / ReportTrafficResponse.new instead')
+  static ReportTrafficResponse create() => ReportTrafficResponse._();
+  static $pb.GeneratedMessage $_createMessage() => ReportTrafficResponse._();
+  @$core.override
+  ReportTrafficResponse createEmptyInstance() => ReportTrafficResponse._();
+  @$core.pragma('dart2js:noInline')
+  static ReportTrafficResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<ReportTrafficResponse>(
+          ReportTrafficResponse.$_createMessage);
+  static ReportTrafficResponse? _defaultInstance;
+}
+
 const $core.bool _omitFieldNames =
     $core.bool.fromEnvironment('protobuf.omit_field_names');
 const $core.bool _omitMessageNames =

@@ -23,6 +23,9 @@ enum AuthRequirement {
   /// Устройство или узел (`Rendezvous`: инициатор — клиент или узел при
   /// ремонте).
   deviceOrNode,
+
+  /// Relay из настроек (`ReportRelayUsage`).
+  relay,
 }
 
 /// Кто подписал запрос.
@@ -113,6 +116,7 @@ final class RequestVerifier {
       AuthRequirement.device => const {KeyKind.device},
       AuthRequirement.node => const {KeyKind.node},
       AuthRequirement.deviceOrNode => const {KeyKind.device, KeyKind.node},
+      AuthRequirement.relay => const {KeyKind.relay},
       AuthRequirement.none || AuthRequirement.registering => null,
     };
     if (expected == null) return;

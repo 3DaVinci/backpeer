@@ -19,6 +19,7 @@ const restrictedPackages = [
   'cli',
   'node',
   'coordinator',
+  'relay',
   'test_vectors',
 ];
 

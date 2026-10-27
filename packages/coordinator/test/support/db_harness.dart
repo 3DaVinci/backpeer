@@ -25,9 +25,11 @@ final class DbHarness {
 
   /// [withSigner] — талоны подписывает [InProcessTicketSigner] ключом
   /// [signerKey]; иначе подписанта нет.
+  /// [relayPassKey] — ключ пропусков relay; relay — из `config.relay`.
   static Future<DbHarness> create({
     CoordinatorConfig config = testConfig,
     bool withSigner = true,
+    Ed25519KeyPair? relayPassKey,
   }) async {
     final crypto = await SodiumCryptoProvider.load();
     final clock = FakeClock();
@@ -58,12 +60,15 @@ final class DbHarness {
           crypto: crypto,
           config: config,
           signer: signer,
+          relayPassKey: relayPassKey,
           clock: clock.call,
         ),
       ),
       verifier: RequestVerifier(
         crypto: crypto,
-        keys: PostgresKeyDirectory(db),
+        keys: RelayKeyDirectory(PostgresKeyDirectory(db), [
+          for (final r in config.relay.servers) r.publicKey,
+        ]),
         clock: clock.call,
       ),
       ipLimiter: RateLimiter(perSecond: 1000, burst: 1000, clock: clock.call),

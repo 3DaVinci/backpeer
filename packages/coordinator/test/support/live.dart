@@ -21,6 +21,9 @@ final class LiveCoordinator {
       loginPerMinute: 1000,
       loginBurst: 1000,
     ),
+    RelayPolicy relay = const RelayPolicy(),
+    Ed25519KeyPair? relayPassKey,
+    bool checkPrivateAddresses = true,
   }) async {
     final crypto = await SodiumCryptoProvider.load();
     final db = await TestDatabase.create();
@@ -30,7 +33,10 @@ final class LiveCoordinator {
       limits: limits,
       // Узлы тестов — на loopback: проверка достижимости с частных
       // адресов, как на стенде.
-      nodes: const NodePolicy(minCapacityBytes: 0, checkPrivateAddresses: true),
+      nodes: NodePolicy(
+        minCapacityBytes: 0,
+        checkPrivateAddresses: checkPrivateAddresses,
+      ),
       placement: const PlacementPolicy(
         probation: Duration.zero,
         distinctSubnets: false,
@@ -42,6 +48,7 @@ final class LiveCoordinator {
         host: '127.0.0.1',
         port: 0,
       ),
+      relay: relay,
     );
     final signerKey = await crypto.ed25519FromSeed(
       SecretBytes(Uint8List(32)..fillRange(0, 32, 0xC0)),
@@ -61,6 +68,7 @@ final class LiveCoordinator {
             limiter: RateLimiter(perSecond: 100000, burst: 100000),
           ),
         ),
+        relayPassKey: relayPassKey,
       ),
     );
     return LiveCoordinator._(crypto, db, server);

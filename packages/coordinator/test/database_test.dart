@@ -60,9 +60,12 @@ void main() {
         'node_uptime',
         'nodes',
         'objects',
+        'relay_reports',
+        'relay_usage',
         'schema_migrations',
         'segments',
         'server_secrets',
+        'traffic_daily',
       ]);
       // Повторный запуск ничего не меняет.
       expect(await migrator.migrate(), schemaMigrations.length);

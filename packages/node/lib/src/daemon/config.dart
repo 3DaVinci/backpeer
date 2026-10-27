@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:logging/logging.dart';
 import 'package:node/src/net/port_mapping/port_mapper.dart';
+import 'package:node/src/net/relay_peers.dart';
 import 'package:node/src/peers/speed_schedule.dart';
 import 'package:yaml/yaml.dart';
 
@@ -103,6 +104,7 @@ final class NodeConfig {
     this.listenPort = 7340,
     this.portMapping = PortMappingMode.auto,
     this.udp = true,
+    this.relay = RelayMode.auto,
     this.endpoints = const [],
     this.limits = const SpeedLimits(),
     this.schedule = const SpeedSchedule(),
@@ -172,6 +174,7 @@ final class NodeConfig {
     'listen.endpoints',
     'listen.port_mapping',
     'listen.udp',
+    'listen.relay',
     'limits.upload_bytes_per_second',
     'limits.download_bytes_per_second',
     'limits.schedule',
@@ -230,6 +233,10 @@ final class NodeConfig {
   /// (задача 3.7.2): сокет UDP на том же номере порта, что TCP, на всех
   /// адресах IPv4.
   final bool udp;
+
+  /// Принимать соединения через relay (задача 3.8.1): `auto` — когда у
+  /// узла нет адресов, `on` — всегда, `off` — никогда.
+  final RelayMode relay;
 
   /// Основные пределы скорости.
   final SpeedLimits limits;
@@ -315,6 +322,11 @@ final class _Reader {
           }) ??
           d.portMapping,
       udp: _bool('listen.udp') ?? d.udp,
+      relay:
+          _enum('listen.relay', {
+            for (final m in RelayMode.values) m.name: m,
+          }) ??
+          d.relay,
       limits: SpeedLimits(
         uploadBytesPerSecond:
             _int('limits.upload_bytes_per_second', 0, 1 << 40) ?? 0,

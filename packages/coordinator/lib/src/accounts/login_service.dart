@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:coordinator/src/accounts/certificates.dart';
 import 'package:coordinator/src/auth/replay_cache.dart';
 import 'package:coordinator/src/db/database.dart';
-import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';

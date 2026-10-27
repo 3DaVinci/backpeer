@@ -190,4 +190,24 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.RendezvousRequest.fromBuffer,
     handle: s.rendezvous,
   ),
+  RpcMethod<pb.GetRelayPassRequest, pb.GetRelayPassResponse>(
+    name: 'GetRelayPass',
+    auth: AuthRequirement.deviceOrNode,
+    parse: pb.GetRelayPassRequest.fromBuffer,
+    handle: s.getRelayPass,
+  ),
+  RpcMethod<pb.ReportRelayUsageRequest, pb.ReportRelayUsageResponse>(
+    name: 'ReportRelayUsage',
+    auth: AuthRequirement.relay,
+    parse: pb.ReportRelayUsageRequest.fromBuffer,
+    handle: s.reportRelayUsage,
+    // До 10 000 учётных записей в отчёте.
+    maxBodyBytes: 1 << 20,
+  ),
+  RpcMethod<pb.ReportTrafficRequest, pb.ReportTrafficResponse>(
+    name: 'ReportTraffic',
+    auth: AuthRequirement.deviceOrNode,
+    parse: pb.ReportTrafficRequest.fromBuffer,
+    handle: s.reportTraffic,
+  ),
 ];

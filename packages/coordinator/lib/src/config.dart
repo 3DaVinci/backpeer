@@ -4,6 +4,7 @@ import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
+import 'package:coordinator/src/relay/relay_policy.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
@@ -84,6 +85,7 @@ final class CoordinatorConfig {
     this.channels = const ChannelPolicy(),
     this.rendezvous = const RendezvousPolicy(),
     this.placement = const PlacementPolicy(),
+    this.relay = const RelayPolicy(),
     this.signerSocket,
     this.adminRole = 'fs_admin',
     this.logLevel = Level.INFO,
@@ -174,6 +176,13 @@ final class CoordinatorConfig {
     'placement.ticket_minutes',
     'placement.distinct_subnets',
     'placement.candidates_cache_ms',
+    'relay.servers',
+    'relay.pass_key_file',
+    'relay.pass_minutes',
+    'relay.pass_bytes',
+    'relay.account_bytes_per_day',
+    'relay.report_seconds',
+    'relay.per_minute',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -210,6 +219,9 @@ final class CoordinatorConfig {
   /// Размещение: порог доступности, испытательный срок, срок талонов.
   final PlacementPolicy placement;
 
+  /// Relay: серверы, ключ пропусков, пределы трафика.
+  final RelayPolicy relay;
+
   /// Unix-сокет подписанта талонов; без него методы размещения отвечают
   /// `UNAVAILABLE`.
   final String? signerSocket;
@@ -234,6 +246,7 @@ final class _Reader {
     const pp = PlacementPolicy();
     const cp = ChannelPolicy();
     const rp = RendezvousPolicy();
+    const relay = RelayPolicy();
     final cert = _string('tls.certificate');
     final key = _string('tls.private_key');
     if ((cert == null) != (key == null)) {
@@ -350,6 +363,26 @@ final class _Reader {
               pp.candidatesCache.inMilliseconds,
         ),
       ),
+      relay: RelayPolicy(
+        servers: _relays(),
+        passKeyFile: _string('relay.pass_key_file'),
+        passLifetime: Duration(
+          minutes:
+              _int('relay.pass_minutes', 5, 120) ??
+              relay.passLifetime.inMinutes,
+        ),
+        passBytes:
+            _int('relay.pass_bytes', 1 << 20, 1 << 50) ?? relay.passBytes,
+        accountBytesPerDay:
+            _int('relay.account_bytes_per_day', 0, 1 << 50) ??
+            relay.accountBytesPerDay,
+        reportInterval: Duration(
+          seconds:
+              _int('relay.report_seconds', 5, 3600) ??
+              relay.reportInterval.inSeconds,
+        ),
+        perMinute: _int('relay.per_minute', 1, 10000) ?? relay.perMinute,
+      ),
       signerSocket: _string('signer.socket'),
       adminRole: _role('admin.role') ?? d.adminRole,
       logLevel:
@@ -361,6 +394,32 @@ final class _Reader {
           }) ??
           d.logLevel,
     );
+  }
+
+  /// `relay.servers`: список YAML или строка через запятую (переменная
+  /// окружения), элемент — «имя хост:порт ключ».
+  List<RelayServerInfo> _relays() {
+    final v = _values['relay.servers'];
+    if (v == null) return const [];
+    final lines = v is YamlList
+        ? [for (final e in v) '$e']
+        : [
+            for (final part in '$v'.split(','))
+              if (part.trim().isNotEmpty) part,
+          ];
+    final out = <RelayServerInfo>[];
+    for (final line in lines) {
+      try {
+        out.add(RelayServerInfo.parse(line));
+      } on FormatException catch (e) {
+        throw ConfigException('relay.servers: ${e.message}');
+      }
+    }
+    final names = {for (final r in out) r.name};
+    if (names.length != out.length) {
+      throw const ConfigException('relay.servers: имена повторяются');
+    }
+    return out;
   }
 
   String? _role(String key) {

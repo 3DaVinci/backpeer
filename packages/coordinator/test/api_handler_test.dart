@@ -55,7 +55,7 @@ void main() {
     final names = coordinatorMethods(const UnimplementedCoordinatorService())
         .map((m) => m.name)
         .toList();
-    expect(fromProto, hasLength(22));
+    expect(fromProto, hasLength(25));
     expect(names, fromProto);
   });
 
@@ -69,6 +69,7 @@ void main() {
           AuthRequirement.account => KeyKind.account,
           AuthRequirement.device => KeyKind.device,
           AuthRequirement.node || AuthRequirement.deviceOrNode => KeyKind.node,
+          AuthRequirement.relay => KeyKind.relay,
           AuthRequirement.none || AuthRequirement.registering => null,
         };
         final key = method.auth == AuthRequirement.none

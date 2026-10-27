@@ -5,7 +5,6 @@ import 'dart:typed_data';
 
 import 'package:coordinator/src/auth/key_directory.dart';
 import 'package:coordinator/src/auth/request_verifier.dart';
-import 'package:coordinator/src/limits/rate_limiter.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';

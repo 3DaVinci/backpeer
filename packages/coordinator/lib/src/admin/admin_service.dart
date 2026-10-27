@@ -503,6 +503,106 @@ final class AdminService {
     };
   });
 
+  /// Метрики relay за последние [days] суток (задача 3.8.3): по каждому
+  /// relay — последний отчёт (узлы на связи, сеансы), сеансы и трафик за
+  /// период; узлы с действующим пропуском LISTEN; трафик фрагментов по
+  /// способам подключения по отчётам клиентов и узлов и доля relay в нём
+  /// (контрольная точка 3.10.4).
+  Future<Map<String, Object?>> relayStats({int days = 7}) => _db.run((s) async {
+    final now = _clock();
+    final since = now.subtract(Duration(days: days));
+    final u = now.toUtc();
+    final firstDay = DateTime.utc(u.year, u.month, u.day - days + 1);
+    final relays = await s.execute(
+      Sql.named('''
+            SELECT r.relay, max(r.at), sum(r.bytes)::int8,
+                   sum(r.sessions_opened)::int8,
+                   (array_agg(r.listeners ORDER BY r.at DESC))[1],
+                   (array_agg(r.sessions ORDER BY r.at DESC))[1]
+              FROM relay_reports r
+              WHERE r.at >= @t:timestamptz
+              GROUP BY r.relay ORDER BY r.relay'''),
+      parameters: {'t': since},
+    );
+    final assigned = await s.execute(
+      Sql.named('''
+            SELECT relay, count(*) FROM nodes
+              WHERE removed_at IS NULL AND relay_until > @t:timestamptz
+              GROUP BY relay'''),
+      parameters: {'t': now},
+    );
+    final nodesByRelay = {
+      for (final [relay as String, n as int] in assigned) relay: n,
+    };
+    final traffic = await s.execute(
+      Sql.named('''
+            SELECT method, sum(bytes)::int8, sum(connections)::int8,
+                   count(DISTINCT account_id)
+              FROM traffic_daily WHERE day >= @d:date
+              GROUP BY method ORDER BY method'''),
+      parameters: {'d': firstDay},
+    );
+    final byMethod = <String, Map<String, Object?>>{};
+    var total = 0;
+    var relayed = 0;
+    for (final [
+          method as int,
+          bytes as int,
+          connections as int,
+          accounts as int,
+        ]
+        in traffic) {
+      final name = switch (method) {
+        1 => 'direct',
+        2 => 'udp',
+        3 => 'relay',
+        _ => '$method',
+      };
+      byMethod[name] = {
+        'bytes': bytes,
+        'connections': connections,
+        'accounts': accounts,
+      };
+      total += bytes;
+      if (method == 3) relayed = bytes;
+    }
+    final [accountsUsingRelay as int] = (await s.execute(
+      Sql.named('''
+            SELECT count(DISTINCT account_id) FROM relay_usage
+              WHERE day >= @d:date'''),
+      parameters: {'d': firstDay},
+    )).single;
+    return {
+      'days': days,
+      'relays': [
+        for (final [
+              relay as String,
+              last as DateTime,
+              bytes as int,
+              opened as int,
+              listeners as int,
+              sessions as int,
+            ]
+            in relays)
+          {
+            'relay': relay,
+            'lastReportAt': _iso(last),
+            'listeners': listeners,
+            'sessions': sessions,
+            'sessionsOpened': opened,
+            'bytes': bytes,
+            'nodesAssigned': nodesByRelay[relay] ?? 0,
+          },
+      ],
+      'nodesOnRelay': nodesByRelay.values.fold<int>(0, (a, b) => a + b),
+      'accountsUsingRelay': accountsUsingRelay,
+      'traffic': byMethod,
+      'relayShare': total == 0
+          ? null
+          : double.parse((relayed / total).toStringAsFixed(4)),
+    };
+  });
+
   /// Последние записи журнала, новые сначала.
   Future<List<AuditRecord>> audit({int limit = 50}) async {
     final rows = await _db.run(

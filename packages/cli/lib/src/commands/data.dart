@@ -116,7 +116,7 @@ final class BackupCommand extends CliCommand {
     } finally {
       await encoder.close();
       await sigint.cancel();
-      session.close();
+      await session.close();
     }
   }
 }
@@ -179,9 +179,36 @@ final class SnapshotsCommand extends CliCommand {
       ctx.report.result({'snapshots': rows}, exitCode: code);
       return code;
     } finally {
-      session.close();
+      await session.close();
     }
   }
+}
+
+String _restoreLine(RestoreProgress p) {
+  final total = p.totalBytes;
+  final line = StringBuffer(
+    'файлов ${p.files}, ${formatSize(p.bytes)}'
+    '${total == null ? '' : ' из ${formatSize(total)}'}, '
+    '${formatSize(p.rate.round())}/с',
+  );
+  if (p.eta case final Duration eta) line.write(', осталось ${_duration(eta)}');
+  if (p.waitingFiles > 0) {
+    line.write(', ждут узлов: ${p.waitingFiles}');
+    if (p.nextRetry case final Duration next) {
+      line.write(', повтор через ${_duration(next)}');
+    }
+    if (p.waitLeft case final Duration left) {
+      line.write(', ждём ещё до ${_duration(left)}');
+    }
+  }
+  return line.toString();
+}
+
+String _duration(Duration d) {
+  if (d.isNegative) return '0 с';
+  if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes % 60} мин';
+  if (d.inMinutes > 0) return '${d.inMinutes} мин ${d.inSeconds % 60} с';
+  return '${d.inSeconds} с';
 }
 
 final class RestoreCommand extends CliCommand {
@@ -192,6 +219,13 @@ final class RestoreCommand extends CliCommand {
         'overwrite',
         help: 'Перезаписывать существующие файлы',
         negatable: false,
+      )
+      ..addOption(
+        'wait',
+        help:
+            'Сколько минут ждать узлы, если фрагментов сегмента пока не '
+            'хватает (0 — не ждать)',
+        defaultsTo: '0',
       );
   }
 
@@ -219,6 +253,10 @@ final class RestoreCommand extends CliCommand {
         index: session.index,
       );
       final id = await _resolve(catalog, rest.first);
+      final minutes = int.tryParse(argResults!.option('wait')!);
+      if (minutes == null || minutes < 0) {
+        throw UsageException('--wait: нужно число минут', usage);
+      }
       final result = await runRestore(
         crypto: crypto,
         keys: session.keys,
@@ -230,7 +268,24 @@ final class RestoreCommand extends CliCommand {
         target: Directory(argResults!.option('to')!),
         paths: rest.skip(1).toList(),
         overwrite: argResults!.flag('overwrite'),
+        // Повтор — LocateSegment на каждый отложенный сегмент и попытки
+        // подключиться к узлам: раз в 10 секунд не нагружает координатор.
+        wait: RestoreWait(
+          maxWait: Duration(minutes: minutes),
+          retryInterval: const Duration(seconds: 10),
+        ),
+        onProgress: (p) => ctx.report.progress({
+          'files': p.files,
+          'bytes': p.bytes,
+          'totalBytes': p.totalBytes,
+          'segmentsFetched': p.segmentsFetched,
+          'waitingFiles': p.waitingFiles,
+          'nextRetryMs': p.nextRetry?.inMilliseconds,
+          'etaMs': p.eta?.inMilliseconds,
+          'elapsedMs': p.elapsed.inMilliseconds,
+        }, _restoreLine(p)),
       );
+      ctx.console.progress('');
       ctx.report.info(
         'Восстановлено: файлов ${result.files} (${formatSize(result.bytes)}), '
         'каталогов ${result.directories}, ссылок ${result.symlinks}.',
@@ -264,7 +319,7 @@ final class RestoreCommand extends CliCommand {
       }, exitCode: code);
       return code;
     } finally {
-      session.close();
+      await session.close();
     }
   }
 }
@@ -339,7 +394,7 @@ final class VerifyCommand extends CliCommand {
       }, exitCode: code);
       return code;
     } finally {
-      session.close();
+      await session.close();
     }
   }
 }
@@ -376,7 +431,7 @@ final class ForgetCommand extends CliCommand {
         ..result({'snapshotId': bytesToHex(id)});
       return ExitCode.ok;
     } finally {
-      session.close();
+      await session.close();
     }
   }
 }
@@ -446,7 +501,7 @@ final class GcCommand extends CliCommand {
       }, exitCode: code);
       return code;
     } finally {
-      session.close();
+      await session.close();
     }
   }
 }

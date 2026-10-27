@@ -36,9 +36,9 @@ final class AppHome {
 
 /// Настройки (`config.json`). Без координатора хранители — папки-«узлы»,
 /// координатор — папка объектов. С координатором ([coordinator]) объекты и
-/// размещение — на нём, а фрагменты пишутся в папки-«узлы»,
-/// зарегистрированные на координаторе (`node stub`), пока нет сети
-/// (этап 3).
+/// размещение — на нём, а фрагменты идут на узлы по сети
+/// ([fragments] = `network`, задача 3.9) или пишутся в папки-«узлы»,
+/// зарегистрированные на координаторе (`node stub`, по умолчанию).
 final class AppConfig {
   new({
     required this.nodes,
@@ -51,6 +51,8 @@ final class AppConfig {
     this.coordinatorCa,
     this.login,
     this.keyCopy,
+    this.fragments = FragmentsMode.folders,
+    this.distinctSubnets = true,
   });
 
   /// Чтение с проверкой; ошибки — [ConfigException].
@@ -104,6 +106,10 @@ final class AppConfig {
       coordinatorCa: optional<String>('coordinatorCa'),
       login: optional<String>('login'),
       keyCopy: optional<bool>('keyCopy'),
+      fragments: FragmentsMode.parse(
+        optional<String>('fragments') ?? FragmentsMode.folders.name,
+      ),
+      distinctSubnets: optional<bool>('distinctSubnets') ?? true,
     )..check();
     return config;
   }
@@ -140,7 +146,18 @@ final class AppConfig {
   /// `null` — неизвестно (устройство восстановлено по фразе).
   bool? keyCopy;
 
+  /// Куда идут фрагменты при работе с координатором.
+  FragmentsMode fragments;
+
+  /// Проверять, что узлы сегмента в разных подсетях (protocol.md,
+  /// раздел 5); `false` — только для стенда, где все узлы в одной сети.
+  bool distinctSubnets;
+
   bool get usesCoordinator => coordinator != null;
+
+  /// Фрагменты по сети на настоящие узлы.
+  bool get usesNetwork =>
+      coordinator != null && fragments == FragmentsMode.network;
 
   /// Без координатора узлов должно хватать на n разных (placeFragments).
   void check() {
@@ -173,6 +190,8 @@ final class AppConfig {
     'coordinatorCa': ?coordinatorCa,
     'login': ?login,
     'keyCopy': ?keyCopy,
+    if (fragments != FragmentsMode.folders) 'fragments': fragments.name,
+    if (!distinctSubnets) 'distinctSubnets': false,
   };
 
   void save(AppHome home) {
@@ -193,4 +212,21 @@ final class AppConfig {
       throw ConfigException(key: key, reason: 'нужно 32 байта в hex');
     }
   }
+}
+
+/// Где хранятся фрагменты при работе с координатором.
+enum FragmentsMode {
+  /// Папки-«узлы», зарегистрированные на координаторе (`node stub`).
+  folders,
+
+  /// Узлы-хранители по сети: TCP, UDP после сведения, relay.
+  network;
+
+  static FragmentsMode parse(String value) => values.firstWhere(
+    (m) => m.name == value,
+    orElse: () => throw ConfigException(
+      key: 'fragments',
+      reason: 'нужно ${values.map((m) => m.name).join(' или ')}',
+    ),
+  );
 }

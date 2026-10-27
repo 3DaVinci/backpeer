@@ -6,6 +6,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cli/cli.dart';
+import 'package:cli/src/app_config.dart';
 import 'package:core/core.dart';
 import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
@@ -339,6 +340,41 @@ void main() {
       ExitCode.error,
       reason: 'меньше n',
     );
+  });
+
+  test('настройки: фрагменты по сети и проверка подсетей', () {
+    final base = {
+      'nodes': '/n',
+      'nodeCount': 0,
+      'objects': '/o',
+      'deviceId': '00' * 32,
+      'coordinator': 'https://coordinator.example',
+    };
+    final folders = AppConfig.parse(jsonEncode(base));
+    expect(folders.fragments, FragmentsMode.folders);
+    expect(folders.usesNetwork, isFalse);
+    expect(folders.distinctSubnets, isTrue);
+    expect(folders.toJson().containsKey('fragments'), isFalse);
+    final network = AppConfig.parse(
+      jsonEncode({...base, 'fragments': 'network', 'distinctSubnets': false}),
+    );
+    expect(network.usesNetwork, isTrue);
+    expect(network.distinctSubnets, isFalse);
+    expect(AppConfig.parse(jsonEncode(network.toJson())).usesNetwork, isTrue);
+    expect(
+      () => AppConfig.parse(jsonEncode({...base, 'fragments': 'carrier'})),
+      throwsA(isA<ConfigException>()),
+    );
+    // Без координатора сети нет: узлы и талоны выдаёт он.
+    final local = AppConfig.parse(
+      jsonEncode({
+        ...base,
+        'coordinator': null,
+        'nodeCount': 20,
+        'fragments': 'network',
+      }),
+    );
+    expect(local.usesNetwork, isFalse);
   });
 
   test('--version', () async {

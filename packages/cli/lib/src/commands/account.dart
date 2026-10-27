@@ -562,6 +562,13 @@ final class ShowPhraseCommand extends CliCommand {
   }
 }
 
+String _fragmentsLine(AppConfig config) {
+  if (!config.usesNetwork) return 'Узлы-заглушки: ${config.nodes}';
+  return config.distinctSubnets
+      ? 'Фрагменты: по сети'
+      : 'Фрагменты: по сети (подсети узлов не проверяются)';
+}
+
 final class ConfigCommand extends CliCommand {
   new(super.ctx) {
     argParser
@@ -573,6 +580,23 @@ final class ConfigCommand extends CliCommand {
         help: 'Новый адрес того же координатора (https://…)',
       )
       ..addOption('ca', help: 'Сертификат УЦ координатора в PEM')
+      ..addOption(
+        'fragments',
+        help: 'Куда идут фрагменты с координатором',
+        allowed: [for (final m in FragmentsMode.values) m.name],
+        allowedHelp: {
+          FragmentsMode.folders.name: 'папки-«узлы» (node stub)',
+          FragmentsMode.network.name:
+              'узлы-хранители по сети: TCP, UDP после сведения, relay',
+        },
+      )
+      ..addOption(
+        'subnet-check',
+        help:
+            'Проверять, что узлы сегмента в разных подсетях '
+            '(off — только для стенда)',
+        allowed: ['on', 'off'],
+      )
       ..addMultiOption(
         'exclude',
         help: 'Добавить правило исключения (.gitignore)',
@@ -623,6 +647,14 @@ final class ConfigCommand extends CliCommand {
       config.coordinatorCa = v.isEmpty ? null : v;
       changed = true;
     }
+    if (a.option('fragments') case final String v) {
+      config.fragments = FragmentsMode.parse(v);
+      changed = true;
+    }
+    if (a.option('subnet-check') case final String v) {
+      config.distinctSubnets = v == 'on';
+      changed = true;
+    }
     if (a.flag('clear-excludes')) {
       config.excludes = [];
       changed = true;
@@ -645,7 +677,7 @@ final class ConfigCommand extends CliCommand {
                     false => ', копии ключа нет',
                     null => '',
                   }}\n'
-                  'Узлы-заглушки: ${config.nodes}',
+                  '${_fragmentsLine(config)}',
       )
       ..info('Надёжность: ${config.durability}')
       ..info('Устройство: ${bytesToHex(config.deviceId).substring(0, 16)}…')

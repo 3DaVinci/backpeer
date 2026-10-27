@@ -58,12 +58,23 @@ void main() {
       CoordinatorException() => 'coordinator',
       PeerRejectedException() => 'peer',
       PeerRequestException() => 'peer-request',
+      PeerUnreachableException() => 'peer-unreachable',
       PreconditionException() => 'precondition',
       PlacementRejectedException() => 'placement',
     };
     expect(
       kind(const InsufficientShardsException(available: 3, required: 4)),
       'shards',
+    );
+    final unreachable = PeerUnreachableException(Uint8List(32), const [
+      (method: 'direct', endpoint: '192.0.2.1:7000', error: 'отказ'),
+      (method: 'relay', endpoint: null, error: 'NOT_FOUND'),
+    ]);
+    expect(kind(unreachable), 'peer-unreachable');
+    expect(
+      unreachable.message,
+      'узел 0000000000000000 недоступен '
+      '(direct 192.0.2.1:7000: отказ; relay: NOT_FOUND)',
     );
   });
 

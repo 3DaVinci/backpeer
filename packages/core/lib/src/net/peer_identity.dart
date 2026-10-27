@@ -81,6 +81,7 @@ final class PeerIdentity {
     required this.noiseKey,
     required this.version,
     required this.software,
+    this.certificate,
   });
 
   final pb.PeerRole role;
@@ -99,6 +100,10 @@ final class PeerIdentity {
   final int version;
 
   final String software;
+
+  /// Сертификат из `Hello`: по нему клиент проверяет владельца узла из
+  /// ответа координатора (protocol.md, раздел 5).
+  final pb.Signed? certificate;
 
   bool get isClient => role == pb.PeerRole.PEER_ROLE_CLIENT;
   bool get isNode => role == pb.PeerRole.PEER_ROLE_NODE;
@@ -167,6 +172,7 @@ abstract final class PeerVerifier {
       noiseKey: Uint8List.fromList(remoteStatic),
       version: version,
       software: hello.software,
+      certificate: hello.certificate,
     );
   }
 

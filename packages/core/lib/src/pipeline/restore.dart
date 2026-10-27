@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -39,6 +40,74 @@ final class RestoreResult {
   bool get isComplete => errors.isEmpty && skippedExisting.isEmpty;
 }
 
+/// Ожидание узлов при восстановлении (задача 3.9.3; durability.md,
+/// раздел 3): фрагменты сегмента, которых сейчас меньше k, появятся,
+/// когда узлы выйдут в сеть.
+final class RestoreWait {
+  const new({
+    this.maxWait = Duration.zero,
+    this.retryInterval = const Duration(seconds: 30),
+  });
+
+  /// Не ждать: недоступный сегмент — сразу ошибка файла.
+  static const none = RestoreWait();
+
+  /// Сколько ждать недостающие фрагменты после первого прохода.
+  final Duration maxWait;
+
+  /// Как часто повторять отложенные файлы.
+  final Duration retryInterval;
+
+  bool get enabled => maxWait > Duration.zero;
+}
+
+/// Прогресс восстановления.
+final class RestoreProgress {
+  const new({
+    required this.files,
+    required this.bytes,
+    required this.totalBytes,
+    required this.segmentsFetched,
+    required this.waitingFiles,
+    required this.nextRetry,
+    required this.waitLeft,
+    required this.elapsed,
+  });
+
+  final int files;
+
+  /// Байт файлов записано.
+  final int bytes;
+
+  /// Байт файлов в снимке; при восстановлении части путей — `null`.
+  final int? totalBytes;
+  final int segmentsFetched;
+
+  /// Файлов и каталогов, отложенных до появления узлов.
+  final int waitingFiles;
+
+  /// Через сколько повтор отложенных; `null` — сейчас не ждём.
+  final Duration? nextRetry;
+
+  /// Сколько ещё готовы ждать узлы; `null` — ожидание не началось.
+  final Duration? waitLeft;
+  final Duration elapsed;
+
+  /// Скорость записи, байт в секунду.
+  double get rate =>
+      elapsed.inMicroseconds == 0 ? 0 : bytes / elapsed.inMicroseconds * 1e6;
+
+  /// Оценка оставшегося времени по средней скорости; не из чего считать
+  /// или ждём узлы — `null`.
+  Duration? get eta {
+    final total = totalBytes;
+    if (total == null || rate <= 0 || nextRetry != null) return null;
+    final left = total - bytes;
+    if (left <= 0) return Duration.zero;
+    return Duration(microseconds: (left / rate * 1e6).round());
+  }
+}
+
 /// Восстановление снимка целиком или отдельных путей в [target]
 /// (задача 1.6.4). Корни снимка (исходные пути) раскладываются в [target]
 /// по полному пути: `/home/u/data` → `<target>/home/u/data`.
@@ -47,6 +116,14 @@ final class RestoreResult {
 /// весь снимок. Существующие файлы не перезаписываются без [overwrite].
 /// Ошибки отдельных файлов (например, недоступный сегмент) не прерывают
 /// восстановление и попадают в [RestoreResult.errors].
+///
+/// С [wait] файл или каталог, сегменту которого не хватает фрагментов,
+/// откладывается: восстанавливается всё, что можно, затем отложенные
+/// повторяются каждые `retryInterval`, пока не получатся или не выйдет
+/// `maxWait` (каждый повтор заново спрашивает `LocateSegment` — узлы и
+/// свежие талоны). Корневое дерево без всего остального не прочитать —
+/// его ждут сразу. Метаданные каталогов над отложенными ставятся заново
+/// после докачки. [onProgress] вызывается каждые [progressInterval].
 Future<RestoreResult> runRestore({
   required CryptoProvider crypto,
   required AccountKeys keys,
@@ -60,7 +137,11 @@ Future<RestoreResult> runRestore({
   bool overwrite = false,
   CancellationToken? cancel,
   FileSystemWriter? writer,
+  RestoreWait wait = RestoreWait.none,
+  void Function(RestoreProgress)? onProgress,
+  Duration progressInterval = const Duration(milliseconds: 250),
 }) async {
+  final watch = Stopwatch()..start();
   final catalog = SnapshotCatalog(
     crypto: crypto,
     manifestKey: keys.manifestKey,
@@ -82,9 +163,48 @@ Future<RestoreResult> runRestore({
     overwrite: overwrite,
     cancel: cancel ?? CancellationToken(),
     separator: Platform.isWindows ? 0x5C : 0x2F,
+    wait: wait,
   );
-  target.createSync(recursive: true);
-  final root = await restorer.tree(_ids(snapshot.rootTree));
+  final totalBytes = paths.isEmpty && snapshot.hasStats()
+      ? snapshot.stats.bytes.toInt()
+      : null;
+  void progress() => onProgress?.call(
+    RestoreProgress(
+      files: restorer.result.files,
+      bytes: restorer.result.bytes,
+      totalBytes: totalBytes,
+      segmentsFetched: restorer.reader.segmentsFetched,
+      waitingFiles: restorer.deferred.length,
+      nextRetry: restorer.nextRetry?.difference(DateTime.now()),
+      waitLeft: restorer.deadline?.difference(DateTime.now()),
+      elapsed: watch.elapsed,
+    ),
+  );
+  final timer = onProgress == null
+      ? null
+      : Timer.periodic(progressInterval, (_) => progress());
+  try {
+    target.createSync(recursive: true);
+    final root = await restorer.waitFor(
+      () => restorer.tree(_ids(snapshot.rootTree)),
+    );
+    await _restoreRoots(restorer, root, target);
+    await restorer.retryDeferred();
+    progress();
+  } finally {
+    timer?.cancel();
+  }
+  restorer.result
+    ..segmentsFetched = restorer.reader.segmentsFetched
+    ..ownersRestored = restorer.writer.canChangeOwner;
+  return restorer.result;
+}
+
+Future<void> _restoreRoots(
+  _Restorer restorer,
+  pb.Tree root,
+  Directory target,
+) async {
   for (final node in root.nodes) {
     final original = utf8.decode(node.name, allowMalformed: true);
     final logical = _normalize(original);
@@ -100,11 +220,19 @@ Future<RestoreResult> runRestore({
     Directory.fromRawPath(path).parent.createSync(recursive: true);
     await restorer.node(node, path, logical);
   }
-  restorer.result
-    ..segmentsFetched = restorer.reader.segmentsFetched
-    ..ownersRestored = restorer.writer.canChangeOwner;
-  return restorer.result;
 }
+
+/// Отложенный до появления узлов файл или каталог и каталоги над ним.
+typedef _Deferred = ({
+  pb.Node node,
+  Uint8List path,
+  String logical,
+  String show,
+  String error,
+  List<_Dir> parents,
+});
+
+typedef _Dir = ({pb.Node node, Uint8List path, String logical});
 
 final class _Restorer {
   new({
@@ -115,6 +243,7 @@ final class _Restorer {
     required this.overwrite,
     required this.cancel,
     required this.separator,
+    required this.wait,
   });
 
   final SegmentReader reader;
@@ -124,7 +253,103 @@ final class _Restorer {
   final bool overwrite;
   final CancellationToken cancel;
   final int separator;
+  final RestoreWait wait;
   final RestoreResult result = RestoreResult();
+
+  /// Отложенные до появления узлов.
+  List<_Deferred> deferred = [];
+
+  /// Каталоги, в которых сейчас идёт восстановление.
+  final List<_Dir> _dirs = [];
+
+  /// Каталоги над отложенными, по пути.
+  final Map<String, _Dir> _touched = {};
+
+  /// Когда кончится ожидание; `null` — ещё не ждём.
+  DateTime? deadline;
+
+  /// Когда следующий повтор; `null` — сейчас не ждём.
+  DateTime? nextRetry;
+
+  /// Сегменту не хватает фрагментов или координатор временно недоступен:
+  /// узлы могут выйти в сеть позже.
+  static bool _transient(CoreException e) => switch (e) {
+    InsufficientShardsException() => true,
+    CoordinatorException(:final code) =>
+      code == pb.ErrorCode.ERROR_CODE_UNAVAILABLE ||
+          code == pb.ErrorCode.ERROR_CODE_RATE_LIMITED,
+    _ => false,
+  };
+
+  DateTime _deadline() => deadline ??= DateTime.now().add(wait.maxWait);
+
+  /// Пауза до следующего повтора; ожидание вышло — `false`.
+  Future<bool> _pause() async {
+    final left = _deadline().difference(DateTime.now());
+    if (left <= Duration.zero) return false;
+    final pause = left < wait.retryInterval ? left : wait.retryInterval;
+    final until = nextRetry = DateTime.now().add(pause);
+    try {
+      while (DateTime.now().isBefore(until)) {
+        cancel.check();
+        final rest = until.difference(DateTime.now());
+        await Future<void>.delayed(
+          rest < const Duration(milliseconds: 200)
+              ? rest
+              : const Duration(milliseconds: 200),
+        );
+      }
+    } finally {
+      nextRetry = null;
+    }
+    cancel.check();
+    return true;
+  }
+
+  /// [read], повторяемое, пока сегментов не хватает и ожидание не вышло.
+  Future<T> waitFor<T>(Future<T> Function() read) async {
+    for (;;) {
+      try {
+        return await read();
+      } on CoreException catch (e) {
+        if (!wait.enabled || !_transient(e) || !await _pause()) rethrow;
+      }
+    }
+  }
+
+  /// Повторяет отложенные, пока они не получатся или не выйдет ожидание;
+  /// оставшиеся — ошибки. Затем заново ставит метаданные каталогов над
+  /// отложенными: запись в каталог меняет его mtime.
+  Future<void> retryDeferred() async {
+    while (deferred.isNotEmpty && await _pause()) {
+      final round = deferred;
+      deferred = [];
+      for (final d in round) {
+        _dirs
+          ..clear()
+          ..addAll(d.parents);
+        await node(d.node, d.path, d.logical);
+      }
+      _dirs.clear();
+    }
+    for (final d in deferred) {
+      result.errors.add((d.show, d.error));
+    }
+    deferred = [];
+    final order = _touched.values.toList()
+      ..sort((a, b) => b.path.length.compareTo(a.path.length));
+    for (final dir in order) {
+      if (!_whole(dir.logical)) continue;
+      try {
+        _metadata(dir.node, dir.path, isSymlink: false);
+      } on FileSystemException catch (e) {
+        result.errors.add((
+          utf8.decode(dir.path, allowMalformed: true),
+          e.osError?.message ?? e.message,
+        ));
+      }
+    }
+  }
 
   /// Узел входит в выбор сам или ведёт к выбранному (предок).
   bool wanted(String logical) =>
@@ -172,7 +397,21 @@ final class _Restorer {
     } on CancelledException {
       rethrow;
     } on CoreException catch (e) {
-      result.errors.add((show, e.message));
+      if (wait.enabled && _transient(e)) {
+        for (final d in _dirs) {
+          _touched[utf8.decode(d.path, allowMalformed: true)] = d;
+        }
+        deferred.add((
+          node: node,
+          path: path,
+          logical: logical,
+          show: show,
+          error: e.message,
+          parents: List.of(_dirs),
+        ));
+      } else {
+        result.errors.add((show, e.message));
+      }
     } on FileSystemException catch (e) {
       result.errors.add((show, e.osError?.message ?? e.message));
     }
@@ -181,15 +420,20 @@ final class _Restorer {
   Future<void> _directory(pb.Node node, Uint8List path, String logical) async {
     Directory.fromRawPath(path).createSync(recursive: true);
     final children = await tree(_ids(node.subtree));
-    for (final child in children.nodes) {
-      final name = utf8.decode(child.name, allowMalformed: true);
-      final childLogical = '$logical/$name';
-      if (!wanted(childLogical)) continue;
-      await this.node(
-        child,
-        join(path, Uint8List.fromList(child.name)),
-        childLogical,
-      );
+    _dirs.add((node: node, path: path, logical: logical));
+    try {
+      for (final child in children.nodes) {
+        final name = utf8.decode(child.name, allowMalformed: true);
+        final childLogical = '$logical/$name';
+        if (!wanted(childLogical)) continue;
+        await this.node(
+          child,
+          join(path, Uint8List.fromList(child.name)),
+          childLogical,
+        );
+      }
+    } finally {
+      _dirs.removeLast();
     }
     result.directories++;
     // Метаданные каталога — после содержимого: запись детей меняет mtime.

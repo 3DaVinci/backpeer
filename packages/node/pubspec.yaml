@@ -28,3 +28,5 @@ dev_dependencies:
   # Тесты операций с фрагментами через relay (задача 3.8.1).
   relay: any
   test: ^1.31.1
+  # Контракт FragmentStore из core/test для NetworkFragmentStore (3.9.2).
+  test_vectors: any

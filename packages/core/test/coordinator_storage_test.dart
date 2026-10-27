@@ -49,6 +49,14 @@ void main() {
         contains('203.0.113.0/24'),
       );
       expect(
+        PlacementCheck.problem([
+          node(1, 11, ['203.0.113.1:7000']),
+          node(2, 12, ['203.0.113.200:7001']),
+        ], subnets: false),
+        isNull,
+        reason: 'стенд: подсети не проверяются',
+      );
+      expect(
         PlacementCheck.problem([node(1, 11)], ownAccount: id(11)),
         isNotNull,
       );

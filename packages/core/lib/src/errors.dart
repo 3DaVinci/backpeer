@@ -287,6 +287,32 @@ final class PeerRequestException extends CoreException {
   String get message => 'собеседник: ${errorCodeName(code)}: $detail';
 }
 
+/// К узлу не удалось подключиться ни одним способом (стратегия
+/// подключения, задача 3.9.1).
+final class PeerUnreachableException extends CoreException {
+  const new(this.nodeId, this.attempts);
+
+  final Uint8List nodeId;
+
+  /// Неудачные попытки по порядку завершения: способ (`direct`, `udp`,
+  /// `relay`), адрес для прямого TCP и причина.
+  final List<({String method, String? endpoint, String error})> attempts;
+
+  @override
+  String get message {
+    final node = bytesToHex(nodeId).substring(0, 16);
+    if (attempts.isEmpty) return 'узел $node: нет способов подключения';
+    final tried = attempts
+        .map(
+          (a) =>
+              '${a.method}${a.endpoint == null ? '' : ' ${a.endpoint}'}: '
+              '${a.error}',
+        )
+        .join('; ');
+    return 'узел $node недоступен ($tried)';
+  }
+}
+
 /// Имя кода для журнала: `BAD_REQUEST`. Не зависит от того, сохранены ли
 /// в сборке имена значений enum Protobuf.
 String errorCodeName(pb.ErrorCode code) => switch (code) {

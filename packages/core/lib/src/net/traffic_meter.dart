@@ -22,10 +22,20 @@ final class TrafficMeter {
   final _totalBytes = <pb.ConnectionMethod, int>{};
 
   /// [connection] со счётчиком байт в обе стороны под способом [method].
-  ByteConnection wrap(ByteConnection connection, pb.ConnectionMethod method) {
-    _connections.update(method, (n) => n + 1, ifAbsent: () => 1);
+  /// [count] — учесть его и в числе соединений; стратегия подключения
+  /// учитывает только победившую попытку ([countConnection]).
+  ByteConnection wrap(
+    ByteConnection connection,
+    pb.ConnectionMethod method, {
+    bool count = true,
+  }) {
+    if (count) countConnection(method);
     return _MeteredConnection(connection, (n) => _count(method, n));
   }
+
+  /// Новое соединение способом [method].
+  void countConnection(pb.ConnectionMethod method) =>
+      _connections.update(method, (n) => n + 1, ifAbsent: () => 1);
 
   void _count(pb.ConnectionMethod method, int bytes) {
     _bytes.update(method, (n) => n + bytes, ifAbsent: () => bytes);

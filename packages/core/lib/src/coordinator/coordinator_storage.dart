@@ -7,6 +7,7 @@ import 'package:core/src/crypto/crypto_provider.dart';
 import 'package:core/src/errors.dart';
 import 'package:core/src/pipeline/garbage.dart';
 import 'package:core/src/storage/local_index.dart';
+import 'package:core/src/storage/network_fragment_store.dart';
 import 'package:core/src/storage/node_folders.dart';
 import 'package:core/src/storage/object_store.dart';
 import 'package:core/src/storage/placement.dart';
@@ -140,19 +141,26 @@ final class PlacedNode {
 /// без адреса (за NAT, через relay) по подсети не проверяются: клиент её
 /// не видит.
 abstract final class PlacementCheck {
-  /// Описание нарушения или `null`.
-  static String? problem(List<PlacedNode> nodes, {Uint8List? ownAccount}) {
+  /// Описание нарушения или `null`. [subnets] — проверять подсети
+  /// (выключается только на стенде, где все узлы в одной сети, как
+  /// `placement.distinct_subnets` координатора).
+  static String? problem(
+    List<PlacedNode> nodes, {
+    Uint8List? ownAccount,
+    bool subnets = true,
+  }) {
     final ids = <String>{};
     final owners = <String>{};
-    final subnets = <String>{};
+    final seen = <String>{};
     for (final node in nodes) {
       if (!ids.add(bytesToHex(node.nodeId))) return 'узел повторяется';
       if (ownAccount != null && constantTimeEquals(node.owner, ownAccount)) {
         return 'узел принадлежит владельцу сегмента';
       }
       if (!owners.add(bytesToHex(node.owner))) return 'владелец повторяется';
+      if (!subnets) continue;
       for (final subnet in {for (final e in node.endpoints) ?subnetOf(e)}) {
-        if (!subnets.add(subnet)) return 'подсеть $subnet повторяется';
+        if (!seen.add(subnet)) return 'подсеть $subnet повторяется';
       }
     }
     return null;
@@ -189,10 +197,14 @@ abstract final class PlacementCheck {
 /// `DeleteSegment` при сборке мусора.
 ///
 /// Владельцев узлов клиент узнаёт из сертификатов, которые узлы
-/// предъявляют в рукопожатии ([NodeDirectory]); узел, с которым
-/// рукопожатие не удалось, фрагмент не получает (он считается
-/// незагруженным). Размещение с нарушением отклоняется и запрашивается
-/// заново; повторное нарушение — [PlacementRejectedException].
+/// предъявляют в рукопожатии ([NodeDirectory]; со всеми n узлами
+/// параллельно); узел, с которым рукопожатие не удалось, фрагмент не
+/// получает (он считается незагруженным). Размещение с нарушением
+/// отклоняется и запрашивается заново; повторное нарушение —
+/// [PlacementRejectedException].
+///
+/// Адреса узлов и талоны PUT, GET и DELETE из ответов записываются в
+/// [tickets]: оттуда их берёт `NetworkFragmentStore` (задача 3.9.2).
 final class CoordinatorSegments
     implements SegmentPlacer, SegmentLocator, SegmentReleaser {
   new({
@@ -201,6 +213,8 @@ final class CoordinatorSegments
     required this.nodes,
     required this.accountId,
     this.fallbackReleaser,
+    this.tickets,
+    this.distinctSubnets = true,
   });
 
   final CoordinatorClient client;
@@ -213,6 +227,14 @@ final class CoordinatorSegments
   /// Освобождение сегмента, которого координатор уже не знает (повтор
   /// после обрыва): фрагменты ищутся по локальному индексу.
   final SegmentReleaser? fallbackReleaser;
+
+  /// Куда записывать адреса узлов и талоны; `null` — не нужны (папки-
+  /// «узлы» без сети).
+  final TicketBook? tickets;
+
+  /// Проверять подсети узлов ([PlacementCheck.problem]); `false` — стенд
+  /// с узлами в одной сети.
+  final bool distinctSubnets;
 
   /// Сколько раз размещение отклонялось — для журнала и тестов.
   int rejectedPlacements = 0;
@@ -251,23 +273,44 @@ final class CoordinatorSegments
         'узлов ${placements.length}, нужно $n',
       );
     }
-    final targets = List<FragmentTarget?>.filled(n, null);
-    final placed = <PlacedNode>[];
     for (var i = 0; i < n; i++) {
       final p = placements[i];
       if (p.index != i || p.node.nodeId.length != CryptoProvider.keyLength) {
         return (const <FragmentTarget?>[], 'неверная запись размещения $i');
       }
-      final nodeId = Uint8List.fromList(p.node.nodeId);
-      final name = nodes.nameOf(nodeId);
-      final owner = await _owner(name, nodeId);
+    }
+    tickets?.addPlacements(placements);
+    final owners = await Future.wait([
+      for (final p in placements)
+        _owner(
+          nodes.nameOf(Uint8List.fromList(p.node.nodeId)),
+          Uint8List.fromList(p.node.nodeId),
+        ),
+    ]);
+    final targets = List<FragmentTarget?>.filled(n, null);
+    final placed = <PlacedNode>[];
+    for (var i = 0; i < n; i++) {
+      final p = placements[i];
+      final owner = owners[i];
       if (owner == null) continue;
+      final nodeId = Uint8List.fromList(p.node.nodeId);
       placed.add(
         PlacedNode(nodeId: nodeId, owner: owner, endpoints: p.node.endpoints),
       );
-      targets[i] = FragmentTarget(index: i, node: name, ticket: p.ticket);
+      targets[i] = FragmentTarget(
+        index: i,
+        node: nodes.nameOf(nodeId),
+        ticket: p.ticket,
+      );
     }
-    return (targets, PlacementCheck.problem(placed, ownAccount: accountId));
+    return (
+      targets,
+      PlacementCheck.problem(
+        placed,
+        ownAccount: accountId,
+        subnets: distinctSubnets,
+      ),
+    );
   }
 
   /// Владелец узла по сертификату из рукопожатия; узел недоступен или
@@ -304,6 +347,7 @@ final class CoordinatorSegments
       if (e.code == _notFound) return const {};
       rethrow;
     }
+    tickets?.addPlacements(response.placements);
     return {
       for (final p in response.placements)
         if (p.node.nodeId.length == CryptoProvider.keyLength)
@@ -323,6 +367,7 @@ final class CoordinatorSegments
       if (e.code != _notFound || fallback == null) rethrow;
       return await fallback.release(segment);
     }
+    tickets?.addPlacements(response.placements);
     final ids = {for (final f in segment.fragmentIds.indexed) f.$1: f.$2};
     return [
       for (final p in response.placements)

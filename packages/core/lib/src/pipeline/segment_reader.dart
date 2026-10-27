@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:core/src/chunking/chunk_id.dart';
@@ -36,9 +37,18 @@ final class FragmentProblem {
 /// Чтение сегментов с узлов (data-format.md, раздел 5, «Восстановление
 /// сегмента»): любые k фрагментов, каждый проверяется по `fragment_id` из
 /// индекса; сегмент расшифровывается, разбирается, каждый чанк сверяется
-/// со своим `chunk_id`. Последние [cacheSize] сегментов кешируются. Узлы
-/// фрагментов, которых не знает локальный индекс, спрашиваются у
-/// [locator] (`LocateSegment`), а без него ищутся на всех узлах.
+/// со своим `chunk_id`. Последние [cacheSize] сегментов кешируются.
+///
+/// С [locator] перед чтением сегмента спрашивается `LocateSegment`: он
+/// даёт талоны GET и текущие узлы фрагментов (после ремонта они могут
+/// отличаться от записанных в индексе). Без него узлы — из индекса, а
+/// неизвестные ищутся на всех узлах.
+///
+/// **Запас на медленные** (задача 3.9.3): сначала запрашиваются k
+/// фрагментов параллельно, неудачный заменяется следующим. Когда половина
+/// из k пришла, а запрос идёт дольше [hedgeFactor] медианы пришедших,
+/// параллельно запрашивается ещё один фрагмент — не больше [spare] сверх
+/// k. Сегмент собирается из первых k проверенных.
 final class SegmentReader {
   new({
     required this.crypto,
@@ -47,6 +57,9 @@ final class SegmentReader {
     required this.store,
     this.locator,
     this.cacheSize = 2,
+    this.spare = 2,
+    this.hedgeFactor = 2,
+    this.hedgeMinimum = const Duration(milliseconds: 500),
   }) : _hasher = ChunkIdHasher(crypto, keys.chunkIdKey);
 
   final CryptoProvider crypto;
@@ -55,6 +68,15 @@ final class SegmentReader {
   final FragmentStore store;
   final SegmentLocator? locator;
   final int cacheSize;
+
+  /// Сколько фрагментов сверх k можно запросить у медленных узлов.
+  final int spare;
+
+  /// Медленный запрос — дольше медианы пришедших во столько раз.
+  final double hedgeFactor;
+
+  /// И не короче этого: на быстрой сети разброс мал.
+  final Duration hedgeMinimum;
   final ChunkIdHasher _hasher;
 
   final Map<String, Map<ChunkId, Uint8List>> _cache = {};
@@ -133,17 +155,7 @@ final class SegmentReader {
     }
     await resolveNodes(segmentId);
     final candidates = index.fragments(segmentId);
-    final valid = <Fragment>[];
-    var next = 0;
-    while (valid.length < entry.k && next < candidates.length) {
-      final wave = candidates.sublist(
-        next,
-        (next + entry.k - valid.length).clamp(0, candidates.length),
-      );
-      next += wave.length;
-      final results = await Future.wait(wave.map((f) => fetch(segmentId, f)));
-      valid.addAll(results.whereType<Fragment>());
-    }
+    final valid = await _gather(segmentId, candidates, entry.k);
     if (valid.length < entry.k) {
       throw InsufficientShardsException(
         available: valid.length,
@@ -160,25 +172,93 @@ final class SegmentReader {
     );
   }
 
-  /// Записывает в локальный индекс узлы фрагментов сегмента, которых он
-  /// не знает, по ответу [locator]; без него или если все узлы известны —
-  /// ничего не делает.
+  /// Записывает в локальный индекс узлы фрагментов сегмента по ответу
+  /// [locator]; без него ничего не делает. Фрагменты, которых нет в
+  /// ответе, остаются на прежних узлах.
   Future<void> resolveNodes(Uint8List segmentId) async {
     final locator = this.locator;
     if (locator == null) return;
-    final unknown = [
-      for (final f in index.fragments(segmentId))
-        if (f.node == null) f.number,
-    ];
-    if (unknown.isEmpty) return;
     final nodes = await locator.locate(segmentId);
+    if (nodes.isEmpty) return;
     index.transaction(() {
-      for (final number in unknown) {
-        if (nodes[number] case final String node) {
-          index.setFragmentNode(segmentId, number, node);
+      for (final f in index.fragments(segmentId)) {
+        if (nodes[f.number] case final String node when node != f.node) {
+          index.setFragmentNode(segmentId, f.number, node);
         }
       }
     });
+  }
+
+  /// Первые [k] проверенных фрагментов из [candidates]: k запросов
+  /// параллельно, замена неудачных, запас на медленные (см. класс).
+  Future<List<Fragment>> _gather(
+    Uint8List segmentId,
+    List<FragmentEntry> candidates,
+    int k,
+  ) async {
+    final valid = <Fragment>[];
+    final took = <Duration>[];
+    final running = <Stopwatch>{};
+    final done = Completer<void>();
+    var next = 0;
+    var extra = 0;
+    Timer? hedge;
+
+    void finish() {
+      hedge?.cancel();
+      if (!done.isCompleted) done.complete();
+    }
+
+    late void Function() fill;
+    void start() {
+      final f = candidates[next++];
+      final watch = Stopwatch()..start();
+      running.add(watch);
+      unawaited(
+        fetch(segmentId, f).then((fragment) {
+          running.remove(watch);
+          if (done.isCompleted) return;
+          if (fragment != null) {
+            valid.add(fragment);
+            took.add(watch.elapsed);
+          }
+          fill();
+        }),
+      );
+    }
+
+    fill = () {
+      if (valid.length >= k) return finish();
+      while (running.length < k - valid.length + extra &&
+          next < candidates.length) {
+        start();
+      }
+      if (running.isEmpty) finish();
+    };
+
+    void check() {
+      if (extra >= spare ||
+          next >= candidates.length ||
+          took.length * 2 < k ||
+          running.isEmpty) {
+        return;
+      }
+      final sorted = [...took]..sort();
+      final median = sorted[sorted.length ~/ 2];
+      var limit = median * hedgeFactor;
+      if (limit < hedgeMinimum) limit = hedgeMinimum;
+      if (running.any((w) => w.elapsed > limit)) {
+        extra++;
+        start();
+      }
+    }
+
+    fill();
+    if (!done.isCompleted && spare > 0) {
+      hedge = Timer.periodic(const Duration(milliseconds: 100), (_) => check());
+    }
+    await done.future;
+    return valid.sublist(0, valid.length < k ? valid.length : k);
   }
 
   /// Один фрагмент с проверкой; ошибка — `null` и запись в [problems].

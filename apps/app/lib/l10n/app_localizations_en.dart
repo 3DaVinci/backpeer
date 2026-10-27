@@ -762,4 +762,347 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorExists => 'This device already has an account';
+
+  @override
+  String get agentStatusWaitingForPower => 'Waiting for AC power';
+
+  @override
+  String get healthTitle => 'Data health';
+
+  @override
+  String get healthOk => 'All good';
+
+  @override
+  String get healthOkHint =>
+      'The backup is fresh and the check found no problems.';
+
+  @override
+  String get healthRepairing => 'Repairing';
+
+  @override
+  String get healthRepairingHint =>
+      'Some keepers left; the network is rebuilding fragments. Your data is intact.';
+
+  @override
+  String get healthAttention => 'Needs attention';
+
+  @override
+  String get healthUnknown => 'No backup yet';
+
+  @override
+  String get healthUnknownHint =>
+      'Choose folders under Backup — the first backup will start by itself.';
+
+  @override
+  String get healthReasonBackupFailed => 'The last backup failed';
+
+  @override
+  String get healthReasonBackupStale =>
+      'No backup for a long time: the computer was off or backups are failing';
+
+  @override
+  String get healthReasonRollbackWarning =>
+      'The server did not show all snapshots — the list may have been tampered with';
+
+  @override
+  String get healthReasonUnrecoverable => 'Some data cannot be restored';
+
+  @override
+  String get healthReasonAtRisk => 'Some data has almost no redundancy left';
+
+  @override
+  String get healthReasonFragmentsMissing =>
+      'Some fragments are unavailable; there is enough redundancy';
+
+  @override
+  String get healthReasonVerifyFailed => 'The check failed';
+
+  @override
+  String get healthReasonNeverVerified => 'The backup has not been checked yet';
+
+  @override
+  String get lastVerify => 'Last check';
+
+  @override
+  String get verifyNow => 'Check now';
+
+  @override
+  String progressOf(String done, String total) {
+    return '$done of $total';
+  }
+
+  @override
+  String progressSpeed(String size) {
+    return '$size/s';
+  }
+
+  @override
+  String progressEta(String time) {
+    return 'about $time left';
+  }
+
+  @override
+  String durationMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes',
+      one: '$count minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String durationHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours',
+      one: '$count hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lessThanMinute => 'a minute';
+
+  @override
+  String get resumedNote => 'Continuing an interrupted backup';
+
+  @override
+  String get estimating => 'Estimating size…';
+
+  @override
+  String get currentBackup => 'Current backup';
+
+  @override
+  String get addFolder => 'Add folder';
+
+  @override
+  String get removeFolder => 'Remove from backup';
+
+  @override
+  String get folderPickerFailed => 'Could not open the folder picker';
+
+  @override
+  String get excludes => 'Exclusions';
+
+  @override
+  String get presetTemporary => 'Temporary files';
+
+  @override
+  String get presetCaches => 'Application caches';
+
+  @override
+  String get presetTrash => 'Trash';
+
+  @override
+  String get presetDevelopment => 'Dependencies and build output';
+
+  @override
+  String get customRules => 'Custom rules';
+
+  @override
+  String get addRule => 'Add rule';
+
+  @override
+  String get ruleHint => 'For example: *.iso or Videos/';
+
+  @override
+  String get removeRule => 'Remove rule';
+
+  @override
+  String get estimate => 'Estimate size';
+
+  @override
+  String get estimateHint => 'See how big the backup will be before it runs.';
+
+  @override
+  String estimateResult(String files, String size) {
+    return '$files, $size';
+  }
+
+  @override
+  String estimateExcluded(int count) {
+    return 'Excluded by rules: $count';
+  }
+
+  @override
+  String estimateSkipped(int count) {
+    return 'No access or special files: $count';
+  }
+
+  @override
+  String get estimateTruncated =>
+      'There are too many files — only part was counted.';
+
+  @override
+  String get estimateNetwork =>
+      'It takes more space in the network — with redundancy for reliability; identical data is stored once.';
+
+  @override
+  String get frequency => 'How often';
+
+  @override
+  String get frequencyHourly => 'every hour';
+
+  @override
+  String get frequencyDaily => 'once a day';
+
+  @override
+  String get frequencyWeekly => 'once a week';
+
+  @override
+  String get onlyHours => 'Only during set hours';
+
+  @override
+  String get hoursFrom => 'From';
+
+  @override
+  String get hoursTo => 'To';
+
+  @override
+  String hourValue(int hour) {
+    return '$hour:00';
+  }
+
+  @override
+  String get onlyOnAc => 'Only on AC power';
+
+  @override
+  String get onlyOnAcHint =>
+      'On battery, scheduled backups wait, and a running one stops and continues on AC power.';
+
+  @override
+  String get verifySchedule => 'Backup check';
+
+  @override
+  String get scheduleNote =>
+      'Scheduled backups are run by the background agent — you can close this window.';
+
+  @override
+  String get retention => 'Snapshot retention';
+
+  @override
+  String get keepAll => 'Keep all snapshots';
+
+  @override
+  String get keepLast => 'Latest';
+
+  @override
+  String get keepHourly => 'Hourly';
+
+  @override
+  String get keepDaily => 'Daily';
+
+  @override
+  String get keepWeekly => 'Weekly';
+
+  @override
+  String get keepMonthly => 'Monthly';
+
+  @override
+  String get retentionHint =>
+      'The newest snapshot of each hour, day, week and month is kept. The agent removes the rest after a backup and frees the space. Other computers\' snapshots are not touched.';
+
+  @override
+  String get retentionInvalid => 'A whole number from 0; at least 1 latest';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get saved => 'Saved';
+
+  @override
+  String get history => 'History';
+
+  @override
+  String get noHistory => 'No jobs yet';
+
+  @override
+  String get triggerSchedule => 'scheduled';
+
+  @override
+  String get triggerManual => 'manual';
+
+  @override
+  String get triggerResume => 'continued';
+
+  @override
+  String get historyContinues => 'will continue where it stopped';
+
+  @override
+  String get reasonPaused => 'paused';
+
+  @override
+  String get reasonOnBattery => 'switched to battery';
+
+  @override
+  String newData(String size) {
+    return '$size of new data';
+  }
+
+  @override
+  String skippedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files skipped',
+      one: '$count file skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get details => 'Details';
+
+  @override
+  String get skippedTitle => 'Skipped files';
+
+  @override
+  String get skippedExplain =>
+      'These files are not in the snapshot. Usually they cannot be read or changed while being read — the next backup will try again.';
+
+  @override
+  String get skipReasonError => 'no access or read error';
+
+  @override
+  String get skipReasonSpecial =>
+      'special file (socket, device) — these are not backed up';
+
+  @override
+  String retentionResult(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count old snapshots removed',
+      one: '$count old snapshot removed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String freed(String size) {
+    return '$size freed';
+  }
+
+  @override
+  String verifyResult(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count segments checked',
+      one: '$count segment checked',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String errorText(String message) {
+    return 'Error: $message';
+  }
+
+  @override
+  String get snapshotsOnRestore => 'The list of snapshots is under Restore.';
 }

@@ -1375,6 +1375,546 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'На этом устройстве уже есть учётная запись'**
   String get errorExists;
+
+  /// No description provided for @agentStatusWaitingForPower.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ждёт питания от сети'**
+  String get agentStatusWaitingForPower;
+
+  /// No description provided for @healthTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здоровье данных'**
+  String get healthTitle;
+
+  /// No description provided for @healthOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Всё в порядке'**
+  String get healthOk;
+
+  /// No description provided for @healthOkHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкап свежий, проверка не нашла проблем.'**
+  String get healthOkHint;
+
+  /// No description provided for @healthRepairing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ремонтируется'**
+  String get healthRepairing;
+
+  /// No description provided for @healthRepairingHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Часть хранителей ушла, сеть восстанавливает фрагменты. Данные целы.'**
+  String get healthRepairingHint;
+
+  /// No description provided for @healthAttention.
+  ///
+  /// In ru, this message translates to:
+  /// **'Требует внимания'**
+  String get healthAttention;
+
+  /// No description provided for @healthUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкапа ещё не было'**
+  String get healthUnknown;
+
+  /// No description provided for @healthUnknownHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите папки в разделе «Бэкап» — первый бэкап начнётся сам.'**
+  String get healthUnknownHint;
+
+  /// No description provided for @healthReasonBackupFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последний бэкап не удался'**
+  String get healthReasonBackupFailed;
+
+  /// No description provided for @healthReasonBackupStale.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкап давно не делался: компьютер был выключен или бэкап не проходит'**
+  String get healthReasonBackupStale;
+
+  /// No description provided for @healthReasonRollbackWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер показал не все снимки — список мог быть подменён'**
+  String get healthReasonRollbackWarning;
+
+  /// No description provided for @healthReasonUnrecoverable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Часть данных нельзя восстановить'**
+  String get healthReasonUnrecoverable;
+
+  /// No description provided for @healthReasonAtRisk.
+  ///
+  /// In ru, this message translates to:
+  /// **'У части данных почти не осталось запаса'**
+  String get healthReasonAtRisk;
+
+  /// No description provided for @healthReasonFragmentsMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Часть фрагментов недоступна, запас есть'**
+  String get healthReasonFragmentsMissing;
+
+  /// No description provided for @healthReasonVerifyFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка не удалась'**
+  String get healthReasonVerifyFailed;
+
+  /// No description provided for @healthReasonNeverVerified.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкап ещё не проверялся'**
+  String get healthReasonNeverVerified;
+
+  /// No description provided for @lastVerify.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последняя проверка'**
+  String get lastVerify;
+
+  /// No description provided for @verifyNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить сейчас'**
+  String get verifyNow;
+
+  /// No description provided for @progressOf.
+  ///
+  /// In ru, this message translates to:
+  /// **'{done} из {total}'**
+  String progressOf(String done, String total);
+
+  /// No description provided for @progressSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'{size}/с'**
+  String progressSpeed(String size);
+
+  /// No description provided for @progressEta.
+  ///
+  /// In ru, this message translates to:
+  /// **'осталось около {time}'**
+  String progressEta(String time);
+
+  /// No description provided for @durationMinutes.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} минуты} few{{count} минут} many{{count} минут} other{{count} минуты}}'**
+  String durationMinutes(int count);
+
+  /// No description provided for @durationHours.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} часа} few{{count} часов} many{{count} часов} other{{count} часа}}'**
+  String durationHours(int count);
+
+  /// No description provided for @lessThanMinute.
+  ///
+  /// In ru, this message translates to:
+  /// **'минуты'**
+  String get lessThanMinute;
+
+  /// No description provided for @resumedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжение прерванного бэкапа'**
+  String get resumedNote;
+
+  /// No description provided for @estimating.
+  ///
+  /// In ru, this message translates to:
+  /// **'Считаем объём…'**
+  String get estimating;
+
+  /// No description provided for @currentBackup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущий бэкап'**
+  String get currentBackup;
+
+  /// No description provided for @addFolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить папку'**
+  String get addFolder;
+
+  /// No description provided for @removeFolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать из бэкапа'**
+  String get removeFolder;
+
+  /// No description provided for @folderPickerFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось открыть выбор папки'**
+  String get folderPickerFailed;
+
+  /// No description provided for @excludes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исключения'**
+  String get excludes;
+
+  /// No description provided for @presetTemporary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Временные файлы'**
+  String get presetTemporary;
+
+  /// No description provided for @presetCaches.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кеши программ'**
+  String get presetCaches;
+
+  /// No description provided for @presetTrash.
+  ///
+  /// In ru, this message translates to:
+  /// **'Корзина'**
+  String get presetTrash;
+
+  /// No description provided for @presetDevelopment.
+  ///
+  /// In ru, this message translates to:
+  /// **'Зависимости и сборка программ'**
+  String get presetDevelopment;
+
+  /// No description provided for @customRules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свои правила'**
+  String get customRules;
+
+  /// No description provided for @addRule.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить правило'**
+  String get addRule;
+
+  /// No description provided for @ruleHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Например: *.iso или Видео/'**
+  String get ruleHint;
+
+  /// No description provided for @removeRule.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убрать правило'**
+  String get removeRule;
+
+  /// No description provided for @estimate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оценить объём'**
+  String get estimate;
+
+  /// No description provided for @estimateHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Посмотрите, сколько займёт бэкап, до его запуска.'**
+  String get estimateHint;
+
+  /// No description provided for @estimateResult.
+  ///
+  /// In ru, this message translates to:
+  /// **'{files}, {size}'**
+  String estimateResult(String files, String size);
+
+  /// No description provided for @estimateExcluded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исключено правилами: {count}'**
+  String estimateExcluded(int count);
+
+  /// No description provided for @estimateSkipped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет доступа или особые файлы: {count}'**
+  String estimateSkipped(int count);
+
+  /// No description provided for @estimateTruncated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлов очень много — подсчитана только часть.'**
+  String get estimateTruncated;
+
+  /// No description provided for @estimateNetwork.
+  ///
+  /// In ru, this message translates to:
+  /// **'В сети займёт больше — с запасом на надёжность; одинаковые данные хранятся один раз.'**
+  String get estimateNetwork;
+
+  /// No description provided for @frequency.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как часто'**
+  String get frequency;
+
+  /// No description provided for @frequencyHourly.
+  ///
+  /// In ru, this message translates to:
+  /// **'раз в час'**
+  String get frequencyHourly;
+
+  /// No description provided for @frequencyDaily.
+  ///
+  /// In ru, this message translates to:
+  /// **'раз в день'**
+  String get frequencyDaily;
+
+  /// No description provided for @frequencyWeekly.
+  ///
+  /// In ru, this message translates to:
+  /// **'раз в неделю'**
+  String get frequencyWeekly;
+
+  /// No description provided for @onlyHours.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только в заданные часы'**
+  String get onlyHours;
+
+  /// No description provided for @hoursFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'С'**
+  String get hoursFrom;
+
+  /// No description provided for @hoursTo.
+  ///
+  /// In ru, this message translates to:
+  /// **'До'**
+  String get hoursTo;
+
+  /// No description provided for @hourValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'{hour}:00'**
+  String hourValue(int hour);
+
+  /// No description provided for @onlyOnAc.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только от сети'**
+  String get onlyOnAc;
+
+  /// No description provided for @onlyOnAcHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'От батареи бэкап по расписанию подождёт, а начатый — остановится и продолжится от сети.'**
+  String get onlyOnAcHint;
+
+  /// No description provided for @verifySchedule.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка бэкапа'**
+  String get verifySchedule;
+
+  /// No description provided for @scheduleNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкап по расписанию делает фоновый агент — окно можно закрыть.'**
+  String get scheduleNote;
+
+  /// No description provided for @retention.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранение снимков'**
+  String get retention;
+
+  /// No description provided for @keepAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранить все снимки'**
+  String get keepAll;
+
+  /// No description provided for @keepLast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последних'**
+  String get keepLast;
+
+  /// No description provided for @keepHourly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Почасовых'**
+  String get keepHourly;
+
+  /// No description provided for @keepDaily.
+  ///
+  /// In ru, this message translates to:
+  /// **'Дневных'**
+  String get keepDaily;
+
+  /// No description provided for @keepWeekly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Недельных'**
+  String get keepWeekly;
+
+  /// No description provided for @keepMonthly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Месячных'**
+  String get keepMonthly;
+
+  /// No description provided for @retentionHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'В каждом часе, дне, неделе и месяце остаётся самый новый снимок. Лишние агент удаляет после бэкапа и освобождает место. Снимки других компьютеров не трогаются.'**
+  String get retentionHint;
+
+  /// No description provided for @retentionInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Целое число от 0; последних — хотя бы 1'**
+  String get retentionInvalid;
+
+  /// No description provided for @save.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить'**
+  String get save;
+
+  /// No description provided for @saved.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранено'**
+  String get saved;
+
+  /// No description provided for @history.
+  ///
+  /// In ru, this message translates to:
+  /// **'История'**
+  String get history;
+
+  /// No description provided for @noHistory.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заданий ещё не было'**
+  String get noHistory;
+
+  /// No description provided for @triggerSchedule.
+  ///
+  /// In ru, this message translates to:
+  /// **'по расписанию'**
+  String get triggerSchedule;
+
+  /// No description provided for @triggerManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'вручную'**
+  String get triggerManual;
+
+  /// No description provided for @triggerResume.
+  ///
+  /// In ru, this message translates to:
+  /// **'продолжение'**
+  String get triggerResume;
+
+  /// No description provided for @historyContinues.
+  ///
+  /// In ru, this message translates to:
+  /// **'продолжится с того же места'**
+  String get historyContinues;
+
+  /// No description provided for @reasonPaused.
+  ///
+  /// In ru, this message translates to:
+  /// **'пауза'**
+  String get reasonPaused;
+
+  /// No description provided for @reasonOnBattery.
+  ///
+  /// In ru, this message translates to:
+  /// **'переход на батарею'**
+  String get reasonOnBattery;
+
+  /// No description provided for @newData.
+  ///
+  /// In ru, this message translates to:
+  /// **'новых данных {size}'**
+  String newData(String size);
+
+  /// No description provided for @skippedCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{пропущен {count} файл} few{пропущено {count} файла} many{пропущено {count} файлов} other{пропущено {count} файла}}'**
+  String skippedCount(int count);
+
+  /// No description provided for @details.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробности'**
+  String get details;
+
+  /// No description provided for @skippedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропущенные файлы'**
+  String get skippedTitle;
+
+  /// No description provided for @skippedExplain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эти файлы не попали в снимок. Чаще всего это файлы без права чтения или изменившиеся во время чтения — следующий бэкап попробует снова.'**
+  String get skippedExplain;
+
+  /// No description provided for @skipReasonError.
+  ///
+  /// In ru, this message translates to:
+  /// **'нет доступа или ошибка чтения'**
+  String get skipReasonError;
+
+  /// No description provided for @skipReasonSpecial.
+  ///
+  /// In ru, this message translates to:
+  /// **'особый файл (сокет, устройство) — такие не сохраняются'**
+  String get skipReasonSpecial;
+
+  /// No description provided for @retentionResult.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{удалён {count} старый снимок} few{удалено {count} старых снимка} many{удалено {count} старых снимков} other{удалено {count} старых снимка}}'**
+  String retentionResult(int count);
+
+  /// No description provided for @freed.
+  ///
+  /// In ru, this message translates to:
+  /// **'освобождено {size}'**
+  String freed(String size);
+
+  /// No description provided for @verifyResult.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{проверен {count} сегмент} few{проверено {count} сегмента} many{проверено {count} сегментов} other{проверено {count} сегмента}}'**
+  String verifyResult(int count);
+
+  /// No description provided for @errorText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка: {message}'**
+  String errorText(String message);
+
+  /// No description provided for @snapshotsOnRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список снимков — в разделе «Восстановление».'**
+  String get snapshotsOnRestore;
 }
 
 class _AppLocalizationsDelegate

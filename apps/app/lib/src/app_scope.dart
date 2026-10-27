@@ -1,3 +1,4 @@
+import 'package:app/src/services/folder_picker.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:flutter/widgets.dart';
@@ -10,6 +11,7 @@ final class AppServices {
     required this.node,
     required this.preferences,
     this.coordinator = '',
+    this.pickFolder = pickFolderWithDialog,
   });
 
   /// Агент бэкапа.
@@ -22,6 +24,9 @@ final class AppServices {
   /// Адрес координатора, предлагаемый для новой учётной записи; пусто —
   /// без координатора (папки на этом компьютере, для проверки).
   final String coordinator;
+
+  /// Выбор папки диалогом ОС.
+  final FolderPicker pickFolder;
 }
 
 /// Доступ к [AppServices] из любого экрана.

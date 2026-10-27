@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:app/src/app.dart';
 import 'package:app/src/app_scope.dart';
+import 'package:app/src/services/folder_picker.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:daemon_kit/daemon_kit.dart';
@@ -27,6 +28,14 @@ final class FakeProcess extends ChangeNotifier implements BackgroundProcess {
 
   @override
   Stream<ControlEvent> get events => _events.stream;
+
+  /// Событие процесса, как от настоящего агента.
+  void emit(String name, Map<String, Object?> data) =>
+      _events.add(ControlEvent(name, data));
+
+  /// Параметры последнего вызова [method].
+  Map<String, Object?> last(String method) =>
+      calls.lastWhere((c) => c.$1 == method).$2;
 
   void update({LinkState? state, Map<String, Object?>? status}) {
     if (state != null) this.state = state;
@@ -56,6 +65,9 @@ Map<String, Object?> agentStatus({
   String? nextBackupAt,
   bool interrupted = false,
   bool configured = true,
+  Map<String, Object?>? health,
+  Map<String, Object?>? lastVerify,
+  Map<String, Object?> settings = const {},
 }) => {
   'status': status,
   'configured': configured,
@@ -63,11 +75,25 @@ Map<String, Object?> agentStatus({
   'lastBackup': lastBackup,
   'nextBackupAt': nextBackupAt,
   'interrupted': interrupted,
+  'lastVerify': lastVerify,
+  'health': health ?? {'state': 'ok', 'reasons': <Object?>[]},
   'settings': {
     'paths': ['/home/user/Документы'],
     'excludes': <String>[],
+    'excludePresets': ['temporary', 'caches', 'trash'],
     'intervalMinutes': 60,
     'retryMinutes': 10,
+    'hours': null,
+    'onlyOnAcPower': false,
+    'verifyIntervalHours': 24,
+    'retention': {
+      'last': 1,
+      'hourly': 24,
+      'daily': 7,
+      'weekly': 4,
+      'monthly': 12,
+    },
+    ...settings,
   },
 };
 
@@ -84,10 +110,12 @@ Widget testApp(
   BackgroundProcess agent,
   BackgroundProcess node, {
   Preferences? preferences,
+  FolderPicker? pickFolder,
 }) => App(
   services: AppServices(
     agent: agent,
     node: node,
     preferences: preferences ?? Preferences(),
+    pickFolder: pickFolder ?? ({initialDirectory}) async => null,
   ),
 );

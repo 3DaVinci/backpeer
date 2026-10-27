@@ -29,3 +29,11 @@ String? formatDateTime(AppLocalizations l10n, Object? iso) {
   if (time == null) return null;
   return DateFormat.yMMMd(l10n.localeName).add_Hm().format(time.toLocal());
 }
+
+/// Сколько осталось, грубо: «5 минут», «2 часов» (после «около»).
+String formatRemaining(AppLocalizations l10n, int ms) {
+  final minutes = (ms / 60000).ceil();
+  if (minutes <= 1) return l10n.lessThanMinute;
+  if (minutes < 120) return l10n.durationMinutes(minutes);
+  return l10n.durationHours((minutes / 60).round());
+}

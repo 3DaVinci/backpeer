@@ -2,12 +2,15 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
+import 'package:app/src/ui/widgets/health_card.dart';
+import 'package:app/src/ui/widgets/job_progress.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:app/src/ui/widgets/unlock_dialog.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
 
-/// Обзор: состояние агента бэкапа и хранителя, бэкап сейчас, пауза.
+/// Обзор: состояние агента бэкапа и хранителя, здоровье данных, бэкап
+/// сейчас, пауза.
 class OverviewScreen extends StatelessWidget {
   const new({super.key});
 
@@ -23,6 +26,8 @@ class OverviewScreen extends StatelessWidget {
           if (services.agent.status?['status'] == 'waitingForKeys')
             _KeysCard(agent: services.agent),
           _AgentCard(agent: services.agent),
+          if (services.agent.status?['configured'] == true)
+            HealthCard(agent: services.agent),
           _NodeSummary(node: services.node),
         ],
       ),
@@ -48,6 +53,7 @@ String agentStatusName(AppLocalizations l10n, Object? status) =>
       'working' => l10n.agentStatusWorking,
       'paused' => l10n.agentStatusPaused,
       'waitingForKeys' => l10n.agentStatusWaitingForKeys,
+      'waitingForPower' => l10n.agentStatusWaitingForPower,
       'stopping' => l10n.agentStatusStopping,
       _ => l10n.agentStatusIdle,
     };
@@ -127,7 +133,6 @@ class _AgentCard extends StatelessWidget {
     final job = status?['job'] as Map<String, Object?>?;
     final last = status?['lastBackup'] as Map<String, Object?>?;
     final paused = status?['status'] == 'paused';
-    final progress = job?['progress'] as Map<String, Object?>?;
     return Section(
       title: l10n.processAgent,
       trailing: status == null
@@ -137,19 +142,7 @@ class _AgentCard extends StatelessWidget {
         if (job != null) ...[
           Text(jobName(l10n, job['kind'])),
           const SizedBox(height: 8),
-          const LinearProgressIndicator(),
-          if (progress != null && progress['files'] is int) ...[
-            const SizedBox(height: 8),
-            Text(
-              l10n.jobProgress(
-                l10n.filesCount(progress['files']! as int),
-                formatSize(
-                  l10n,
-                  (progress['bytesRead'] ?? progress['bytes'] ?? 0) as int,
-                ),
-              ),
-            ),
-          ],
+          JobProgress(job: job),
           const SizedBox(height: 12),
         ],
         Fact(

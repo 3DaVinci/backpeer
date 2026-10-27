@@ -16,6 +16,8 @@ dependencies:
   core: any
   # Клиент локального API фоновых процессов.
   daemon_kit: any
+  # Выбор папки диалогом ОС (BSD-3-Clause).
+  file_selector: ^1.1.0
   flutter:
     sdk: flutter
   flutter_localizations:

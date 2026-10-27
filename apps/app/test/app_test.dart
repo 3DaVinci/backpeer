@@ -176,7 +176,7 @@ void main() {
     await tester.tap(find.text('Бэкап').first);
     await tester.pumpAndSettle();
     expect(find.text('/home/user/Документы'), findsOneWidget);
-    expect(find.text('каждые 60 минут'), findsOneWidget);
+    expect(find.text('раз в час'), findsOneWidget);
 
     await tester.tap(find.text('Восстановление'));
     await tester.pumpAndSettle();

@@ -771,4 +771,358 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errorExists => 'На этом устройстве уже есть учётная запись';
+
+  @override
+  String get agentStatusWaitingForPower => 'Ждёт питания от сети';
+
+  @override
+  String get healthTitle => 'Здоровье данных';
+
+  @override
+  String get healthOk => 'Всё в порядке';
+
+  @override
+  String get healthOkHint => 'Бэкап свежий, проверка не нашла проблем.';
+
+  @override
+  String get healthRepairing => 'Ремонтируется';
+
+  @override
+  String get healthRepairingHint =>
+      'Часть хранителей ушла, сеть восстанавливает фрагменты. Данные целы.';
+
+  @override
+  String get healthAttention => 'Требует внимания';
+
+  @override
+  String get healthUnknown => 'Бэкапа ещё не было';
+
+  @override
+  String get healthUnknownHint =>
+      'Выберите папки в разделе «Бэкап» — первый бэкап начнётся сам.';
+
+  @override
+  String get healthReasonBackupFailed => 'Последний бэкап не удался';
+
+  @override
+  String get healthReasonBackupStale =>
+      'Бэкап давно не делался: компьютер был выключен или бэкап не проходит';
+
+  @override
+  String get healthReasonRollbackWarning =>
+      'Сервер показал не все снимки — список мог быть подменён';
+
+  @override
+  String get healthReasonUnrecoverable => 'Часть данных нельзя восстановить';
+
+  @override
+  String get healthReasonAtRisk => 'У части данных почти не осталось запаса';
+
+  @override
+  String get healthReasonFragmentsMissing =>
+      'Часть фрагментов недоступна, запас есть';
+
+  @override
+  String get healthReasonVerifyFailed => 'Проверка не удалась';
+
+  @override
+  String get healthReasonNeverVerified => 'Бэкап ещё не проверялся';
+
+  @override
+  String get lastVerify => 'Последняя проверка';
+
+  @override
+  String get verifyNow => 'Проверить сейчас';
+
+  @override
+  String progressOf(String done, String total) {
+    return '$done из $total';
+  }
+
+  @override
+  String progressSpeed(String size) {
+    return '$size/с';
+  }
+
+  @override
+  String progressEta(String time) {
+    return 'осталось около $time';
+  }
+
+  @override
+  String durationMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты',
+      many: '$count минут',
+      few: '$count минут',
+      one: '$count минуты',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String durationHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часа',
+      many: '$count часов',
+      few: '$count часов',
+      one: '$count часа',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get lessThanMinute => 'минуты';
+
+  @override
+  String get resumedNote => 'Продолжение прерванного бэкапа';
+
+  @override
+  String get estimating => 'Считаем объём…';
+
+  @override
+  String get currentBackup => 'Текущий бэкап';
+
+  @override
+  String get addFolder => 'Добавить папку';
+
+  @override
+  String get removeFolder => 'Убрать из бэкапа';
+
+  @override
+  String get folderPickerFailed => 'Не удалось открыть выбор папки';
+
+  @override
+  String get excludes => 'Исключения';
+
+  @override
+  String get presetTemporary => 'Временные файлы';
+
+  @override
+  String get presetCaches => 'Кеши программ';
+
+  @override
+  String get presetTrash => 'Корзина';
+
+  @override
+  String get presetDevelopment => 'Зависимости и сборка программ';
+
+  @override
+  String get customRules => 'Свои правила';
+
+  @override
+  String get addRule => 'Добавить правило';
+
+  @override
+  String get ruleHint => 'Например: *.iso или Видео/';
+
+  @override
+  String get removeRule => 'Убрать правило';
+
+  @override
+  String get estimate => 'Оценить объём';
+
+  @override
+  String get estimateHint =>
+      'Посмотрите, сколько займёт бэкап, до его запуска.';
+
+  @override
+  String estimateResult(String files, String size) {
+    return '$files, $size';
+  }
+
+  @override
+  String estimateExcluded(int count) {
+    return 'Исключено правилами: $count';
+  }
+
+  @override
+  String estimateSkipped(int count) {
+    return 'Нет доступа или особые файлы: $count';
+  }
+
+  @override
+  String get estimateTruncated =>
+      'Файлов очень много — подсчитана только часть.';
+
+  @override
+  String get estimateNetwork =>
+      'В сети займёт больше — с запасом на надёжность; одинаковые данные хранятся один раз.';
+
+  @override
+  String get frequency => 'Как часто';
+
+  @override
+  String get frequencyHourly => 'раз в час';
+
+  @override
+  String get frequencyDaily => 'раз в день';
+
+  @override
+  String get frequencyWeekly => 'раз в неделю';
+
+  @override
+  String get onlyHours => 'Только в заданные часы';
+
+  @override
+  String get hoursFrom => 'С';
+
+  @override
+  String get hoursTo => 'До';
+
+  @override
+  String hourValue(int hour) {
+    return '$hour:00';
+  }
+
+  @override
+  String get onlyOnAc => 'Только от сети';
+
+  @override
+  String get onlyOnAcHint =>
+      'От батареи бэкап по расписанию подождёт, а начатый — остановится и продолжится от сети.';
+
+  @override
+  String get verifySchedule => 'Проверка бэкапа';
+
+  @override
+  String get scheduleNote =>
+      'Бэкап по расписанию делает фоновый агент — окно можно закрыть.';
+
+  @override
+  String get retention => 'Хранение снимков';
+
+  @override
+  String get keepAll => 'Хранить все снимки';
+
+  @override
+  String get keepLast => 'Последних';
+
+  @override
+  String get keepHourly => 'Почасовых';
+
+  @override
+  String get keepDaily => 'Дневных';
+
+  @override
+  String get keepWeekly => 'Недельных';
+
+  @override
+  String get keepMonthly => 'Месячных';
+
+  @override
+  String get retentionHint =>
+      'В каждом часе, дне, неделе и месяце остаётся самый новый снимок. Лишние агент удаляет после бэкапа и освобождает место. Снимки других компьютеров не трогаются.';
+
+  @override
+  String get retentionInvalid => 'Целое число от 0; последних — хотя бы 1';
+
+  @override
+  String get save => 'Сохранить';
+
+  @override
+  String get saved => 'Сохранено';
+
+  @override
+  String get history => 'История';
+
+  @override
+  String get noHistory => 'Заданий ещё не было';
+
+  @override
+  String get triggerSchedule => 'по расписанию';
+
+  @override
+  String get triggerManual => 'вручную';
+
+  @override
+  String get triggerResume => 'продолжение';
+
+  @override
+  String get historyContinues => 'продолжится с того же места';
+
+  @override
+  String get reasonPaused => 'пауза';
+
+  @override
+  String get reasonOnBattery => 'переход на батарею';
+
+  @override
+  String newData(String size) {
+    return 'новых данных $size';
+  }
+
+  @override
+  String skippedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'пропущено $count файла',
+      many: 'пропущено $count файлов',
+      few: 'пропущено $count файла',
+      one: 'пропущен $count файл',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get details => 'Подробности';
+
+  @override
+  String get skippedTitle => 'Пропущенные файлы';
+
+  @override
+  String get skippedExplain =>
+      'Эти файлы не попали в снимок. Чаще всего это файлы без права чтения или изменившиеся во время чтения — следующий бэкап попробует снова.';
+
+  @override
+  String get skipReasonError => 'нет доступа или ошибка чтения';
+
+  @override
+  String get skipReasonSpecial =>
+      'особый файл (сокет, устройство) — такие не сохраняются';
+
+  @override
+  String retentionResult(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'удалено $count старых снимка',
+      many: 'удалено $count старых снимков',
+      few: 'удалено $count старых снимка',
+      one: 'удалён $count старый снимок',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String freed(String size) {
+    return 'освобождено $size';
+  }
+
+  @override
+  String verifyResult(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'проверено $count сегмента',
+      many: 'проверено $count сегментов',
+      few: 'проверено $count сегмента',
+      one: 'проверен $count сегмент',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String errorText(String message) {
+    return 'Ошибка: $message';
+  }
+
+  @override
+  String get snapshotsOnRestore =>
+      'Список снимков — в разделе «Восстановление».';
 }

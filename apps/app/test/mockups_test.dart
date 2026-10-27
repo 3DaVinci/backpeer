@@ -82,16 +82,66 @@ void main() {
               job: name == 'overview'
                   ? {
                       'kind': 'backup',
-                      'progress': {'files': 1834, 'bytesRead': 734 << 20},
+                      'progress': {
+                        'files': 1834,
+                        'bytes': 734 << 20,
+                        'bytesRead': 512 << 20,
+                        'totalFiles': 5210,
+                        'totalBytes': 2150 << 20,
+                        'bytesPerSecond': 18 << 20,
+                        'etaMs': 80 * 1000,
+                      },
                     }
                   : null,
               lastBackup: {
                 'finishedAt': '2026-10-27T06:12:00Z',
                 'outcome': 'ok',
               },
+              lastVerify: {
+                'finishedAt': '2026-10-27T03:40:00Z',
+                'outcome': 'ok',
+              },
               nextBackupAt: '2999-10-28T10:00:00Z',
             ),
             answer: (method, _) async => switch (method) {
+              'history' => {
+                'jobs': [
+                  {
+                    'kind': 'backup',
+                    'trigger': 'schedule',
+                    'outcome': 'ok',
+                    'startedAt': '2026-10-27T06:10:00Z',
+                    'finishedAt': '2026-10-27T06:12:00Z',
+                    'result': {
+                      'files': 5210,
+                      'bytes': 2150 << 20,
+                      'newBytes': 14 << 20,
+                      'retention': {'kept': 31, 'forgotten': 1},
+                    },
+                  },
+                  {
+                    'kind': 'backup',
+                    'trigger': 'resume',
+                    'outcome': 'partial',
+                    'startedAt': '2026-10-27T05:02:00Z',
+                    'finishedAt': '2026-10-27T05:09:00Z',
+                    'result': {
+                      'files': 5209,
+                      'bytes': 2149 << 20,
+                      'newBytes': 210 << 20,
+                      'skipped': 2,
+                    },
+                  },
+                  {
+                    'kind': 'backup',
+                    'trigger': 'schedule',
+                    'outcome': 'cancelled',
+                    'startedAt': '2026-10-27T05:00:00Z',
+                    'finishedAt': '2026-10-27T05:01:00Z',
+                    'result': {'reason': 'on_battery', 'continues': true},
+                  },
+                ],
+              },
               'account.info' => {
                 'configured': true,
                 'coordinator': 'https://coordinator.example',

@@ -9,7 +9,9 @@ workspace:
   - packages/core
   - packages/protocol
   - packages/cli
+  - packages/daemon_kit
   - packages/node
+  - packages/agent
   - packages/coordinator
   - packages/relay
   - packages/test_vectors
@@ -79,7 +81,7 @@ melos:
         - dart run tool/coverage_report.dart
 
     build-exe:
-      description: Собрать cli и node под текущую платформу в build/bin/.
+      description: Собрать cli, node и agent под текущую платформу в build/bin/.
       run: dart run tool/build_exe.dart
 
     site:check:

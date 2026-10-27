@@ -13,8 +13,11 @@ import 'package:cli/src/console.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
 
+export 'src/app_config.dart' show AppConfig, AppHome, FragmentsMode;
 export 'src/console.dart' show Console, StdConsole;
 export 'src/context.dart' show ExitCode;
+export 'src/session.dart'
+    show Session, SessionException, openCoordinatorClient, openSession;
 
 /// Запуск CLI; возвращает код возврата ([ExitCode]).
 Future<int> runCli(

@@ -6,6 +6,7 @@
 // размещением и талонами координатора, восстановление на новом
 // устройстве по LocateSegment, только через relay, восстановление с
 // ожиданием перезапущенных узлов, сборка мусора по талонам DELETE.
+// Агент бэкапа (5.1.3) делает бэкап по расписанию на те же узлы без CLI.
 // Нужен FS_TEST_POSTGRES.
 
 import 'dart:async';
@@ -13,9 +14,11 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:agent/agent.dart';
 import 'package:cli/cli.dart';
 import 'package:coordinator/coordinator.dart';
 import 'package:core/core.dart' hide ConfigException;
+import 'package:daemon_kit/daemon_kit.dart' show ControlClient;
 import 'package:node/node.dart';
 import 'package:protocol/protocol.dart' as pb;
 import 'package:relay/relay.dart';
@@ -534,5 +537,112 @@ log:
     for (final i in [0, 1]) {
       daemons[i] = await startNode(i);
     }
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('агент бэкапа: бэкап по расписанию по сети без CLI и окна', () async {
+    final environment = {
+      'FS_HOME': '${dir.path}/agent-home',
+      'FS_PASSWORD': 'correct horse battery staple',
+      'FS_ARGON2_FAST': '1',
+    };
+    Future<int> cli(
+      List<String> args, {
+      String? Function(String, List<String>)? answer,
+    }) async {
+      final console = _Console(answer);
+      final code = await runCli(
+        ['--json', ...args],
+        console: console,
+        environment: environment,
+      );
+      expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+      return code;
+    }
+
+    // Учётная запись и настройка сети — как в приложении (этап 5) или CLI;
+    // дальше работает только агент.
+    await cli(
+      [
+        'register',
+        '--coordinator',
+        live.url,
+        '--login',
+        'carol',
+        '--k',
+        '3',
+        '--n',
+        '5',
+        '--repair-threshold',
+        '3',
+      ],
+      answer: (prompt, out) {
+        final m = RegExp(r'Слово №(\d+)').firstMatch(prompt);
+        if (m == null) return null;
+        final phrase = out
+            .map((l) => jsonDecode(l) as Map<String, Object?>)
+            .firstWhere((e) => e['type'] == 'phrase');
+        return (phrase['words']! as List<Object?>)[int.parse(m[1]!) - 1]!
+            as String;
+      },
+    );
+    await cli(['config', '--fragments', 'network', '--subnet-check', 'off']);
+
+    final source = Directory('${dir.path}/agent-src')..createSync();
+    final data = crypto.randomBytes(2 << 20);
+    File('${source.path}/doc.bin').writeAsBytesSync(data);
+    final home = AppHome(Directory(environment['FS_HOME']!));
+    final secrets = MemorySecretStore();
+    var agent = await BackupAgent.start(
+      home: home,
+      crypto: crypto,
+      secrets: secrets,
+      argon2: const Argon2Params(memoryKiB: 1024, iterations: 1),
+      logFile: '-',
+      handleSignals: false,
+    );
+    var control = await ControlClient.connect(AgentPaths(home).endpoint());
+    // Ключи — один раз, с сохранением в хранилище ОС.
+    await control.call('unlock', {
+      'password': environment['FS_PASSWORD'],
+    }, const Duration(minutes: 1));
+    await control.close();
+    await agent.stop();
+
+    // Перезапуск (как после перезагрузки): пароль больше не нужен, бэкап
+    // по расписанию начинается сам.
+    agent = await BackupAgent.start(
+      home: home,
+      crypto: crypto,
+      secrets: secrets,
+      logFile: '-',
+      handleSignals: false,
+    );
+    addTearDown(agent.stop);
+    control = await ControlClient.connect(AgentPaths(home).endpoint());
+    addTearDown(control.close);
+    await control.subscribe(['job_finished']);
+    final finished = control.events
+        .firstWhere((e) => e.data['kind'] == 'backup')
+        .timeout(const Duration(minutes: 1));
+    await control.call('settings', {
+      'paths': [source.path],
+      'intervalMinutes': 60,
+    });
+    final record = (await finished).data;
+    expect(record['outcome'], 'ok', reason: '$record');
+    final stored = [for (final d in daemons) d!.status()['fragments']! as int];
+    expect(stored, everyElement(greaterThan(0)), reason: 'n = 5 узлов');
+
+    // Восстановление тоже через агента.
+    final snapshots =
+        (await control.call('snapshots'))['snapshots']! as List<Object?>;
+    final id = (snapshots.single! as Map<String, Object?>)['id']! as String;
+    final target = '${dir.path}/agent-out';
+    final restored = control.events
+        .firstWhere((e) => e.data['kind'] == 'restore')
+        .timeout(const Duration(minutes: 1));
+    await control.call('restore', {'snapshot': id, 'target': target});
+    expect((await restored).data['outcome'], 'ok');
+    expect(File('$target${source.path}/doc.bin').readAsBytesSync(), data);
   }, timeout: const Timeout(Duration(minutes: 2)));
 }

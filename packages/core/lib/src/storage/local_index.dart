@@ -137,6 +137,8 @@ final class LocalIndex {
     try {
       db
         ..execute('PRAGMA journal_mode = WAL')
+        // Индекс открывают и CLI, и агент бэкапа: вторая запись ждёт.
+        ..execute('PRAGMA busy_timeout = 5000')
         ..execute('PRAGMA synchronous = FULL')
         ..execute('PRAGMA foreign_keys = ON');
       index._migrate();

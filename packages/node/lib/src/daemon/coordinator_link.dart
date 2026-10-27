@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:node/src/daemon/command_channel.dart';
 import 'package:node/src/daemon/identity.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:node/src/net/reachability.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';

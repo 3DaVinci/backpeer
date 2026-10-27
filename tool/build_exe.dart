@@ -1,4 +1,5 @@
-// Собирает `cli` и `node` через `dart build cli` (задача 0.2.2).
+// Собирает `cli`, `node` и `agent` через `dart build cli` (задачи 0.2.2,
+// 5.1.3).
 // Работает одинаково локально и в CI на всех ОС.
 //
 //   dart run tool/build_exe.dart                      # под текущую платформу
@@ -25,7 +26,7 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:typed_data';
 
-const programs = ['cli', 'node'];
+const programs = ['cli', 'node', 'agent'];
 
 void main(List<String> arguments) {
   if (arguments.isNotEmpty && arguments.length != 2) {

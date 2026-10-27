@@ -6,7 +6,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cli/cli.dart';
-import 'package:cli/src/app_config.dart';
 import 'package:core/core.dart';
 import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';

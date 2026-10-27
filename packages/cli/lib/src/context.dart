@@ -1,13 +1,14 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 
 import 'package:args/command_runner.dart';
 import 'package:cli/src/app_config.dart';
 import 'package:cli/src/console.dart';
 import 'package:cli/src/password.dart';
+import 'package:cli/src/session.dart';
 import 'package:core/core.dart';
-import 'package:protocol/protocol.dart' as pb;
+
+export 'package:cli/src/session.dart' show Session;
 
 /// Коды возврата CLI.
 abstract final class ExitCode {
@@ -221,33 +222,17 @@ final class CliContext {
     String? ca,
     DeviceKeys? device,
   }) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null || !uri.hasAuthority) {
-      throw CliException('Неверный адрес координатора: $url', ExitCode.usage);
-    }
-    SecurityContext? trusted;
-    if (ca != null) {
-      try {
-        trusted = SecurityContext()..setTrustedCertificates(ca);
-      } on TlsException catch (e) {
-        throw CliException('Сертификат УЦ $ca не загружен: ${e.message}');
-      }
-    }
-    const local = {'localhost', '127.0.0.1', '::1', '[::1]'};
-    if (!uri.isScheme('https') &&
-        !(uri.isScheme('http') && local.contains(uri.host))) {
-      throw CliException(
-        'Адрес координатора $url: нужен https (http — только к localhost)',
-        ExitCode.usage,
+    try {
+      return openCoordinatorClient(
+        url,
+        crypto: await crypto(),
+        ca: ca,
+        device: device,
+        userAgent: 'cli/$appVersion',
       );
+    } on SessionException catch (e) {
+      throw CliException(e.message, e.usage ? ExitCode.usage : ExitCode.error);
     }
-    return CoordinatorClient(
-      baseUri: uri,
-      crypto: await crypto(),
-      deviceKey: device?.sign,
-      trustedCertificates: trusted,
-      userAgent: 'cli/$appVersion',
-    );
   }
 
   /// Ключи, локальный индекс и хранилища для команды с данными.
@@ -262,119 +247,18 @@ final class CliContext {
       device?.dispose();
       rethrow;
     }
-    final url = config.coordinator;
-    if (url == null) {
-      final fragments = LocalFolderStore(
-        Directory(config.nodes),
-        crypto,
-        nodeCount: config.nodeCount,
-      );
-      return Session._(
+    try {
+      return await openSession(
+        config: config,
+        crypto: crypto,
         keys: keys,
         device: device,
         index: index,
-        fragments: fragments,
-        objects: LocalObjectStore(Directory(config.objects)),
-        releaser: LocalSegmentReleaser(index, fragments),
+        software: 'cli/$appVersion',
       );
+    } on SessionException catch (e) {
+      throw CliException(e.message, e.usage ? ExitCode.usage : ExitCode.error);
     }
-    if (device == null) {
-      index.close();
-      keys.dispose();
-      throw const CliException(
-        'На этом устройстве нет ключей устройства для координатора',
-      );
-    }
-    final client = await this.client(
-      url,
-      ca: config.coordinatorCa,
-      device: device,
-    );
-    if (config.usesNetwork) {
-      return await _networkSession(config, crypto, keys, device, index, client);
-    }
-    final folders = NodeFolders(Directory(config.nodes), crypto);
-    final segments = CoordinatorSegments(
-      client: client,
-      crypto: crypto,
-      nodes: folders,
-      accountId: keys.accountId,
-      fallbackReleaser: LocalSegmentReleaser(index, folders),
-      distinctSubnets: config.distinctSubnets,
-    );
-    return Session._(
-      keys: keys,
-      device: device,
-      index: index,
-      fragments: folders,
-      objects: CoordinatorObjectStore(client),
-      placer: segments,
-      locator: segments,
-      releaser: segments,
-      client: client,
-    );
-  }
-
-  /// Фрагменты по сети (задача 3.9): узлы и талоны — из ответов
-  /// координатора, подключение — стратегией TCP → UDP → relay, трафик по
-  /// способам уходит координатору при закрытии сессии.
-  Future<Session> _networkSession(
-    AppConfig config,
-    CryptoProvider crypto,
-    AccountKeys keys,
-    DeviceKeys device,
-    LocalIndex index,
-    CoordinatorClient client,
-  ) async {
-    // Сертификат устройства для Hello: его выпускает ключ учётной записи,
-    // который сессия уже открыла паролем.
-    final certificate = await DeviceCertificates.issue(
-      crypto,
-      keys,
-      device,
-      issuedAt: DateTime.now(),
-    );
-    final meter = TrafficMeter();
-    final book = TicketBook();
-    final store = NetworkFragmentStore(
-      crypto: crypto,
-      transport: ConnectionStrategy.forCoordinator(
-        crypto: crypto,
-        local: LocalPeer(
-          role: pb.PeerRole.PEER_ROLE_CLIENT,
-          staticKey: device.dh,
-          certificate: certificate,
-          software: 'cli/$appVersion',
-        ),
-        client: client,
-        meter: meter,
-      ),
-      access: book,
-    );
-    final segments = CoordinatorSegments(
-      client: client,
-      crypto: crypto,
-      nodes: store,
-      accountId: keys.accountId,
-      tickets: book,
-      fallbackReleaser: const _ForgottenSegment(),
-      distinctSubnets: config.distinctSubnets,
-    );
-    return Session._(
-      keys: keys,
-      device: device,
-      index: index,
-      fragments: store,
-      objects: CoordinatorObjectStore(client),
-      placer: segments,
-      locator: segments,
-      releaser: segments,
-      client: client,
-      onClose: () async {
-        await store.close();
-        await TrafficReporter(client: client, meter: meter).report();
-      },
-    );
   }
 
   /// Локальный индекс. Если библиотека SQLite не загружается (например,
@@ -390,60 +274,6 @@ final class CliContext {
   }
 
   final Random random = Random.secure();
-}
-
-/// Сегмент, которого координатор уже не знает (повтор сборки мусора после
-/// обрыва), по сети: талонов DELETE на его фрагменты нет, удалять нечего —
-/// фрагменты без ссылок убирает узел (этап 4).
-final class _ForgottenSegment implements SegmentReleaser {
-  const new();
-
-  @override
-  Future<List<FragmentLocation>> release(SegmentEntry segment) async =>
-      const [];
-}
-
-/// Ключи и хранилища одной команды: без координатора — папки-«узлы» и папка
-/// объектов, с координатором — объекты и размещение на нём, фрагменты на
-/// узлах по сети или в папках-«узлах», зарегистрированных на координаторе.
-final class Session {
-  new _({
-    required this.keys,
-    required this.device,
-    required this.index,
-    required this.fragments,
-    required this.objects,
-    required this.releaser,
-    this.placer,
-    this.locator,
-    this.client,
-    this.onClose,
-  });
-
-  final AccountKeys keys;
-  final DeviceKeys? device;
-  final LocalIndex index;
-  final FragmentStore fragments;
-  final ObjectStore objects;
-  final SegmentReleaser releaser;
-  final SegmentPlacer? placer;
-  final SegmentLocator? locator;
-  final CoordinatorClient? client;
-  final Future<void> Function()? onClose;
-
-  /// Закрывает соединения с узлами, отправляет отчёт о трафике.
-  Future<void> close() async {
-    try {
-      await onClose?.call();
-    } on CoreException {
-      // Отчёт о трафике не дошёл — не повод ронять команду.
-    } finally {
-      index.close();
-      keys.dispose();
-      device?.dispose();
-      client?.close();
-    }
-  }
 }
 
 /// Команда CLI: справка печатается в [Console], а не через `print`.

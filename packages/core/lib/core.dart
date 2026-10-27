@@ -73,6 +73,7 @@ export 'src/net/udp/udp_stream.dart';
 export 'src/password/estimator.dart';
 export 'src/password/policy.dart';
 export 'src/pipeline/backup.dart';
+export 'src/pipeline/browse.dart';
 export 'src/pipeline/garbage.dart';
 export 'src/pipeline/restore.dart';
 export 'src/pipeline/segment_encoder.dart';

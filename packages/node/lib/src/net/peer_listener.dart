@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/daemon/log.dart';
 
 /// Приём входящих TCP-соединений собеседников (задача 3.5.1): каждое
 /// соединение уходит обработчику `onConnection` (`PeerService.serve`),

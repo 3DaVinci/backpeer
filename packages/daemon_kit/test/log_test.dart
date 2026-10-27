@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/node.dart';
 import 'package:test/test.dart';
 
 void main() {
   late Directory dir;
-  setUp(() => dir = Directory.systemTemp.createTempSync('fs-node-log-'));
+  setUp(() => dir = Directory.systemTemp.createTempSync('fs-daemon-log-'));
   tearDown(() => dir.deleteSync(recursive: true));
 
   test('ротация по размеру: не больше files файлов, старые сдвигаются', () {

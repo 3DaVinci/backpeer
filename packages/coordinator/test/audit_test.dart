@@ -269,7 +269,7 @@ void main() {
     (s) => s.execute(
       Sql.named('''
         SELECT audit_next_at, audits_passed, audits_failed, excluded_at,
-               excluded_reason
+               excluded_reason, audit_window_failures, audit_latency_ms
           FROM nodes WHERE node_id = @n:bytea'''),
       parameters: {'n': node},
     ),
@@ -312,6 +312,8 @@ void main() {
     final row = await nodeRow(node);
     expect(row[1], 1);
     expect(row[2], 0);
+    expect(row[5], 0);
+    expect(row[6], isA<double>(), reason: 'время ответа для репутации');
     final next = (row[0]! as DateTime).difference(h.clock.now);
     expect(next, greaterThanOrEqualTo(policy.newNodeInterval * 0.5));
     expect(next, lessThan(policy.newNodeInterval * 1.5));
@@ -386,6 +388,8 @@ void main() {
     expect(row[1], isNotNull, reason: 'фрагмент потерян');
     expect((await nodeRow(node))[2], 2);
     expect((await nodeRow(node))[3], isNull, reason: 'два провала из окна 20');
+    expect((await nodeRow(node))[5], 2, reason: 'провалы в окне — репутация');
+    expect((await nodeRow(node))[6], isNull, reason: 'время — по пройденным');
     final before = (await audits(node)).length;
     for (var i = 0; i < 6; i++) {
       h.clock.advance(const Duration(hours: 2));

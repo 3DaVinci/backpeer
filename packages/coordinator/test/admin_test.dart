@@ -308,6 +308,12 @@ void main() {
     final show = await admin.showNode(excluded);
     expect(show['excludedReason'], 'диск сбоит');
     expect(show['online'], isTrue);
+    // Новый узел без аудитов: A² · G, G = 0,25 (docs/spec/reputation.md).
+    expect(
+      show['reputation'],
+      closeTo(0.25 * pow(show['availability']! as double, 2), 1e-9),
+    );
+    expect(show['auditLatencyMs'], isNull);
     await admin.setExcluded(excluded, excluded: false, actor: actor());
     expect((await allocate(3, 4)).placements, hasLength(3));
     expect(await admin.listNodes(), hasLength(3));

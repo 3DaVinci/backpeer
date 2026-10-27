@@ -27,6 +27,8 @@ placement:
   min_availability: 0.7
   probation_hours: 24
   max_probation_share: 0.1
+  probation_max_bytes: 5000000000
+  min_reputation: 0.1
   ticket_minutes: 15
   distinct_subnets: false
   candidates_cache_ms: 250
@@ -36,6 +38,9 @@ signer:
     expect(c.placement.minAvailability, 0.7);
     expect(c.placement.probation, const Duration(hours: 24));
     expect(c.placement.maxProbation(20), 2);
+    expect(c.placement.maxProbation(20, 19), 1);
+    expect(c.placement.probationMaxBytes, 5000000000);
+    expect(c.placement.minReputation, 0.1);
     expect(c.placement.ticketLifetime, const Duration(minutes: 15));
     expect(c.placement.distinctSubnets, isFalse);
     expect(c.placement.candidatesCache, const Duration(milliseconds: 250));

@@ -9,6 +9,7 @@ import 'package:coordinator/src/nodes/node_address.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/nodes/uptime.dart';
 import 'package:coordinator/src/placement/placement.dart';
+import 'package:coordinator/src/reputation/reputation.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:core/core.dart'
@@ -402,8 +403,11 @@ final class NodeService {
   /// [minAvailability], подсеть известна. Свободное место — ёмкость минус
   /// большее из занятого по словам узла и выданного координатором под
   /// фрагменты. Узлы владельца сегмента [exceptOwner] исключаются; узлы
-  /// моложе [probation] помечаются. Разнообразие владельцев и подсетей
-  /// обеспечивает [Placement].
+  /// моложе [probation] помечаются, и тот, кому выдано больше
+  /// [probationMaxBytes] (без фрагмента размера [fragmentSize]), не
+  /// подходит (задача 4.2.2). Репутация кандидата — `Reputation.of` на
+  /// момент выборки (задача 4.2.3). Разнообразие владельцев и подсетей и
+  /// порог репутации обеспечивает [Placement].
   ///
   /// Список узлов в сети кэшируется на [cacheFor] (настройка
   /// `placement.candidates_cache_ms`): выборка и разбор тысячи строк на
@@ -415,27 +419,40 @@ final class NodeService {
     required double minAvailability,
     Uint8List? exceptOwner,
     Duration probation = Duration.zero,
+    int? probationMaxBytes,
     Duration cacheFor = Duration.zero,
   }) async {
     final now = _clock();
     final online = await _online(now, cacheFor);
     final probationStart = now.subtract(probation);
-    return [
-      for (final node in online)
-        if (node.freeBytes >= fragmentSize &&
-            node.availability >= minAvailability &&
-            (exceptOwner == null ||
-                !constantTimeEquals(node.ownerId, exceptOwner)))
-          NodeCandidate(
-            nodeId: node.nodeId,
-            ownerId: node.ownerId,
-            subnet: node.subnet,
-            freeBytes: node.freeBytes,
-            availability: node.availability,
-            endpoints: node.endpoints,
-            onProbation: node.registeredAt.isAfter(probationStart),
-          ),
-    ];
+    final candidates = <NodeCandidate>[];
+    for (final node in online) {
+      if (node.freeBytes < fragmentSize ||
+          node.availability < minAvailability ||
+          (exceptOwner != null &&
+              constantTimeEquals(node.ownerId, exceptOwner))) {
+        continue;
+      }
+      final onProbation = node.registeredAt.isAfter(probationStart);
+      if (onProbation &&
+          probationMaxBytes != null &&
+          node.assignedBytes + fragmentSize > probationMaxBytes) {
+        continue;
+      }
+      candidates.add(
+        NodeCandidate(
+          nodeId: node.nodeId,
+          ownerId: node.ownerId,
+          subnet: node.subnet,
+          freeBytes: node.freeBytes,
+          availability: node.availability,
+          endpoints: node.endpoints,
+          onProbation: onProbation,
+          reputation: Reputation.of(node.reputationAt(now)),
+        ),
+      );
+    }
+    return candidates;
   }
 
   /// Координатор выдал узлам [nodeIds] ещё по [bytes] байт: учесть в кэше
@@ -444,7 +461,9 @@ final class NodeService {
     final cache = _cache;
     if (cache == null) return;
     for (final id in nodeIds) {
-      cache.byId[bytesToHex(id)]?.freeBytes -= bytes;
+      cache.byId[bytesToHex(id)]
+        ?..freeBytes -= bytes
+        ..assignedBytes += bytes;
     }
   }
 
@@ -468,7 +487,9 @@ final class NodeService {
           SELECT node_id, account_id, subnet,
                  least(capacity_bytes - greatest(used_bytes, assigned_bytes),
                        free_bytes - greatest(assigned_bytes - used_bytes, 0)),
-                 availability, endpoints, registered_at
+                 availability, endpoints, registered_at, assigned_bytes,
+                 audits_passed, audits_failed, audit_window_failures,
+                 audit_latency_ms
             FROM nodes
             WHERE removed_at IS NULL
               AND excluded_at IS NULL
@@ -488,6 +509,11 @@ final class NodeService {
             availability as double,
             endpoints as List<Object?>,
             registered as DateTime,
+            assigned as int,
+            passed as int,
+            failed as int,
+            recentFailed as int,
+            latencyMs as double?,
           ]
           in rows)
         _OnlineNode(
@@ -498,6 +524,13 @@ final class NodeService {
           availability: availability,
           endpoints: [for (final e in endpoints) e! as String],
           registeredAt: registered,
+          assignedBytes: assigned,
+          auditsPassed: passed,
+          auditsFailed: failed,
+          recentFailures: recentFailed,
+          auditLatency: latencyMs == null
+              ? null
+              : Duration(microseconds: (latencyMs * 1000).round()),
         ),
     ];
     return _OnlineCache(nodes);
@@ -610,6 +643,11 @@ final class _OnlineNode {
     required this.availability,
     required this.endpoints,
     required this.registeredAt,
+    required this.assignedBytes,
+    required this.auditsPassed,
+    required this.auditsFailed,
+    required this.recentFailures,
+    required this.auditLatency,
   });
 
   final Uint8List nodeId;
@@ -619,6 +657,20 @@ final class _OnlineNode {
   final double availability;
   final List<String> endpoints;
   final DateTime registeredAt;
+  int assignedBytes;
+  final int auditsPassed;
+  final int auditsFailed;
+  final int recentFailures;
+  final Duration? auditLatency;
+
+  ReputationInput reputationAt(DateTime now) => ReputationInput(
+    availability: availability,
+    age: now.difference(registeredAt),
+    auditsPassed: auditsPassed,
+    auditsFailed: auditsFailed,
+    recentFailures: recentFailures,
+    auditLatency: auditLatency,
+  );
 }
 
 final class _OnlineCache {

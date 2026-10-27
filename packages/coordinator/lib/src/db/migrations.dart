@@ -318,6 +318,16 @@ const List<Migration> schemaMigrations = [
     'CREATE INDEX audits_node ON audits (node_id, at DESC, id DESC)',
     'CREATE INDEX audits_at ON audits (at)',
   ]),
+  Migration(11, 'репутация', [
+    // Сглаженное время ответа на пройденные аудиты (множитель скорости,
+    // NULL — ответов ещё не было) и провалы среди последних audits.window
+    // аудитов (множитель аудитов) — задача 4.2.1.
+    '''
+    ALTER TABLE nodes
+      ADD COLUMN audit_latency_ms real,
+      ADD COLUMN audit_window_failures integer NOT NULL DEFAULT 0
+        CHECK (audit_window_failures >= 0)''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

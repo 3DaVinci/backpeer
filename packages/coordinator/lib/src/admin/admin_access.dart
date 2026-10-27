@@ -48,7 +48,8 @@ abstract final class AdminAccess {
                           endpoints, versions, software, subnet,
                           last_heartbeat_at, availability, excluded_at,
                           excluded_reason, relay, relay_until,
-                          audits_passed, audits_failed, last_audit_at)
+                          audits_passed, audits_failed, last_audit_at,
+                          audit_window_failures, audit_latency_ms)
               ON nodes TO $role''',
           'GRANT UPDATE (excluded_at, excluded_reason) ON nodes TO $role',
           '''

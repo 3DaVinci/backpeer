@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:coordinator/src/db/database.dart';
+import 'package:coordinator/src/reputation/reputation.dart';
 import 'package:core/core.dart';
 import 'package:postgres/postgres.dart';
 
@@ -390,7 +391,8 @@ final class AdminService {
                n.capacity_bytes, n.used_bytes, n.assigned_bytes,
                n.last_heartbeat_at, n.registered_at, n.removed_at,
                n.excluded_at, n.excluded_reason, n.endpoints, n.software,
-               n.audits_passed, n.audits_failed, n.last_audit_at
+               n.audits_passed, n.audits_failed, n.last_audit_at,
+               n.audit_window_failures, n.audit_latency_ms
           FROM nodes n JOIN admin_accounts a USING (account_id)
           WHERE (@a:bytea IS NULL OR n.account_id = @a:bytea)
             AND (@n:bytea IS NULL OR n.node_id = @n:bytea)
@@ -417,6 +419,8 @@ final class AdminService {
             auditsPassed as int,
             auditsFailed as int,
             lastAudit as DateTime?,
+            recentFailed as int,
+            latencyMs as double?,
           ]
           in rows)
         {
@@ -442,6 +446,20 @@ final class AdminService {
           'auditsPassed': auditsPassed,
           'auditsFailed': auditsFailed,
           'lastAuditAt': _iso(lastAudit),
+          'auditWindowFailures': recentFailed,
+          'auditLatencyMs': latencyMs?.round(),
+          'reputation': Reputation.of(
+            ReputationInput(
+              availability: availability,
+              age: now.difference(registered),
+              auditsPassed: auditsPassed,
+              auditsFailed: auditsFailed,
+              recentFailures: recentFailed,
+              auditLatency: latencyMs == null
+                  ? null
+                  : Duration(microseconds: (latencyMs * 1000).round()),
+            ),
+          ),
         },
     ];
   }

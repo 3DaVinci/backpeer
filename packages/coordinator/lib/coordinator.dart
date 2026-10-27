@@ -7,6 +7,7 @@
 /// - `objects/` — снимки и индексы;
 /// - `nodes/` — реестр узлов, heartbeat, доступность, канал команд;
 /// - `placement/` — выбор узлов для фрагментов сегмента;
+/// - `reputation/` — репутация узла: вес при размещении;
 /// - `segments/` — размещение сегментов, талоны, сборка мусора;
 /// - `relay/` — пропуска relay, учёт трафика через relay, метрики;
 /// - `audits/` — аудиты хранения: планировщик, проверка ответа, реакция
@@ -47,6 +48,7 @@ export 'src/placement/placement.dart';
 export 'src/placement/placement_policy.dart';
 export 'src/relay/relay_policy.dart';
 export 'src/relay/relay_service.dart';
+export 'src/reputation/reputation.dart';
 export 'src/rpc/api_handler.dart';
 export 'src/rpc/call_context.dart';
 export 'src/rpc/database_service.dart';

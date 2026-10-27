@@ -305,8 +305,49 @@ void main() {
           (p) => !old.contains(bytesToHex(p.node.nodeId)),
         );
         expect(fresh.length, 5, reason: 'не больше 20 × 0,25 по умолчанию');
+        // Новые узлы — только на фрагментах чётности (номера от k = 10).
+        expect(
+          fresh.map((p) => p.index),
+          everyElement(greaterThanOrEqualTo(10)),
+        );
       }
     });
+
+    test(
+      'узел на испытательном сроке получает не больше заданного объёма',
+      () async {
+        await start(
+          config: const CoordinatorConfig(
+            nodes: NodePolicy(minCapacityBytes: 0),
+            placement: PlacementPolicy(
+              candidatesCache: Duration.zero,
+              probationMaxBytes: 3 * _size,
+            ),
+          ),
+          nodeCount: 21,
+        );
+        // 20 узлов «старые», один — на испытательном сроке.
+        for (final node in nodes.take(20)) {
+          await h.db.run(
+            (s) => s.execute(
+              Sql.named('''
+              UPDATE nodes SET registered_at = registered_at - interval '4 days'
+                WHERE node_id = @n:bytea'''),
+              parameters: {'n': node.publicKey},
+            ),
+          );
+        }
+        final fresh = bytesToHex(nodes.last.publicKey);
+        var got = 0;
+        for (var s = 0; s < 30; s++) {
+          final response = await allocate(allocation(id(8, s)));
+          got += response.placements
+              .where((p) => bytesToHex(p.node.nodeId) == fresh)
+              .length;
+        }
+        expect(got, 3, reason: 'три фрагмента по $_size байт, дальше — нет');
+      },
+    );
   });
 
   group('CommitSegment и LocateSegment', () {

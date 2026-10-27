@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
+import 'package:coordinator/src/reputation/reputation.dart';
 import 'package:core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart';
@@ -165,7 +166,9 @@ AuditOutcome checkAuditReply(
 /// команды канала. Первый провал фрагмента — повторная проверка через
 /// [AuditPolicy.recheckDelay] (другой случайный блок); второй — фрагмент
 /// потерян: `damaged_at`, не выдаётся в `LocateSegment`, ремонт — 4.3.
-/// Итоги копятся в журнале `audits` и счётчиках узла (репутация, 4.2);
+/// Итоги копятся в журнале `audits` и счётчиках узла, время ответа на
+/// пройденные — в сглаженном `audit_latency_ms`, провалы в окне — в
+/// `audit_window_failures` (репутация, 4.2.1);
 /// [AuditPolicy.excludeFailures] провалов среди последних
 /// [AuditPolicy.window] итогов исключают узел из размещения
 /// (`excluded_at`, причина «аудит: …»); вернуть узел может оператор
@@ -446,7 +449,12 @@ final class AuditService {
             SET audit_next_at = @next:timestamptz,
                 last_audit_at = @t:timestamptz,
                 audits_passed = audits_passed + @p:int4,
-                audits_failed = audits_failed + @f:int4
+                audits_failed = audits_failed + @f:int4,
+                audit_window_failures = @wf:int4,
+                audit_latency_ms = CASE WHEN @f:int4 = 1 THEN audit_latency_ms
+                  ELSE coalesce(audit_latency_ms +
+                                @k:float8 * (@ms:float8 - audit_latency_ms),
+                                @ms:float8) END
             WHERE node_id = @n:bytea'''),
         parameters: {
           'n': nodeId,
@@ -454,6 +462,9 @@ final class AuditService {
           't': now,
           'p': outcome.passed ? 1 : 0,
           'f': outcome.passed ? 0 : 1,
+          'k': Reputation.latencySmoothing,
+          'ms': latency.inMicroseconds / 1000,
+          'wf': failures,
         },
       );
       return (lost: lost, excluded: excluded, failures: failures);

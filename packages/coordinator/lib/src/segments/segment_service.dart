@@ -44,7 +44,11 @@ final class SegmentService {
     Placement? placement,
     DateTime Function()? clock,
   }) : _placement =
-           placement ?? Placement(minAvailability: policy.minAvailability),
+           placement ??
+           Placement(
+             minAvailability: policy.minAvailability,
+             minReputation: policy.minReputation,
+           ),
        _clock = clock ?? DateTime.now;
 
   final Database _db;
@@ -87,6 +91,7 @@ final class SegmentService {
       minAvailability: policy.minAvailability,
       exceptOwner: accountId,
       probation: policy.probation,
+      probationMaxBytes: policy.probationMaxBytes,
       cacheFor: policy.candidatesCache,
     );
     final List<NodeCandidate> chosen;
@@ -96,7 +101,8 @@ final class SegmentService {
         n: n,
         fragmentSize: size,
         segmentOwner: accountId,
-        maxProbation: policy.maxProbation(n),
+        maxProbation: policy.maxProbation(n, k),
+        parityFrom: k,
         distinctSubnets: policy.distinctSubnets,
       );
     } on PlacementException catch (e) {

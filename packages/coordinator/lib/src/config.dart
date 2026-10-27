@@ -175,6 +175,8 @@ final class CoordinatorConfig {
     'placement.min_availability',
     'placement.probation_hours',
     'placement.max_probation_share',
+    'placement.probation_max_bytes',
+    'placement.min_reputation',
     'placement.ticket_minutes',
     'placement.distinct_subnets',
     'placement.candidates_cache_ms',
@@ -229,7 +231,8 @@ final class CoordinatorConfig {
   /// Сведение узлов: адрес и порты сводника, предел сведений.
   final RendezvousPolicy rendezvous;
 
-  /// Размещение: порог доступности, испытательный срок, срок талонов.
+  /// Размещение: пороги доступности и репутации, испытательный срок,
+  /// срок талонов.
   final PlacementPolicy placement;
 
   /// Relay: серверы, ключ пропусков, пределы трафика.
@@ -367,6 +370,11 @@ final class _Reader {
         ),
         maxProbationShare:
             _fraction('placement.max_probation_share') ?? pp.maxProbationShare,
+        probationMaxBytes:
+            _int('placement.probation_max_bytes', 0, 1 << 62) ??
+            pp.probationMaxBytes,
+        minReputation:
+            _fraction('placement.min_reputation') ?? pp.minReputation,
         ticketLifetime: Duration(
           minutes:
               _int('placement.ticket_minutes', 1, 60) ??

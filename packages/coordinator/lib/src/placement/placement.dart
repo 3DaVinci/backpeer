@@ -13,6 +13,7 @@ final class NodeCandidate {
     required this.availability,
     this.endpoints = const [],
     this.onProbation = false,
+    this.reputation,
   });
 
   final Uint8List nodeId;
@@ -33,6 +34,12 @@ final class NodeCandidate {
 
   /// Узел зарегистрирован недавно (испытательный срок, модель угроз, С-6).
   final bool onProbation;
+
+  /// Репутация (`Reputation.of`); `null` — по одной доступности, как у
+  /// старого узла без провалов: A².
+  final double? reputation;
+
+  double get weight => reputation ?? availability * availability;
 }
 
 /// Подходящих узлов меньше n.
@@ -49,17 +56,21 @@ final class PlacementException implements Exception {
       'PlacementException: нужно $needed узлов, подходят $found';
 }
 
-/// Выбор n узлов для фрагментов сегмента (задача 2.7.1; protocol.md,
-/// раздел 5; durability.md, раздел 3).
+/// Выбор n узлов для фрагментов сегмента (задачи 2.7.1, 4.2.2, 4.2.3;
+/// protocol.md, раздел 5; durability.md, раздел 3).
 ///
 /// Ограничения, которые не нарушаются никогда: узлы различны, их владельцы
 /// различны, подсети различны, владелец сегмента своих фрагментов не
 /// хранит, свободного места хватает на фрагмент, доступность не ниже
-/// [minAvailability], узлов на испытательном сроке не больше заданного
-/// (модель угроз, С-6: свежие подставные узлы не соберут много фрагментов
-/// одного сегмента). Среди подходящих узлов выбор случайный со весом
-/// [weight]: узлы с высокой доступностью получают фрагменты чаще, а
-/// нагрузка расходится по всей сети, а не по нескольким лучшим узлам.
+/// [minAvailability], репутация не ниже [minReputation], узлов на
+/// испытательном сроке не больше заданного, и они получают только
+/// фрагменты чётности (модель угроз, С-6: свежие подставные узлы не
+/// соберут много фрагментов одного сегмента, а их уход не лишает сегмент
+/// фрагментов данных). Среди подходящих узлов выбор случайный с весом —
+/// репутацией ([NodeCandidate.weight], `docs/spec/reputation.md`): узлы с
+/// высокой доступностью, без провалов аудитов, старые и быстрые получают
+/// фрагменты чаще, а нагрузка расходится по всей сети, а не по нескольким
+/// лучшим узлам.
 ///
 /// Способ — последовательные взвешенные извлечения без возвращения: каждый
 /// следующий узел выбирается среди ещё допустимых (владелец и подсеть не
@@ -68,19 +79,18 @@ final class PlacementException implements Exception {
 /// обход по убыванию ключа с пропуском конфликтующих узлов даёт то же
 /// распределение за O(m log m).
 final class Placement {
-  new({this.minAvailability = defaultMinAvailability, math.Random? random})
-    : _random = random ?? math.Random.secure();
+  new({
+    this.minAvailability = defaultMinAvailability,
+    this.minReputation = 0,
+    math.Random? random,
+  }) : _random = random ?? math.Random.secure();
 
   /// Порог доступности хранителя (`mvp-scope.md`).
   static const defaultMinAvailability = 0.6;
 
   final double minAvailability;
+  final double minReputation;
   final math.Random _random;
-
-  /// Вес узла: квадрат доступности. При пороге 0,6 узел с доступностью
-  /// 0,99 получает фрагменты примерно в 2,7 раза чаще узла на пороге.
-  static double weight(NodeCandidate node) =>
-      node.availability * node.availability;
 
   /// Узел подходит без учёта других выбранных узлов.
   bool eligible(
@@ -89,23 +99,35 @@ final class Placement {
     Uint8List? segmentOwner,
   }) =>
       node.availability >= minAvailability &&
+      node.weight >= minReputation &&
       node.freeBytes >= fragmentSize &&
       (segmentOwner == null || !constantTimeEquals(node.ownerId, segmentOwner));
 
-  /// [n] узлов из [candidates], по порядку выбора; узлов на испытательном
-  /// сроке — не больше [maxProbation] (по умолчанию без предела); без
-  /// [distinctSubnets] подсети могут повторяться (только локальный стенд,
-  /// `PlacementPolicy.distinctSubnets`). Не хватает
-  /// подходящих — [PlacementException].
+  /// [n] узлов из [candidates] по номерам фрагментов; узлов на
+  /// испытательном сроке — не больше [maxProbation] (по умолчанию без
+  /// предела), и при [parityFrom] они стоят на номерах не меньше его —
+  /// фрагментах чётности (у Reed–Solomon первые k фрагментов — данные);
+  /// без [distinctSubnets] подсети могут повторяться (только локальный
+  /// стенд, `PlacementPolicy.distinctSubnets`). Не хватает подходящих —
+  /// [PlacementException].
   List<NodeCandidate> choose(
     List<NodeCandidate> candidates, {
     required int n,
     required int fragmentSize,
     Uint8List? segmentOwner,
     int? maxProbation,
+    int? parityFrom,
     bool distinctSubnets = true,
   }) {
     RangeError.checkValueInInterval(n, 1, 255, 'n');
+    var probationLimit = maxProbation;
+    if (parityFrom != null) {
+      RangeError.checkValueInInterval(parityFrom, 0, n, 'parityFrom');
+      final parity = n - parityFrom;
+      if (probationLimit == null || probationLimit > parity) {
+        probationLimit = parity;
+      }
+    }
     final keyed = <(double, NodeCandidate)>[];
     for (final node in candidates) {
       if (!eligible(
@@ -115,7 +137,7 @@ final class Placement {
       )) {
         continue;
       }
-      final w = weight(node);
+      final w = node.weight;
       if (w <= 0) continue;
       // ln(u) / w — монотонно по u^(1/w), без потери точности при малых w.
       final u = 1 - _random.nextDouble(); // (0, 1]
@@ -135,13 +157,22 @@ final class Placement {
         continue;
       }
       if (node.onProbation) {
-        if (maxProbation != null && probation >= maxProbation) continue;
+        if (probationLimit != null && probation >= probationLimit) continue;
         probation++;
       }
       owners.add(owner);
       subnets.add(node.subnet);
       chosen.add(node);
-      if (chosen.length == n) return chosen;
+      if (chosen.length == n) {
+        // Порядок выбора случаен; узлы на испытательном сроке — в конец,
+        // на номера чётности.
+        return [
+          for (final c in chosen)
+            if (!c.onProbation) c,
+          for (final c in chosen)
+            if (c.onProbation) c,
+        ];
+      }
     }
     throw PlacementException(needed: n, found: chosen.length);
   }

@@ -423,7 +423,26 @@ final class ConfigCommand extends CliCommand {
         help: 'Убрать все правила исключения',
         negatable: false,
       );
+    for (final (name, what) in _keepOptions) {
+      argParser.addOption(
+        'keep-$name',
+        help: 'Политика хранения: сколько $what снимков хранить',
+      );
+    }
+    argParser.addFlag(
+      'keep-all',
+      help: 'Хранить все снимки (без очистки по политике)',
+      negatable: false,
+    );
   }
+
+  static const _keepOptions = [
+    ('last', 'последних'),
+    ('hourly', 'почасовых'),
+    ('daily', 'дневных'),
+    ('weekly', 'недельных'),
+    ('monthly', 'месячных'),
+  ];
 
   @override
   String get name => 'config';
@@ -480,6 +499,25 @@ final class ConfigCommand extends CliCommand {
       config.excludes = [...config.excludes, ...a.multiOption('exclude')];
       changed = true;
     }
+    if (a.flag('keep-all')) {
+      config.retention = null;
+      changed = true;
+    }
+    final keep = {
+      for (final (name, _) in _keepOptions)
+        if (a.option('keep-$name') != null) name: _int(a, 'keep-$name'),
+    };
+    if (keep.isNotEmpty) {
+      try {
+        config.retention = RetentionPolicy.fromJson({
+          ...?config.retention?.toJson(),
+          ...keep,
+        });
+      } on ConfigException catch (e) {
+        throw CliException(e.message, ExitCode.usage);
+      }
+      changed = true;
+    }
     if (changed) config.save(ctx.home);
     ctx.report
       ..info('Каталог программы: ${ctx.home.dir.path}')
@@ -498,6 +536,7 @@ final class ConfigCommand extends CliCommand {
       )
       ..info('Надёжность: ${config.durability}')
       ..info('Устройство: ${bytesToHex(config.deviceId).substring(0, 16)}…')
+      ..info('Хранение снимков: ${config.retention ?? 'все'}')
       ..info(
         'Исключения: '
         '${config.excludes.isEmpty ? 'нет' : config.excludes.join(', ')}',

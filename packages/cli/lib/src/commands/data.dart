@@ -2,10 +2,18 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:args/command_runner.dart';
+import 'package:cli/src/app_config.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
 
 String _shortId(List<int> id) => bytesToHex(id).substring(0, 12);
+
+/// Время снимка в местном времени до секунд.
+String _time(int unixMs) =>
+    DateTime.fromMillisecondsSinceEpoch(unixMs)
+        .toLocal()
+        .toString()
+        .substring(0, 19);
 
 String _warning(RollbackWarning w) => switch (w) {
   RollbackWarning.sequenceRegressed =>
@@ -400,23 +408,42 @@ final class VerifyCommand extends CliCommand {
 }
 
 final class ForgetCommand extends CliCommand {
-  new(super.ctx);
+  new(super.ctx) {
+    argParser
+      ..addFlag(
+        'policy',
+        negatable: false,
+        help:
+            'Удалить снимки этого устройства, которые не держит политика '
+            'хранения (cli config --keep-…)',
+      )
+      ..addFlag(
+        'dry-run',
+        negatable: false,
+        help: 'С --policy: только показать, что будет удалено',
+      );
+  }
 
   @override
   String get name => 'forget';
 
   @override
   String get description =>
-      'Удалить снимок (место освободит сборка мусора: cli gc).';
+      'Удалить снимок или снимки не по политике хранения '
+      '(место освободит сборка мусора: cli gc).';
 
   @override
-  String get invocation => 'cli forget <снимок>';
+  String get invocation => 'cli forget <снимок> | cli forget --policy';
 
   @override
   Future<int> run() async {
     final rest = argResults!.rest;
-    if (rest.length != 1) throw UsageException('Укажите один снимок', usage);
-    final session = await ctx.session(ctx.config());
+    final policy = argResults!.flag('policy');
+    if (policy ? rest.isNotEmpty : rest.length != 1) {
+      throw UsageException('Укажите один снимок или --policy', usage);
+    }
+    final config = ctx.config();
+    final session = await ctx.session(config);
     try {
       final catalog = SnapshotCatalog(
         crypto: await ctx.crypto(),
@@ -424,6 +451,7 @@ final class ForgetCommand extends CliCommand {
         store: session.objects,
         index: session.index,
       );
+      if (policy) return await _byPolicy(catalog, config);
       final id = await _resolve(catalog, rest.single);
       await catalog.forget(id);
       ctx.report
@@ -433,6 +461,55 @@ final class ForgetCommand extends CliCommand {
     } finally {
       await session.close();
     }
+  }
+
+  /// Задача 5.3.5: то же, что агент делает после бэкапа.
+  Future<int> _byPolicy(SnapshotCatalog catalog, AppConfig config) async {
+    final retention = config.retention;
+    if (retention == null) {
+      throw const CliException(
+        'Политика хранения выключена (cli config --keep-all); задайте её: '
+        'cli config --keep-daily 7 …',
+      );
+    }
+    final dryRun = argResults!.flag('dry-run');
+    final report = await forgetByPolicy(
+      catalog: catalog,
+      policy: retention,
+      deviceId: config.deviceId,
+      dryRun: dryRun,
+    );
+    for (final s in report.forgotten) {
+      ctx.report.info(
+        '${dryRun ? 'Будет удалён' : 'Удалён'} '
+        '${_shortId(s.snapshotId)} от ${_time(s.createdAtUnixMs.toInt())}',
+      );
+    }
+    ctx.report
+      ..info(
+        'Политика: $retention. Осталось снимков устройства: '
+        '${report.kept.length}, ${dryRun ? 'к удалению' : 'удалено'}: '
+        '${report.forgotten.length}'
+        '${report.other == 0 ? '' : '; других устройств: ${report.other}'}.'
+        '${dryRun || report.forgotten.isEmpty ? '' : ' Место освободит '
+                  'cli gc.'}',
+      )
+      ..result({
+        'dryRun': dryRun,
+        'policy': retention.toJson(),
+        'kept': [
+          for (final (s, rules) in report.kept)
+            {
+              'snapshotId': bytesToHex(s.snapshotId),
+              'rules': [for (final r in rules) r.name],
+            },
+        ],
+        'forgotten': [
+          for (final s in report.forgotten) bytesToHex(s.snapshotId),
+        ],
+        'otherDevices': report.other,
+      });
+    return ExitCode.ok;
   }
 }
 

@@ -26,6 +26,7 @@ import 'package:protocol/protocol.dart' as pb;
 final class BackupProgress {
   const new({
     required this.files,
+    required this.bytes,
     required this.bytesRead,
     required this.newBytes,
     required this.segmentsStored,
@@ -34,6 +35,10 @@ final class BackupProgress {
   });
 
   final int files;
+
+  /// Байт в обработанных файлах, включая неизменённые (их не читают) —
+  /// для доли сделанного от оценки объёма.
+  final int bytes;
   final int bytesRead;
 
   /// Байт новых чанков (до упаковки и кодирования).
@@ -136,6 +141,7 @@ Future<BackupResult> runBackup({
   void progress() => onProgress?.call(
     BackupProgress(
       files: builder.stats.files,
+      bytes: builder.stats.bytes,
       bytesRead: builder.stats.bytesRead,
       newBytes: builder.stats.newBytes,
       segmentsStored: packer.segmentsStored,

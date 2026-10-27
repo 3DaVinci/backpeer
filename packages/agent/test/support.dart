@@ -35,6 +35,8 @@ Map<String, String> testEnv(String home) => {
   'FS_PASSWORD': testPassword,
   'FS_ARGON2_FAST': '1',
   'FS_AGENT_SECRETS': 'none',
+  'FS_AGENT_NOTIFY': 'none',
+  'FS_AGENT_POWER': 'none',
 };
 
 /// `cli init` без координатора: ключи и папки-«узлы» в [home].

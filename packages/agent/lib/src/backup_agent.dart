@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:agent/src/account_api.dart';
 import 'package:agent/src/agent_keys.dart';
+import 'package:agent/src/desktop/notifier.dart';
+import 'package:agent/src/desktop/power.dart';
+import 'package:agent/src/health.dart';
 import 'package:agent/src/paths.dart';
 import 'package:agent/src/schedule.dart';
 import 'package:agent/src/secrets/secret_store.dart';
@@ -34,6 +38,10 @@ enum AgentStatus {
   /// нужен пароль (метод `unlock`).
   waitingForKeys,
 
+  /// Пора работать по расписанию, но компьютер от батареи, а в настройках
+  /// — только от сети (`onlyOnAcPower`).
+  waitingForPower,
+
   stopping,
 }
 
@@ -51,6 +59,13 @@ final class RunningJob {
 
   /// Отменено паузой: бэкап продолжится после `resume`.
   bool paused = false;
+
+  /// Отменено переходом на батарею: продолжится от сети.
+  bool onBattery = false;
+
+  /// Оценка объёма бэкапа (обход в отдельном isolate) — для доли и
+  /// оставшегося времени; `null` — ещё считается.
+  BackupEstimate? estimate;
 
   Map<String, Object?> toJson() => {
     'kind': kind.name,
@@ -79,6 +94,9 @@ final class BackupAgent {
     required this.vault,
     required this.argon2,
     required this.keysRetry,
+    required this.power,
+    required this.notifier,
+    required this.powerRetry,
     required this._lock,
     required this._writer,
     required this._logFile,
@@ -89,7 +107,8 @@ final class BackupAgent {
   /// Запускает агента для каталога [home]. [secrets] — хранилище ОС (по
   /// умолчанию [SecretStore.forPlatform]); [logFile] — путь журнала,
   /// `-` — stderr; [handleSignals] — останавливаться по SIGINT и SIGTERM;
-  /// [allowedUid] — только для тестов локального API.
+  /// [power] и [notifier] — питание и уведомления ОС (по умолчанию для
+  /// текущей ОС); [allowedUid] — только для тестов локального API.
   ///
   /// Каталог занят другим агентом — [FileSystemException].
   static Future<BackupAgent> start({
@@ -102,6 +121,9 @@ final class BackupAgent {
     String? socketPath,
     bool handleSignals = true,
     Duration keysRetry = const Duration(minutes: 1),
+    PowerSource? power,
+    Notifier? notifier,
+    Duration powerRetry = const Duration(minutes: 1),
     int? allowedUid,
   }) async {
     final paths = AgentPaths(home);
@@ -136,6 +158,9 @@ final class BackupAgent {
         ),
         argon2: argon2,
         keysRetry: keysRetry,
+        power: power ?? PowerSource.forPlatform(),
+        notifier: notifier ?? Notifier.forPlatform(),
+        powerRetry: powerRetry,
         lock: lock,
         writer: writer,
         logFile: rotating,
@@ -171,6 +196,8 @@ final class BackupAgent {
           'interrupted': agent.state.interrupted != null,
           'secrets': agent.vault.secrets.name,
           'remembered': agent.vault.exists,
+          'power': agent.power.name,
+          'notifier': agent.notifier.name,
         }),
       );
       agent._reschedule();
@@ -193,6 +220,15 @@ final class BackupAgent {
 
   /// Как часто снова спрашивать хранилище ОС, когда ключей нет.
   final Duration keysRetry;
+
+  /// Питание: бэкап по расписанию — только от сети (`onlyOnAcPower`).
+  final PowerSource power;
+
+  /// Уведомления о проблемах с бэкапом (5.3.4).
+  final Notifier notifier;
+
+  /// Как часто проверять питание, пока ждём сеть или идёт бэкап.
+  final Duration powerRetry;
   final DateTime startedAt;
   final DirLock _lock;
   final JsonLogWriter _writer;
@@ -216,8 +252,14 @@ final class BackupAgent {
   RunningJob? _job;
   Future<void>? _jobDone;
   Timer? _timer;
+  Timer? _powerWatch;
   DateTime? _nextAt;
+  DateTime? _nextVerifyAt;
   bool _paused = false;
+  bool _waitingForPower = false;
+
+  /// Последнее опубликованное событием `health` состояние.
+  String? _healthSignature;
 
   /// Завершается, когда агент остановлен.
   Future<void> get done => _done.future;
@@ -227,6 +269,9 @@ final class BackupAgent {
   /// Когда следующий бэкап по расписанию.
   DateTime? get nextBackupAt => _nextAt;
 
+  /// Когда следующая проверка по расписанию.
+  DateTime? get nextVerifyAt => _nextVerifyAt;
+
   AgentStatus get status {
     if (_stopping != null) return AgentStatus.stopping;
     // Бэкап, остановленный паузой, ещё дописывает начатый сегмент.
@@ -234,6 +279,7 @@ final class BackupAgent {
     if (_paused) return AgentStatus.paused;
     if (_job != null) return AgentStatus.working;
     if (_keysProblem != null) return AgentStatus.waitingForKeys;
+    if (_waitingForPower) return AgentStatus.waitingForPower;
     return AgentStatus.idle;
   }
 
@@ -250,29 +296,39 @@ final class BackupAgent {
     _timer?.cancel();
     _timer = null;
     _nextAt = null;
+    _nextVerifyAt = null;
     if (_stopping != null || _paused || !paths.home.initialized) {
+      _waitingForPower = false;
       _publishStatus();
       return;
     }
     _nextAt = nextScheduledBackup(settings, state);
+    _nextVerifyAt = nextScheduledVerify(settings, state);
     if (_job == null) {
-      if (_keysProblem != null && _nextAt != null) {
-        // Ключей нет: снова спросить хранилище ОС через [keysRetry].
-        _timer = Timer(keysRetry, () => _scheduled('schedule'));
-      } else if (_nextAt case final at?) {
-        final delay = at.difference(DateTime.now());
+      final next = _earliest(_nextAt, _nextVerifyAt);
+      if (next != null && (_keysProblem != null || _waitingForPower)) {
+        // Ключей или сети нет: снова спросить через паузу.
         _timer = Timer(
-          delay.isNegative ? Duration.zero : delay,
-          () => _scheduled(state.interrupted != null ? 'resume' : 'schedule'),
+          _keysProblem != null ? keysRetry : powerRetry,
+          _scheduled,
         );
+      } else if (next != null) {
+        final delay = next.difference(DateTime.now());
+        _timer = Timer(delay.isNegative ? Duration.zero : delay, _scheduled);
+      } else {
+        _waitingForPower = false;
       }
     }
     _publishStatus();
   }
 
-  /// Бэкап по таймеру: ошибки запуска — только в журнал.
-  void _scheduled(String trigger) => unawaited(
-    _run(JobKind.backup, trigger).then<void>(
+  static DateTime? _earliest(DateTime? a, DateTime? b) =>
+      a == null || (b != null && b.isBefore(a)) ? b : a;
+
+  /// Задание по таймеру: бэкап, если пора, иначе проверка. Ошибки запуска
+  /// — только в журнал.
+  void _scheduled() => unawaited(
+    _startScheduled().then<void>(
       (_) {},
       onError: (Object e) {
         _log.warning(LogEvent('schedule_skipped', {'reason': _describe(e)}));
@@ -280,6 +336,51 @@ final class BackupAgent {
       },
     ),
   );
+
+  Future<void> _startScheduled() async {
+    final soon = DateTime.now().add(const Duration(seconds: 1));
+    final JobKind kind;
+    if (_nextAt case final at? when !at.isAfter(soon)) {
+      kind = JobKind.backup;
+    } else if (_nextVerifyAt case final at? when !at.isAfter(soon)) {
+      kind = JobKind.verify;
+    } else {
+      _reschedule();
+      return;
+    }
+    if (settings.onlyOnAcPower && await power.onBattery() == true) {
+      if (!_waitingForPower) {
+        _log.info(LogEvent('waiting_for_power', {'kind': kind.name}));
+      }
+      _waitingForPower = true;
+      _reschedule();
+      return;
+    }
+    _waitingForPower = false;
+    final trigger = kind == JobKind.backup && state.interrupted != null
+        ? 'resume'
+        : 'schedule';
+    await _run(kind, trigger);
+  }
+
+  /// Пока идёт бэкап по расписанию с `onlyOnAcPower`, следить за питанием:
+  /// от батареи — остановить с продолжением.
+  void _watchPower(RunningJob job) {
+    if (!settings.onlyOnAcPower ||
+        job.kind != JobKind.backup ||
+        job.trigger == 'manual') {
+      return;
+    }
+    _powerWatch = Timer.periodic(powerRetry, (_) async {
+      if (!identical(_job, job) || job.cancel.isCancelled) return;
+      if (await power.onBattery() != true) return;
+      _log.info(const LogEvent('on_battery', {'action': 'suspend'}));
+      _waitingForPower = true;
+      job
+        ..onBattery = true
+        ..cancel.cancel();
+    });
+  }
 
   // --- Ключи --------------------------------------------------------------
 
@@ -440,14 +541,18 @@ final class BackupAgent {
     final keys = material;
     final completer = Completer<void>();
     _jobDone = completer.future;
+    _watchPower(job);
     _publishStatus();
     unawaited(
       _execute(job, keys, params).whenComplete(() {
+        _powerWatch?.cancel();
+        _powerWatch = null;
         if (!identical(keys, _memoryKeys)) keys.dispose();
         _job = null;
         _jobDone = null;
         completer.complete();
         _reschedule();
+        unawaited(_checkHealth());
       }),
     );
     return true;
@@ -475,6 +580,8 @@ final class BackupAgent {
         };
       });
       record = JobRecord(
+        kind: job.kind.name,
+        trigger: job.trigger,
         startedAt: job.startedAt,
         finishedAt: DateTime.now(),
         outcome: result.$1,
@@ -484,9 +591,16 @@ final class BackupAgent {
     } on CancelledException {
       // Незаконченный бэкап продолжится после паузы или перезапуска.
       record = JobRecord(
+        kind: job.kind.name,
+        trigger: job.trigger,
         startedAt: job.startedAt,
         finishedAt: DateTime.now(),
         outcome: JobOutcome.cancelled,
+        result: {
+          if (job.paused) 'reason': 'paused',
+          if (job.onBattery) 'reason': 'on_battery',
+          if (job.kind == JobKind.backup) 'continues': true,
+        },
       );
     } on Object catch (e, st) {
       final message = _describe(e);
@@ -496,6 +610,8 @@ final class BackupAgent {
         e is CoreException || e is SessionException ? null : st,
       );
       record = JobRecord(
+        kind: job.kind.name,
+        trigger: job.trigger,
         startedAt: job.startedAt,
         finishedAt: DateTime.now(),
         outcome: JobOutcome.failed,
@@ -504,15 +620,9 @@ final class BackupAgent {
       // Повтор — по расписанию через retryMinutes, а не сразу.
       if (job.kind == JobKind.backup) state.interrupted = null;
     }
-    switch (job.kind) {
-      case JobKind.backup:
-        state.lastBackup = record;
-      case JobKind.verify:
-        state.lastVerify = record;
-      case JobKind.restore:
-        state.lastRestore = record;
-    }
-    state.save(paths.state);
+    state
+      ..record(job.kind.name, record)
+      ..save(paths.state);
     _log.info(
       LogEvent('job_finished', {
         'kind': job.kind.name,
@@ -520,10 +630,7 @@ final class BackupAgent {
         ...record.result,
       }),
     );
-    _control.publish('job_finished', {
-      'kind': job.kind.name,
-      ...record.toJson(),
-    });
+    _control.publish('job_finished', {...record.toJson()});
   }
 
   Future<T> _withSession<T>(
@@ -568,10 +675,21 @@ final class BackupAgent {
     if (settings.paths.isEmpty) {
       throw const ControlException('bad_request', 'не выбраны папки');
     }
+    final excludes = [...config.excludes, ...settings.excludeRulesList];
+    // Оценка объёма — параллельно, в своём isolate: обход синхронный.
+    unawaited(
+      _estimate(settings.paths, excludes).then<void>(
+        (e) => job.estimate = e,
+        onError: (Object e) {
+          _log.fine(LogEvent('estimate_failed', {'reason': '$e'}));
+        },
+      ),
+    );
     // Пул из 2 isolate, как у cli backup (docs/benchmarks.md, раздел 1.6.3).
     final encoder = await IsolateSegmentEncoder.start(2);
+    final BackupResult result;
     try {
-      final result = await runBackup(
+      result = await runBackup(
         crypto: crypto,
         keys: session.keys,
         index: session.index,
@@ -580,37 +698,117 @@ final class BackupAgent {
         placer: session.placer,
         paths: settings.paths,
         deviceId: config.deviceId,
-        excludes: ExcludeRules([...config.excludes, ...settings.excludes]),
+        excludes: ExcludeRules(excludes),
         params: config.durability,
         encoder: encoder,
         cancel: job.cancel,
         progressInterval: const Duration(milliseconds: 500),
-        onProgress: (p) => _progress(job, {
-          'files': p.files,
-          'bytesRead': p.bytesRead,
-          'newBytes': p.newBytes,
-          'segmentsStored': p.segmentsStored,
-          'elapsedMs': p.elapsed.inMilliseconds,
-        }),
-      );
-      final st = result.stats;
-      final clean = result.report.isClean && result.warnings.isEmpty;
-      return (
-        clean ? JobOutcome.ok : JobOutcome.partial,
-        <String, Object?>{
-          'snapshotId': bytesToHex(result.snapshot.snapshotId),
-          'sequence': result.snapshot.sequence.toInt(),
-          'files': st.files,
-          'directories': st.directories,
-          'bytes': st.bytes,
-          'newBytes': st.newBytes,
-          'segments': result.segmentsStored,
-          'skipped': result.report.skipped.length,
-          'warnings': [for (final w in result.warnings) w.name],
-        },
+        onProgress: (p) => _progress(job, _backupProgress(job, p)),
       );
     } finally {
       await encoder.close();
+    }
+    // Снимок сохранён: очистка ниже уже не продолжение этого бэкапа.
+    state
+      ..interrupted = null
+      ..save(paths.state);
+    final st = result.stats;
+    final clean = result.report.isClean && result.warnings.isEmpty;
+    return (
+      clean ? JobOutcome.ok : JobOutcome.partial,
+      <String, Object?>{
+        'snapshotId': bytesToHex(result.snapshot.snapshotId),
+        'sequence': result.snapshot.sequence.toInt(),
+        'files': st.files,
+        'directories': st.directories,
+        'bytes': st.bytes,
+        'newBytes': st.newBytes,
+        'segments': result.segmentsStored,
+        'excluded': result.report.excluded,
+        'skipped': result.report.skipped.length,
+        'skippedFiles': [
+          for (final e in result.report.skipped.take(100))
+            {'path': e.path, 'reason': e.reason.name, 'detail': ?e.detail},
+        ],
+        'warnings': [for (final w in result.warnings) w.name],
+        'retention': await _cleanup(session, config),
+      },
+    );
+  }
+
+  Map<String, Object?> _backupProgress(RunningJob job, BackupProgress p) {
+    final total = job.estimate;
+    final ms = p.elapsed.inMilliseconds;
+    final rate = ms < 1000 ? null : p.bytes * 1000 ~/ ms;
+    final left = total == null ? null : total.bytes - p.bytes;
+    return {
+      'files': p.files,
+      'bytes': p.bytes,
+      'bytesRead': p.bytesRead,
+      'newBytes': p.newBytes,
+      'segmentsStored': p.segmentsStored,
+      'elapsedMs': ms,
+      'totalFiles': ?total?.files,
+      'totalBytes': ?total?.bytes,
+      'bytesPerSecond': ?rate,
+      if (left != null && rate != null && rate > 0)
+        'etaMs': (left < 0 ? 0 : left) * 1000 ~/ rate,
+    };
+  }
+
+  /// Оценка объёма в отдельном isolate: обход синхронный (FFI к libc).
+  Future<BackupEstimate> _estimate(List<String> roots, List<String> rules) =>
+      Isolate.run(
+        () => estimateBackup(
+          roots,
+          excludes: ExcludeRules(rules),
+          maxEntries: 10000000,
+        ),
+      );
+
+  /// Очистка по политике хранения после бэкапа (5.3.5): лишние снимки
+  /// устройства — `forget`, затем сборка мусора. Ошибка очистки не делает
+  /// бэкап неудачным: снимок уже сохранён, следующий бэкап повторит
+  /// очистку.
+  Future<Map<String, Object?>?> _cleanup(
+    Session session,
+    AppConfig config,
+  ) async {
+    final policy = config.retention;
+    if (policy == null) return null;
+    try {
+      final report = await forgetByPolicy(
+        catalog: _catalog(session),
+        policy: policy,
+        deviceId: config.deviceId,
+      );
+      final out = <String, Object?>{
+        'kept': report.kept.length,
+        'forgotten': report.forgotten.length,
+      };
+      if (report.forgotten.isNotEmpty) {
+        final gc = await collectGarbage(
+          crypto: crypto,
+          keys: session.keys,
+          index: session.index,
+          fragments: session.fragments,
+          objects: session.objects,
+          releaser: session.releaser,
+          locator: session.locator,
+        );
+        out
+          ..['segmentsDeleted'] = gc.segmentsDeleted
+          ..['bytesFreed'] = gc.bytesFreed
+          ..['fragmentErrors'] = gc.fragmentErrors.length;
+      }
+      _log.info(LogEvent('retention', out));
+      return out;
+    } on CoreException catch (e) {
+      _log.warning(LogEvent('retention_failed', {'reason': e.message}));
+      return {'error': e.message};
+    } on SessionException catch (e) {
+      _log.warning(LogEvent('retention_failed', {'reason': e.message}));
+      return {'error': e.message};
     }
   }
 
@@ -838,13 +1036,67 @@ final class BackupAgent {
     'configured': paths.home.initialized,
     'job': _job?.toJson(),
     'nextBackupAt': _nextAt?.toUtc().toIso8601String(),
+    'nextVerifyAt': _nextVerifyAt?.toUtc().toIso8601String(),
     'interrupted': state.interrupted != null,
     'lastBackup': state.lastBackup?.toJson(),
+    'lastOkBackupAt': state.lastOkBackupAt?.toUtc().toIso8601String(),
     'lastVerify': state.lastVerify?.toJson(),
     'lastRestore': state.lastRestore?.toJson(),
+    'health': health.toJson(),
     'keys': _keysJson(),
-    'settings': settings.toJson(),
+    'settings': _settingsJson(),
   };
+
+  /// Здоровье бэкапа сейчас (5.3.4).
+  HealthReport get health => assessHealth(settings, state);
+
+  /// Настройки агента и политика хранения из `config.json`.
+  Map<String, Object?> _settingsJson() {
+    final json = settings.toJson();
+    if (paths.home.initialized) {
+      try {
+        json['retention'] = AppConfig.load(paths.home).retention?.toJson();
+      } on ConfigException {
+        // Испорченный config.json покажет первое же задание.
+      }
+    }
+    return json;
+  }
+
+  /// После задания: событие `health` при перемене и уведомление ОС, когда
+  /// данные требуют внимания (один раз на одно и то же состояние).
+  Future<void> _checkHealth() async {
+    final report = health;
+    final signature = report.signature;
+    if (signature != _healthSignature) {
+      _healthSignature = signature;
+      _control.publish('health', report.toJson());
+    }
+    if (report.state != HealthState.attention) {
+      if (state.notifiedHealth != null) {
+        state
+          ..notifiedHealth = null
+          ..save(paths.state);
+      }
+      return;
+    }
+    if (state.notifiedHealth == signature) return;
+    final reasons = [
+      for (final r in report.reasons)
+        if (r.attention) r.message,
+    ];
+    final shown = await notifier.notify(
+      'Бэкап требует внимания',
+      reasons.join('\n'),
+      critical: report.reasons.any((r) => r.code == 'unrecoverable'),
+    );
+    _log.warning(
+      LogEvent('health_attention', {'reasons': reasons, 'notified': shown}),
+    );
+    state
+      ..notifiedHealth = signature
+      ..save(paths.state);
+  }
 
   void _publishStatus() {
     if (_control.hasSubscribers('status')) {
@@ -861,11 +1113,34 @@ final class BackupAgent {
         return statusJson();
       case 'settings':
         if (params.isNotEmpty) {
+          final patch = {...params};
+          final retention = patch.containsKey('retention');
+          final policy = patch.remove('retention');
           final AgentSettings next;
+          final RetentionPolicy? nextPolicy;
           try {
-            next = settings.merge(params);
+            next = settings.merge(patch);
+            nextPolicy = switch (policy) {
+              null => null,
+              final Map<String, Object?> m => RetentionPolicy.fromJson(m),
+              _ => throw const ConfigException(
+                key: 'retention',
+                reason: 'нужен объект или null',
+              ),
+            };
           } on ConfigException catch (e) {
             throw ControlException('bad_request', e.message);
+          }
+          if (retention) {
+            if (!paths.home.initialized) {
+              throw const ControlException(
+                'not_configured',
+                'нет учётной записи на этом устройстве',
+              );
+            }
+            AppConfig.load(paths.home)
+              ..retention = nextPolicy
+              ..save(paths.home);
           }
           for (final p in next.paths) {
             if (!Directory(p).isAbsolute) {
@@ -878,11 +1153,20 @@ final class BackupAgent {
             LogEvent('settings_changed', {
               'paths': next.paths.length,
               'intervalMinutes': next.intervalMinutes,
+              'hours': ?next.hours?.toJson(),
+              'onlyOnAcPower': next.onlyOnAcPower,
+              if (retention) 'retention': nextPolicy?.toJson(),
             }),
           );
+          _waitingForPower = false;
           _reschedule();
+          unawaited(_checkHealth());
         }
-        return settings.toJson();
+        return _settingsJson();
+      case 'estimate':
+        return await _estimateJson(params);
+      case 'history':
+        return _history(params);
       case 'backup':
         return {'started': await _run(JobKind.backup, 'manual')};
       case 'verify':
@@ -921,7 +1205,7 @@ final class BackupAgent {
       case 'tree':
         return await _tree(params);
       case 'health':
-        return {'lastVerify': state.lastVerify?.toJson()};
+        return health.toJson();
       case 'unlock':
         return await _unlock(params);
       case 'lock':
@@ -950,6 +1234,60 @@ final class BackupAgent {
     }
   }
 
+  /// Оценка объёма: папки и исключения из [params] или из настроек.
+  Future<Map<String, Object?>> _estimateJson(
+    Map<String, Object?> params,
+  ) async {
+    final AgentSettings draft;
+    try {
+      draft = settings.merge({
+        for (final key in ['paths', 'excludes', 'excludePresets'])
+          if (params.containsKey(key)) key: params[key],
+      });
+    } on ConfigException catch (e) {
+      throw ControlException('bad_request', e.message);
+    }
+    for (final p in draft.paths) {
+      if (!Directory(p).isAbsolute) {
+        throw ControlException('bad_request', 'путь не абсолютный: $p');
+      }
+    }
+    final common = paths.home.initialized
+        ? AppConfig.load(paths.home).excludes
+        : const <String>[];
+    final watch = Stopwatch()..start();
+    final estimate = await _estimate(draft.paths, [
+      ...common,
+      ...draft.excludeRulesList,
+    ]);
+    return {...estimate.toJson(), 'elapsedMs': watch.elapsedMilliseconds};
+  }
+
+  /// История заданий от новых к старым: `kind` — только такие, `limit` —
+  /// не больше (по умолчанию 50).
+  Map<String, Object?> _history(Map<String, Object?> params) {
+    final kind = params['kind'];
+    final limit = params['limit'] ?? 50;
+    if ((kind != null && kind is! String) ||
+        limit is! int ||
+        limit < 1 ||
+        limit > AgentState.historyLimit) {
+      throw const ControlException(
+        'bad_request',
+        'kind — backup, verify или restore; 1 ≤ limit ≤ 100',
+      );
+    }
+    return {
+      'jobs': [
+        for (final r
+            in state.history.reversed
+                .where((r) => kind == null || r.kind == kind)
+                .take(limit))
+          r.toJson(),
+      ],
+    };
+  }
+
   // --- Остановка ----------------------------------------------------------
 
   void _signal(ProcessSignal signal) => unawaited(stop(reason: '$signal'));
@@ -961,6 +1299,7 @@ final class BackupAgent {
   Future<void> _stop(String reason) async {
     _log.info(LogEvent('stopping', {'reason': reason}));
     _timer?.cancel();
+    _powerWatch?.cancel();
     _job?.cancel.cancel();
     _publishStatus();
     await idle;

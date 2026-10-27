@@ -107,6 +107,8 @@ Future<int> _run(AppHome home, ArgResults args, Map<String, String> env) async {
       argon2: env['FS_ARGON2_FAST'] == '1'
           ? const Argon2Params(memoryKiB: 1024, iterations: 1)
           : const Argon2Params(),
+      power: PowerSource.forPlatform(env),
+      notifier: Notifier.forPlatform(env),
       logFile: args.option('log'),
       logLevel: Level.LEVELS.firstWhere(
         (l) => l.name.toLowerCase() == args.option('log-level'),

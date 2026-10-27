@@ -40,6 +40,7 @@ void main() {
     agents.add(
       await BackupAgent.start(
         home: home,
+        notifier: const NoNotifier(),
         crypto: crypto,
         secrets: secrets,
         argon2: const Argon2Params(memoryKiB: 1024, iterations: 1),

@@ -594,6 +594,7 @@ log:
     final secrets = MemorySecretStore();
     var agent = await BackupAgent.start(
       home: home,
+      notifier: const NoNotifier(),
       crypto: crypto,
       secrets: secrets,
       argon2: const Argon2Params(memoryKiB: 1024, iterations: 1),
@@ -612,6 +613,7 @@ log:
     // по расписанию начинается сам.
     agent = await BackupAgent.start(
       home: home,
+      notifier: const NoNotifier(),
       crypto: crypto,
       secrets: secrets,
       logFile: '-',

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:args/command_runner.dart';
+import 'package:cli/src/account_ops.dart';
 import 'package:cli/src/app_config.dart';
 import 'package:cli/src/console.dart';
 import 'package:cli/src/password.dart';
@@ -125,6 +126,14 @@ final class CliContext {
   Argon2Params get argon2 => env['FS_ARGON2_FAST'] == '1'
       ? const Argon2Params(memoryKiB: 1024, iterations: 1)
       : const Argon2Params();
+
+  /// Операции с учётной записью (общие с агентом бэкапа).
+  Future<AccountOps> accountOps() async => AccountOps(
+    home: home,
+    crypto: await crypto(),
+    argon2: argon2,
+    software: 'cli/$appVersion',
+  );
 
   Future<DeviceKeyStore> keyStore() async =>
       DeviceKeyStore(home.keysFile, await crypto(), params: argon2);

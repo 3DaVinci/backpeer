@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:agent/src/account_api.dart';
 import 'package:agent/src/agent_keys.dart';
 import 'package:agent/src/paths.dart';
 import 'package:agent/src/schedule.dart';
@@ -141,6 +142,16 @@ final class BackupAgent {
         settings: AgentSettings.load(paths.settings),
         state: AgentState.load(paths.state),
       );
+      agent._account = AccountApi(
+        ops: AccountOps(
+          home: home,
+          crypto: crypto,
+          argon2: argon2,
+          software: 'agent/$appVersion',
+        ),
+        adopt: agent._adoptKeys,
+        withKeys: agent._withKeys,
+      );
       agent._control = await ControlServer.bind(
         paths.endpoint(socketPath: socketPath),
         agent._handle,
@@ -191,6 +202,7 @@ final class BackupAgent {
   AgentState state;
 
   late final ControlServer _control;
+  late final AccountApi _account;
   final _signals = <StreamSubscription<ProcessSignal>>[];
   final _done = Completer<void>();
   Future<void>? _stopping;
@@ -315,26 +327,34 @@ final class BackupAgent {
       _log.warning(const LogEvent('unlock_failed'));
       throw const ControlException('wrong_password', 'неверный пароль');
     }
-    String? notRemembered;
     try {
-      if (remember) {
-        try {
-          await vault.remember(keys, device);
-        } on SecretStoreException catch (e) {
-          notRemembered = e.message;
-        }
-      }
-      if (!remember || notRemembered != null) {
-        _memoryKeys?.dispose();
-        _memoryKeys = KeyMaterial.of(keys, device);
-      } else {
-        _memoryKeys?.dispose();
-        _memoryKeys = null;
-      }
+      return await _adoptKeys(keys, device, remember: remember);
     } finally {
       keys.dispose();
       device?.dispose();
     }
+  }
+
+  /// Ключи открыты паролем (`unlock`, вход, новая учётная запись):
+  /// сохранить для работы без пароля ([remember]) или держать в памяти,
+  /// затем запустить расписание. [keys] и [device] остаются у вызывающего.
+  Future<Map<String, Object?>> _adoptKeys(
+    AccountKeys keys,
+    DeviceKeys? device, {
+    required bool remember,
+  }) async {
+    String? notRemembered;
+    if (remember) {
+      try {
+        await vault.remember(keys, device);
+      } on SecretStoreException catch (e) {
+        notRemembered = e.message;
+      }
+    }
+    _memoryKeys?.dispose();
+    _memoryKeys = !remember || notRemembered != null
+        ? KeyMaterial.of(keys, device)
+        : null;
     _keysProblem = null;
     _log.info(
       LogEvent('unlocked', {
@@ -348,6 +368,29 @@ final class BackupAgent {
       'reason': ?notRemembered,
       'keys': _keysJson(),
     };
+  }
+
+  /// Ключи агента без пароля для метода учётной записи (`account.devices`,
+  /// `account.revoke`); нет — `keys_required`.
+  Future<Map<String, Object?>> _withKeys(
+    Future<Map<String, Object?>> Function(AccountKeys, DeviceKeys?) body,
+  ) async {
+    final material = await _material();
+    if (material == null) {
+      _publishStatus();
+      throw ControlException('keys_required', _keysProblem ?? 'нужен пароль');
+    }
+    try {
+      final (keys, device) = await material.open(crypto);
+      try {
+        return await body(keys, device);
+      } finally {
+        keys.dispose();
+        device?.dispose();
+      }
+    } finally {
+      if (!identical(material, _memoryKeys)) material.dispose();
+    }
   }
 
   Map<String, Object?> _keysJson() => {
@@ -900,6 +943,9 @@ final class BackupAgent {
         Timer.run(() => unawaited(stop(reason: 'control')));
         return {'status': AgentStatus.stopping.name};
       default:
+        if (method.startsWith('account.')) {
+          return await _account.handle(method, params);
+        }
         throw ControlException('unknown_method', 'неизвестный метод $method');
     }
   }
@@ -922,6 +968,7 @@ final class BackupAgent {
       await s.cancel();
     }
     await _control.close();
+    _account.dispose();
     _memoryKeys?.dispose();
     _log.info(const LogEvent('stopped'));
     await _writer.detach();

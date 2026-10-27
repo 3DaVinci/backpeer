@@ -9,6 +9,7 @@
 ///   программы (`AgentPaths`).
 library;
 
+export 'src/account_api.dart' show AccountApi;
 export 'src/agent_keys.dart';
 export 'src/backup_agent.dart';
 export 'src/paths.dart';

@@ -5,7 +5,12 @@ import 'package:flutter/widgets.dart';
 /// Что приложение получает снаружи: связи с двумя фоновыми процессами
 /// (ADR-008) и свои настройки. В тестах — подделки.
 final class AppServices {
-  new({required this.agent, required this.node, required this.preferences});
+  new({
+    required this.agent,
+    required this.node,
+    required this.preferences,
+    this.coordinator = '',
+  });
 
   /// Агент бэкапа.
   final BackgroundProcess agent;
@@ -13,6 +18,10 @@ final class AppServices {
   /// Демон хранителя `node`.
   final BackgroundProcess node;
   final Preferences preferences;
+
+  /// Адрес координатора, предлагаемый для новой учётной записи; пусто —
+  /// без координатора (папки на этом компьютере, для проверки).
+  final String coordinator;
 }
 
 /// Доступ к [AppServices] из любого экрана.

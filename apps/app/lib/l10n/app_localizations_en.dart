@@ -305,4 +305,461 @@ class AppLocalizationsEn extends AppLocalizations {
   String sizeTiB(String value) {
     return '$value TiB';
   }
+
+  @override
+  String welcomeTitle(String app) {
+    return 'Welcome to $app';
+  }
+
+  @override
+  String get welcomeBody =>
+      'Your backup is encrypted on this computer and stored in pieces by other participants. Neither they nor the server can see file contents or names.';
+
+  @override
+  String get welcomeCreate => 'Create an account';
+
+  @override
+  String get welcomeCreateHint =>
+      'First computer: a password and a recovery phrase.';
+
+  @override
+  String get welcomeLogin => 'Sign in with password';
+
+  @override
+  String get welcomeLoginHint =>
+      'You already have an account — add this computer.';
+
+  @override
+  String get welcomeRecover => 'Recover with phrase';
+
+  @override
+  String get welcomeRecoverHint =>
+      'Forgot the password or password sign-in is off — use the 24 words.';
+
+  @override
+  String get serverSection => 'Server';
+
+  @override
+  String get serverAddress => 'Server address';
+
+  @override
+  String get serverAddressHint =>
+      'The account coordinator. Empty — no server: data stays in folders on this computer, for testing only.';
+
+  @override
+  String get serverNone => 'No server';
+
+  @override
+  String get localModeHint =>
+      'Account without a server: backup fragments go to folders on this computer. Use this mode for testing only.';
+
+  @override
+  String stepOf(int step, int total) {
+    return 'Step $step of $total';
+  }
+
+  @override
+  String get createTitle => 'Name and sign-in on other computers';
+
+  @override
+  String get loginName => 'Sign-in name';
+
+  @override
+  String get loginNameHint =>
+      '3–32 characters: Latin letters, digits, dot, “_” and “-”.';
+
+  @override
+  String get loginNameInvalid => 'Invalid name';
+
+  @override
+  String get keyCopyQuestion => 'How will you sign in on a new computer?';
+
+  @override
+  String get keyCopyOn => 'With password or phrase';
+
+  @override
+  String get keyCopyOnHint =>
+      'The server keeps a copy of your key encrypted with your password. Convenient, but your data is only as strong as your password.';
+
+  @override
+  String get keyCopyOff => 'Recovery phrase only';
+
+  @override
+  String get keyCopyOffHint =>
+      'The server holds no copy of your key, not even an encrypted one. A new computer can only be added with the 24-word phrase.';
+
+  @override
+  String get keyCopyOffWarningTitle => 'The phrase will be the only key';
+
+  @override
+  String get keyCopyOffWarning =>
+      'If you lose the phrase and every computer with this account, the data is gone for good: neither the password nor we can help.';
+
+  @override
+  String get createPasswordTitle => 'Password';
+
+  @override
+  String get createPasswordBody =>
+      'The password unlocks the keys on this computer and, if you chose password sign-in, the key copy on the server.';
+
+  @override
+  String get newPassword => 'New password';
+
+  @override
+  String get repeatPassword => 'Repeat password';
+
+  @override
+  String get currentPassword => 'Current password';
+
+  @override
+  String get passwordsDiffer => 'Passwords don\'t match';
+
+  @override
+  String passwordAdvice(int min) {
+    return 'At least $min characters. Best: 4–5 random words.';
+  }
+
+  @override
+  String passwordStrength(String rating) {
+    return 'Strength: $rating';
+  }
+
+  @override
+  String get passwordRejected => 'weak';
+
+  @override
+  String get passwordWeak => 'fair';
+
+  @override
+  String get passwordStrong => 'strong';
+
+  @override
+  String passwordTooShort(int min) {
+    return 'Shorter than $min characters';
+  }
+
+  @override
+  String get passwordForbiddenCharacter =>
+      'Contains a control or unknown character';
+
+  @override
+  String get passwordTooGuessable => 'Too easy to guess';
+
+  @override
+  String get acceptWeakPassword => 'I understand the risk, keep this password';
+
+  @override
+  String get hintCommonPassword => 'This is a common password';
+
+  @override
+  String get hintDictionaryWord => 'Dictionary words are guessed first';
+
+  @override
+  String get hintName => 'Names and surnames are guessed first';
+
+  @override
+  String get hintPersonalInfo => 'The password contains account details';
+
+  @override
+  String get hintOtherLayout =>
+      'A word typed in another keyboard layout is no harder than the word';
+
+  @override
+  String get hintSubstitution => 'Substitutions like @ for a barely help';
+
+  @override
+  String get hintReversed => 'A reversed word is no harder than the word';
+
+  @override
+  String get hintKeyboardPattern =>
+      'Adjacent keys (qwerty, 1qaz) are guessed first';
+
+  @override
+  String get hintRepeat => 'Repeats add little strength';
+
+  @override
+  String get hintSequence => 'Sequences (abc, 123) are predictable';
+
+  @override
+  String get hintDate => 'Dates and years are predictable';
+
+  @override
+  String get phraseTitle => 'Recovery phrase';
+
+  @override
+  String get phraseBody =>
+      'These 24 words are the only way to get your data back if you forget the password or lose the computer. Write them down in order.';
+
+  @override
+  String get phraseTipsTitle => 'How to keep the phrase';
+
+  @override
+  String get phraseTips =>
+      'Write it on paper and keep it away from the computer, ideally in two places. Don\'t take photos or keep it in cloud storage, email or messengers. Never share it — we will never ask for it.';
+
+  @override
+  String get phraseWritten => 'I have written down the phrase';
+
+  @override
+  String get phraseExpired =>
+      'The phrase has expired (the backup agent restarted). Write down the new one.';
+
+  @override
+  String get checkTitle => 'Check the phrase';
+
+  @override
+  String get checkBody =>
+      'Enter the words with these numbers to make sure the phrase was written down correctly.';
+
+  @override
+  String wordNumber(int number) {
+    return 'Word #$number';
+  }
+
+  @override
+  String get wordWrong => 'Wrong word';
+
+  @override
+  String get createAccount => 'Create account';
+
+  @override
+  String get createdTitle => 'Account created';
+
+  @override
+  String get createdBody =>
+      'The keys are saved in the system keychain, so scheduled backups run without the password. Next, choose the folders to back up.';
+
+  @override
+  String get toBackup => 'Go to backup';
+
+  @override
+  String get next => 'Next';
+
+  @override
+  String get back => 'Back';
+
+  @override
+  String get done => 'Done';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get loginBody =>
+      'Enter the account name and password. If password sign-in is off, recover access with the phrase.';
+
+  @override
+  String get signIn => 'Sign in';
+
+  @override
+  String get signingIn => 'Unlocking keys and loading the data list…';
+
+  @override
+  String get recoverBody =>
+      'Enter the 24 words of the recovery phrase separated by spaces.';
+
+  @override
+  String get phraseField => 'Recovery phrase';
+
+  @override
+  String phraseFieldCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count words of 24',
+      one: '$count word of 24',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recoverPasswordBody => 'Choose a password for this computer.';
+
+  @override
+  String get recover => 'Recover';
+
+  @override
+  String get signedInTitle => 'Computer connected';
+
+  @override
+  String get indexNotRestored => 'The data list will load later';
+
+  @override
+  String get latestSnapshot => 'Latest snapshot';
+
+  @override
+  String snapshotFrom(String date, String host) {
+    return '$date, computer $host';
+  }
+
+  @override
+  String snapshotsTotal(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count snapshots in total',
+      one: '$count snapshot in total',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rollbackCheckTitle => 'Check the latest snapshot';
+
+  @override
+  String get rollbackCheck =>
+      'This computer is new and cannot check by itself that the server showed every snapshot. Make sure the latest snapshot is the one you expect: date and computer. If a newer snapshot is missing, don\'t delete data on other computers and let us know.';
+
+  @override
+  String get rollbackWarningTitle => 'The server may be hiding snapshots';
+
+  @override
+  String get rollbackWarning =>
+      'The snapshot list doesn\'t match what this computer knows: a rollback is possible. Don\'t delete data on other computers and let us know.';
+
+  @override
+  String get restoreAllTitle => 'Restore your data';
+
+  @override
+  String get restoreAllBody =>
+      'Files from the latest snapshot will be restored to this folder. Progress is shown on the Overview screen.';
+
+  @override
+  String get restoreTarget => 'Restore to folder';
+
+  @override
+  String get restoredFolder => 'Restored';
+
+  @override
+  String get restoreAll => 'Restore everything';
+
+  @override
+  String get restoreLater => 'Later';
+
+  @override
+  String get accountSection => 'Account';
+
+  @override
+  String get thisDevice => 'This device';
+
+  @override
+  String get newDeviceSignIn => 'New device';
+
+  @override
+  String get signInByPasswordOrPhrase => 'with password or phrase';
+
+  @override
+  String get signInByPhraseOnly => 'phrase only';
+
+  @override
+  String get unknown => 'unknown';
+
+  @override
+  String get changePassword => 'Change password';
+
+  @override
+  String get passwordChanged => 'Password changed.';
+
+  @override
+  String get passwordChangedEverywhere =>
+      'Password changed here and in the key copy on the server.';
+
+  @override
+  String get passwordChangedKeyCopyUnknown =>
+      'Password changed here. It is unknown whether the server holds a key copy under the old password — turn the key copy on or off again.';
+
+  @override
+  String get showPhrase => 'Show phrase';
+
+  @override
+  String get showPhraseBody =>
+      'The recovery phrase gives full access to your data. Make sure nobody can see your screen.';
+
+  @override
+  String get show => 'Show';
+
+  @override
+  String get keyCopySwitch => 'Key copy on the server (password sign-in)';
+
+  @override
+  String get keyCopyEnableTitle => 'Turn on password sign-in';
+
+  @override
+  String get keyCopyDisableTitle => 'Turn off password sign-in';
+
+  @override
+  String get enable => 'Turn on';
+
+  @override
+  String get disable => 'Turn off';
+
+  @override
+  String get devicesSection => 'Devices';
+
+  @override
+  String deviceCurrent(String id) {
+    return '$id — this device';
+  }
+
+  @override
+  String deviceAddedAt(String date) {
+    return 'added $date';
+  }
+
+  @override
+  String deviceRevokedAt(String date) {
+    return 'revoked $date';
+  }
+
+  @override
+  String get revoke => 'Revoke';
+
+  @override
+  String get revokeTitle => 'Revoke device?';
+
+  @override
+  String revokeBody(String id) {
+    return 'Device $id will immediately lose access to the account and data on the server. It can only come back by signing in again with the password or phrase.';
+  }
+
+  @override
+  String get revoked => 'Device revoked — access closed.';
+
+  @override
+  String get errorWeakPassword => 'The password is too weak';
+
+  @override
+  String get errorPhraseNotConfirmed => 'The phrase words don\'t match';
+
+  @override
+  String get errorBadPhrase =>
+      'The phrase has an error: check the words and their order';
+
+  @override
+  String get errorLoginTaken => 'This name is taken, choose another';
+
+  @override
+  String get errorUnauthenticated =>
+      'Wrong name or password, or password sign-in is off — then recover with the phrase';
+
+  @override
+  String get errorTooManyDevices =>
+      'The account already has 5 devices: revoke one from another device';
+
+  @override
+  String get errorCurrentDevice => 'This device can\'t revoke itself';
+
+  @override
+  String get errorNoPhrase =>
+      'This device has no copy of the phrase: it was added with the password';
+
+  @override
+  String get errorRateLimited => 'Too many attempts, try again later';
+
+  @override
+  String get errorUnavailable =>
+      'The server is unavailable, check your internet connection';
+
+  @override
+  String get errorExists => 'This device already has an account';
 }

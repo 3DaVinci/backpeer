@@ -1,10 +1,11 @@
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
+import 'package:app/src/ui/account/account_settings.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:core/core.dart' show appVersion;
 import 'package:flutter/material.dart';
 
-/// Настройки приложения: язык и тема.
+/// Настройки: учётная запись и устройства (5.2.3), язык и тема.
 class SettingsScreen extends StatelessWidget {
   const new({super.key});
 
@@ -17,6 +18,7 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, _) => ScreenBody(
         title: l10n.navSettings,
         children: [
+          const AccountSettings(),
           Section(
             title: l10n.language,
             children: [

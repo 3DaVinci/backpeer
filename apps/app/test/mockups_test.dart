@@ -1,4 +1,4 @@
-// Макеты основных экранов (задача 5.1.2) картинками PNG — для
+// Макеты основных экранов (задачи 5.1.2, 5.2) картинками PNG — для
 // согласования без запуска приложения:
 //
 //   FS_APP_MOCKUPS=/tmp/mockups flutter test test/mockups_test.dart
@@ -61,6 +61,9 @@ void main() {
     'restore': 'Восстановление',
     'keeper': 'Хранитель',
     'settings': 'Настройки',
+    // Первый запуск и фраза восстановления (5.2.1).
+    'welcome': null,
+    'phrase': null,
   };
 
   for (final locale in ['ru', 'en']) {
@@ -71,8 +74,10 @@ void main() {
             ..physicalSize = const Size(1280, 800)
             ..devicePixelRatio = 1;
           addTearDown(tester.view.reset);
+          final firstRun = name == 'welcome' || name == 'phrase';
           final agent = FakeProcess(
             status: agentStatus(
+              configured: !firstRun,
               status: name == 'overview' ? 'working' : 'idle',
               job: name == 'overview'
                   ? {
@@ -86,17 +91,76 @@ void main() {
               },
               nextBackupAt: '2999-10-28T10:00:00Z',
             ),
-            answer: (method, _) async => {
-              'snapshots': [
-                for (var i = 0; i < 4; i++)
+            answer: (method, _) async => switch (method) {
+              'account.info' => {
+                'configured': true,
+                'coordinator': 'https://coordinator.example',
+                'login': 'anna',
+                'keyCopy': true,
+                'deviceId': 'a1' * 32,
+                'hasPhrase': true,
+              },
+              'account.devices' => {
+                'devices': [
                   {
-                    'id': '$i' * 64,
-                    'createdAt': '2026-10-2${7 - i}T06:00:00Z',
-                    'paths': ['/home/anna/Документы', '/home/anna/Фото'],
-                    'files': 12840 - i * 17,
-                    'bytes': (48 << 30) - i * (120 << 20),
+                    'deviceId': 'a1' * 32,
+                    'addedAt': '2026-09-01T10:00:00Z',
+                    'current': true,
                   },
-              ],
+                  {
+                    'deviceId': 'b2' * 32,
+                    'addedAt': '2026-10-12T18:30:00Z',
+                    'current': false,
+                  },
+                  {
+                    'deviceId': 'c3' * 32,
+                    'addedAt': '2026-05-03T08:00:00Z',
+                    'revokedAt': '2026-09-02T08:00:00Z',
+                    'current': false,
+                  },
+                ],
+              },
+              'account.new_phrase' => {
+                'words': [
+                  'gravity',
+                  'mansion',
+                  'orbit',
+                  'velvet',
+                  'harbor',
+                  'tissue',
+                  'lumber',
+                  'cactus',
+                  'nephew',
+                  'shallow',
+                  'pepper',
+                  'device',
+                  'anchor',
+                  'meadow',
+                  'rocket',
+                  'silent',
+                  'bamboo',
+                  'quarter',
+                  'jungle',
+                  'ostrich',
+                  'pulse',
+                  'ribbon',
+                  'canyon',
+                  'wisdom',
+                ],
+                'confirm': 3,
+              },
+              _ => {
+                'snapshots': [
+                  for (var i = 0; i < 4; i++)
+                    {
+                      'id': '$i' * 64,
+                      'createdAt': '2026-10-2${7 - i}T06:00:00Z',
+                      'paths': ['/home/anna/Документы', '/home/anna/Фото'],
+                      'files': 12840 - i * 17,
+                      'bytes': (48 << 30) - i * (120 << 20),
+                    },
+                ],
+              },
             },
           );
           final node = FakeProcess(status: nodeStatus());
@@ -114,6 +178,21 @@ void main() {
             ),
           );
           await _settle(tester);
+          if (name == 'phrase') {
+            await tester.tap(find.byIcon(Icons.person_add_alt_1_outlined));
+            await _settle(tester);
+            await tester.tap(find.byType(FilledButton));
+            await _settle(tester);
+            for (final field in ['newPassword', 'repeatPassword']) {
+              await tester.enterText(
+                find.byKey(ValueKey(field)),
+                'correct horse battery staple',
+              );
+            }
+            await _settle(tester);
+            await tester.tap(find.byType(FilledButton));
+            await _settle(tester);
+          }
           if (nav != null) {
             final labels = {
               'Бэкап': ['Бэкап', 'Backup'],

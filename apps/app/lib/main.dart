@@ -25,6 +25,7 @@ void main() {
       services: AppServices(
         agent: agent,
         node: node,
+        coordinator: endpoints.coordinator,
         preferences: Preferences.load(
           File('${endpoints.home.dir.path}/app/preferences.json'),
         ),

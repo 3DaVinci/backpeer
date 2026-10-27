@@ -10,7 +10,8 @@ import 'package:test/test.dart';
 import 'support.dart';
 
 /// Методы `account.*` без координатора (задачи 5.2.1–5.2.3): учётная
-/// запись из приложения, фраза, пароль; новое устройство по фразе.
+/// запись из приложения, фраза, пароль; новое устройство по фразе и
+/// «восстановить всё».
 /// С координатором (вход по паролю, устройства, отзыв, копия ключа) —
 /// `packages/coordinator/test/agent_account_test.dart`.
 void main() {
@@ -196,5 +197,24 @@ void main() {
         (await second.call('snapshots', const {}, long))['snapshots']!
             as List<Object?>;
     expect(snapshots, hasLength(1));
+
+    // «Восстановить всё» — как приложение после входа.
+    await second.subscribe(['job_finished']);
+    final restored = second.events.firstWhere((e) => e.name == 'job_finished');
+    final target = '${dir.path}/restored';
+    expect(
+      (await second.call('restore', {
+        'snapshot': (snapshots.single! as Map<String, Object?>)['id'],
+        'target': target,
+        'waitMinutes': 60,
+      }))['started'],
+      isTrue,
+    );
+    expect((await restored.timeout(long)).data['outcome'], 'ok');
+    expect(
+      File('$target/${data.path.replaceFirst(RegExp('^/+'), '')}/sub/b.txt')
+          .readAsStringSync(),
+      'второй файл\n' * 50,
+    );
   });
 }

@@ -32,32 +32,14 @@ final class StubNodes {
     root.createSync(recursive: true);
     final out = <Uint8List>[];
     for (var i = 0; i < count; i++) {
-      final owner = await AccountKeys.fromMasterKey(
-        SecretBytes(crypto.randomBytes(32)),
-        crypto,
-      );
-      final ownerDevice = await DeviceKeys.generate(crypto);
       final node = await DeviceKeys.generate(crypto);
       try {
-        final now = DateTime.now();
-        await client.registerAccount(
-          pb.RegisterAccountRequest(
-            deviceCertificate: await DeviceCertificates.issue(
-              crypto,
-              owner,
-              ownerDevice,
-              issuedAt: now,
-            ),
-            login: 'stub-${bytesToHex(owner.accountId).substring(0, 16)}',
-          ),
-          accountKey: owner.accountSign,
-        );
-        final cert = await NodeCertificates.issue(
+        final cert = await issueStandCertificate(
+          client,
           crypto,
-          owner,
           nodeId: node.sign.publicKey,
           nodeDh: node.dh.publicKey,
-          issuedAt: now,
+          loginPrefix: 'stub',
         );
         await _register(node, cert, capacityBytes);
         final dir = Directory('${root.path}/${bytesToHex(node.deviceId)}')
@@ -72,8 +54,6 @@ final class StubNodes {
             .writeAsBytesSync(cert.writeToBuffer(), flush: true);
         out.add(node.deviceId);
       } finally {
-        owner.dispose();
-        ownerDevice.dispose();
         node.dispose();
       }
     }
@@ -119,6 +99,50 @@ final class StubNodes {
       }
     }
     return out;
+  }
+
+  /// Сертификат узла [nodeId] от нового владельца: случайная учётная
+  /// запись без копии мастер-ключа, зарегистрированная на координаторе под
+  /// именем `<loginPrefix>-<начало account_id>`. Мастер-ключ нигде не
+  /// сохраняется — у такого узла нет владельца-человека. Только для
+  /// стендов: узлы-заглушки и `node stand-cert` в Docker-образе узла.
+  static Future<pb.Signed> issueStandCertificate(
+    CoordinatorClient client,
+    CryptoProvider crypto, {
+    required Uint8List nodeId,
+    required Uint8List nodeDh,
+    required String loginPrefix,
+  }) async {
+    final owner = await AccountKeys.fromMasterKey(
+      SecretBytes(crypto.randomBytes(32)),
+      crypto,
+    );
+    final ownerDevice = await DeviceKeys.generate(crypto);
+    try {
+      final now = DateTime.now();
+      await client.registerAccount(
+        pb.RegisterAccountRequest(
+          deviceCertificate: await DeviceCertificates.issue(
+            crypto,
+            owner,
+            ownerDevice,
+            issuedAt: now,
+          ),
+          login: '$loginPrefix-${bytesToHex(owner.accountId).substring(0, 16)}',
+        ),
+        accountKey: owner.accountSign,
+      );
+      return await NodeCertificates.issue(
+        crypto,
+        owner,
+        nodeId: nodeId,
+        nodeDh: nodeDh,
+        issuedAt: now,
+      );
+    } finally {
+      owner.dispose();
+      ownerDevice.dispose();
+    }
   }
 
   Future<void> _register(DeviceKeys node, pb.Signed cert, int capacity) =>

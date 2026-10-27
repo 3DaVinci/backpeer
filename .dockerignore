@@ -1,4 +1,4 @@
-# Контекст сборки образа координатора (packages/coordinator/Dockerfile):
+# Контекст сборки образов координатора и узла (packages/*/Dockerfile):
 # только пакеты рабочего пространства и корневые pubspec.
 **/.dart_tool
 **/build

@@ -42,6 +42,7 @@ Future<int> _main(List<String> arguments) async {
     ..addFlag('json', negatable: false, help: 'Вывод одним объектом JSON');
   final importCert = daemonOptions();
   final run = daemonOptions();
+  final standCert = daemonOptions();
   final stub = ArgParser()
     ..addOption('dir', help: 'Папка папок-«узлов»', mandatory: true)
     ..addOption(
@@ -60,6 +61,7 @@ Future<int> _main(List<String> arguments) async {
     ..addCommand('init', init)
     ..addCommand('import-cert', importCert)
     ..addCommand('run', run)
+    ..addCommand('stand-cert', standCert)
     ..addCommand('stub', stub);
   final ArgResults args;
   try {
@@ -80,6 +82,9 @@ Future<int> _main(List<String> arguments) async {
         'node import-cert FILE [--data DIR] сертификат от cli node-cert',
       )
       ..writeln('node run [--config FILE] [--data DIR]  запустить демон')
+      ..writeln(
+        'node stand-cert [--data DIR]  стенд: сертификат от нового владельца',
+      )
       ..writeln('node stub create|run --dir DIR --coordinator URL')
       ..writeln('Подробности — docs/ops/node.md.');
     return _Exit.ok;
@@ -92,6 +97,8 @@ Future<int> _main(List<String> arguments) async {
         return await _importCert(command);
       case 'run':
         return await _run(command);
+      case 'stand-cert':
+        return await _standCert(command);
       default:
         return await _stub(command, stub);
     }
@@ -213,6 +220,60 @@ Future<int> _run(ArgResults args) async {
   }
   await daemon.done;
   return _Exit.ok;
+}
+
+/// Только для стендов (Docker-образ узла, задача 3.10.1): сертификат от
+/// новой случайной учётной записи, как у узлов-заглушек. Сертификат уже
+/// есть — ничего не делает.
+Future<int> _standCert(ArgResults args) async {
+  if (args.rest.isNotEmpty) return _usage('stand-cert без аргументов');
+  final config = _config(args);
+  final url = config.coordinatorUrl;
+  if (url == null) {
+    throw const NodeConfigException('stand-cert: не задан coordinator.url');
+  }
+  final crypto = await SodiumCryptoProvider.load();
+  final dir = Directory(config.dataDir);
+  await NodeIdentity.ensureKeys(dir, crypto);
+  final identity = await NodeIdentity.load(dir, crypto);
+  try {
+    if (identity.certificate != null) {
+      stdout.writeln('Сертификат узла уже есть.');
+      return _Exit.ok;
+    }
+    final client = CoordinatorClient(
+      baseUri: Uri.parse(url),
+      crypto: crypto,
+      trustedCertificates: switch (config.coordinatorCa) {
+        final String ca => SecurityContext()..setTrustedCertificates(ca),
+        null => null,
+      },
+      userAgent: 'node/$appVersion',
+    );
+    try {
+      final cert = await StubNodes.issueStandCertificate(
+        client,
+        crypto,
+        nodeId: identity.nodeId,
+        nodeDh: identity.nodeDh,
+        loginPrefix: 'stand',
+      );
+      final owner = await NodeIdentity.importCertificate(
+        dir,
+        crypto,
+        cert.writeToBuffer(),
+        source: 'stand-cert',
+      );
+      stdout.writeln(
+        'Сертификат выпущен, владелец ${bytesToHex(owner).substring(0, 16)}….',
+      );
+      return _Exit.ok;
+    } finally {
+      client.close();
+    }
+  } finally {
+    identity.dispose();
+  }
 }
 
 int _usage(String text) {

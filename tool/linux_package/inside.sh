@@ -17,7 +17,7 @@ case "$(uname -m)" in
   x86_64) arch=x64 deb_arch=amd64 rpm_arch=x86_64 appimage_arch=x86_64 ;;
   aarch64) arch=arm64 deb_arch=arm64 rpm_arch=aarch64 appimage_arch=aarch64 ;;
 esac
-id=org.file_storage.app
+id=org.backpeer.app
 here=/src/tool/linux_package
 
 cd /src
@@ -31,10 +31,10 @@ flutter pub get --offline >/dev/null 2>&1 || flutter pub get
 (cd apps/app && flutter build linux --release)
 CI_COMMIT_SHORT_SHA="$COMMIT" dart run tool/build_exe.dart
 
-# --- Раскладка: /opt/file-storage и файлы рабочего стола ---------------
+# --- Раскладка: /opt/backpeer и файлы рабочего стола -------------------
 stage=/work/stage
 rm -rf "$stage"
-opt="$stage/opt/file-storage"
+opt="$stage/opt/backpeer"
 mkdir -p "$opt/daemons" "$stage/usr/bin" "$stage/usr/share/applications" \
   "$stage/usr/share/metainfo"
 cp -a "apps/app/build/linux/$arch/release/bundle/." "$opt/"
@@ -42,9 +42,9 @@ for p in agent node cli; do
   mkdir -p "$opt/daemons/$p"
   cp -a "build/bin/linux-$arch/$p/bundle/." "$opt/daemons/$p/"
 done
-ln -s /opt/file-storage/file-storage "$stage/usr/bin/file-storage"
-ln -s /opt/file-storage/daemons/cli/bin/cli "$stage/usr/bin/file-storage-cli"
-ln -s /opt/file-storage/daemons/agent/bin/agent "$stage/usr/bin/file-storage-agent"
+ln -s /opt/backpeer/backpeer "$stage/usr/bin/backpeer"
+ln -s /opt/backpeer/daemons/cli/bin/cli "$stage/usr/bin/backpeer-cli"
+ln -s /opt/backpeer/daemons/agent/bin/agent "$stage/usr/bin/backpeer-agent"
 cp "$here/$id.desktop" "$stage/usr/share/applications/"
 sed -e "s/@VERSION@/$VERSION/" -e "s/@DATE@/$(date -u +%F)/" \
   "$here/$id.metainfo.xml" > "$stage/usr/share/metainfo/$id.metainfo.xml"
@@ -52,17 +52,17 @@ icons=apps/app/linux/icons
 for size in 16 24 32 48 64 128 256 512; do
   dir="$stage/usr/share/icons/hicolor/${size}x${size}/apps"
   mkdir -p "$dir"
-  cp "$icons/file-storage-$size.png" "$dir/file-storage.png"
+  cp "$icons/backpeer-$size.png" "$dir/backpeer.png"
 done
 mkdir -p "$stage/usr/share/icons/hicolor/scalable/apps"
-cp "$icons/file-storage.svg" "$stage/usr/share/icons/hicolor/scalable/apps/"
+cp "$icons/backpeer.svg" "$stage/usr/share/icons/hicolor/scalable/apps/"
 
 desktop-file-validate "$stage/usr/share/applications/$id.desktop"
 appstreamcli validate --no-net --pedantic \
   "$stage/usr/share/metainfo/$id.metainfo.xml" || \
   appstreamcli validate --no-net "$stage/usr/share/metainfo/$id.metainfo.xml"
 
-name="file-storage_${VERSION}"
+name="backpeer_${VERSION}"
 mkdir -p /out
 
 # --- .deb ----------------------------------------------------------------
@@ -71,10 +71,10 @@ rm -rf "$deb"
 cp -a "$stage" "$deb"
 mkdir -p "$deb/DEBIAN"
 cat > "$deb/DEBIAN/control" <<CONTROL
-Package: file-storage
+Package: backpeer
 Version: $VERSION
 Architecture: $deb_arch
-Maintainer: File Storage <packages@file-storage.invalid>
+Maintainer: Backpeer <packages@backpeer.invalid>
 Installed-Size: $(du -sk "$stage" | cut -f1)
 Depends: libgtk-3-0, libsecret-1-0, libglib2.0-0
 Recommends: libayatana-appindicator3-1 | libappindicator3-1, libglib2.0-bin, systemd
@@ -93,11 +93,11 @@ rpmtop=/work/rpmbuild
 rm -rf "$rpmtop"
 mkdir -p "$rpmtop/SPECS"
 sed -e "s|@VERSION@|$VERSION|" -e "s|@RPM_ARCH@|$rpm_arch|" \
-  -e "s|@STAGE@|$stage|" "$here/rpm/file-storage.spec.in" \
-  > "$rpmtop/SPECS/file-storage.spec"
+  -e "s|@STAGE@|$stage|" "$here/rpm/backpeer.spec.in" \
+  > "$rpmtop/SPECS/backpeer.spec"
 rpmbuild -bb --define "_topdir $rpmtop" --target "$rpm_arch" \
-  "$rpmtop/SPECS/file-storage.spec" >/dev/null
-cp "$rpmtop/RPMS/$rpm_arch/"*.rpm "/out/file-storage-${VERSION}-1.${rpm_arch}.rpm"
+  "$rpmtop/SPECS/backpeer.spec" >/dev/null
+cp "$rpmtop/RPMS/$rpm_arch/"*.rpm "/out/backpeer-${VERSION}-1.${rpm_arch}.rpm"
 
 # --- AppImage ------------------------------------------------------------
 appdir=/work/AppDir
@@ -105,13 +105,13 @@ rm -rf "$appdir"
 cp -a "$opt" "$appdir"
 install -m 0755 "$here/AppRun" "$appdir/AppRun"
 cp "$here/$id.desktop" "$appdir/$id.desktop"
-cp "$icons/file-storage-256.png" "$appdir/file-storage.png"
+cp "$icons/backpeer-256.png" "$appdir/backpeer.png"
 mkdir -p "$appdir/usr/share/metainfo"
 cp "$stage/usr/share/metainfo/$id.metainfo.xml" "$appdir/usr/share/metainfo/"
 sign_args=()
 if [ -n "${SIGN_KEY:-}" ]; then sign_args=(--sign --sign-key "$SIGN_KEY"); fi
 ARCH="$appimage_arch" appimagetool --no-appstream "${sign_args[@]}" "$appdir" \
-  "/out/File_Storage-${VERSION}-${appimage_arch}.AppImage"
+  "/out/backpeer-${VERSION}-${appimage_arch}.AppImage"
 
 # --- Подпись -------------------------------------------------------------
 cd /out

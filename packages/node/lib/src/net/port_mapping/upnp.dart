@@ -19,7 +19,7 @@ final class UpnpClient implements PortMappingProtocol {
     this.ssdpPort = 1900,
     this.discoveryTimeout = const Duration(seconds: 2),
     this.requestTimeout = const Duration(seconds: 5),
-    this.description = 'file_storage node',
+    this.description = 'backpeer node',
     DateTime Function()? clock,
   }) : ssdpAddress = ssdpAddress ?? InternetAddress('239.255.255.250'),
        _clock = clock ?? DateTime.now;
@@ -49,8 +49,7 @@ final class UpnpClient implements PortMappingProtocol {
   /// Описание и ответы SOAP длиннее — отказ.
   static const int _maxResponseBytes = 256 * 1024;
 
-  final HttpClient _http = HttpClient()
-    ..userAgent = 'file_storage-node UPnP/1.1';
+  final HttpClient _http = HttpClient()..userAgent = 'backpeer-node UPnP/1.1';
   UpnpService? _service;
 
   @override

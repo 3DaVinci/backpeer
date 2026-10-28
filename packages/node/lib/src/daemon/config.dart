@@ -446,18 +446,18 @@ final class _Reader {
   }
 }
 
-/// Папка данных узла по умолчанию: `$XDG_DATA_HOME/file_storage/node`
+/// Папка данных узла по умолчанию: `$XDG_DATA_HOME/backpeer/node`
 /// (`~/.local/share/…`) на Linux, `~/Library/Application Support/
-/// file_storage/node` на macOS, `%LOCALAPPDATA%\file_storage\node` на
+/// backpeer/node` на macOS, `%LOCALAPPDATA%\backpeer\node` на
 /// Windows.
 String defaultNodeDataDir(Map<String, String> env) {
   if (Platform.isWindows) {
-    return '${env['LOCALAPPDATA'] ?? env['APPDATA']}\\file_storage\\node';
+    return '${env['LOCALAPPDATA'] ?? env['APPDATA']}\\backpeer\\node';
   }
   final home = env['HOME'] ?? '.';
   if (Platform.isMacOS) {
-    return '$home/Library/Application Support/file_storage/node';
+    return '$home/Library/Application Support/backpeer/node';
   }
   final xdg = env['XDG_DATA_HOME'] ?? '$home/.local/share';
-  return '$xdg/file_storage/node';
+  return '$xdg/backpeer/node';
 }

@@ -1,6 +1,6 @@
 # Пакет .rpm (задача 5.7.3) из готовой раскладки: rpmbuild только
 # упаковывает, ничего не собирает. Подстановки @…@ — inside.sh.
-Name:           file-storage
+Name:           backpeer
 Version:        @VERSION@
 Release:        1
 Summary:        Encrypted backups on other people's computers
@@ -27,13 +27,13 @@ computer; scheduled backups run in the background.
 cp -a @STAGE@/. %{buildroot}/
 
 %files
-/opt/file-storage
-/usr/bin/file-storage
-/usr/bin/file-storage-cli
-/usr/bin/file-storage-agent
-/usr/share/applications/org.file_storage.app.desktop
-/usr/share/icons/hicolor/*/apps/file-storage.*
-/usr/share/metainfo/org.file_storage.app.metainfo.xml
+/opt/backpeer
+/usr/bin/backpeer
+/usr/bin/backpeer-cli
+/usr/bin/backpeer-agent
+/usr/share/applications/org.backpeer.app.desktop
+/usr/share/icons/hicolor/*/apps/backpeer.*
+/usr/share/metainfo/org.backpeer.app.metainfo.xml
 
 %preun
 # Удаление (не обновление): то же, что prerm пакета .deb.
@@ -44,7 +44,7 @@ if [ "$1" -eq 0 ] && command -v loginctl >/dev/null 2>&1; then
     runuser -u "$user" -- env HOME="$home" USER="$user" LOGNAME="$user" \
       XDG_RUNTIME_DIR="/run/user/$uid" \
       DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
-      /opt/file-storage/daemons/agent/bin/agent uninstall >/dev/null 2>&1 || true
+      /opt/backpeer/daemons/agent/bin/agent uninstall >/dev/null 2>&1 || true
   done
 fi
 exit 0
@@ -54,7 +54,7 @@ exit 0
 if [ "$1" -ge 1 ] && command -v loginctl >/dev/null 2>&1; then
   loginctl list-users --no-legend 2>/dev/null | while read -r uid user rest; do
     systemctl --user -M "$user@" try-restart \
-      file-storage-agent.service file-storage-node.service >/dev/null 2>&1 || true
+      backpeer-agent.service backpeer-node.service >/dev/null 2>&1 || true
   done
 fi
 exit 0

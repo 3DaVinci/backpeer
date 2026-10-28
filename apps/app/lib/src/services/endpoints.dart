@@ -7,8 +7,7 @@ import 'package:node/node.dart';
 /// Координатор для новой учётной записи по умолчанию: тестовый стенд на
 /// корпоративном Coolify (`docs/ops/coordinator.md`, раздел «Coolify») —
 /// до боевого координатора (задача 8.1). Пользователь может указать другой.
-const defaultCoordinator =
-    'https://mifimzwbp4klwu9c27tdimg5.app.tridavinci.org';
+const defaultCoordinator = 'https://backpeer-coordinator.app.tridavinci.org';
 
 /// Где слушают фоновые процессы этого пользователя: агент бэкапа — в
 /// каталоге программы (`FS_HOME` или стандартный для ОС, как у CLI),

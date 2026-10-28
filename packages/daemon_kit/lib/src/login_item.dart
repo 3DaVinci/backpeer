@@ -41,7 +41,7 @@ final class XdgLoginItem implements LoginItem {
   new({
     required this.autostartDir,
     this.name = servicePrefix,
-    this.title = 'File Storage',
+    this.title = 'Backpeer',
   });
 
   final String autostartDir;

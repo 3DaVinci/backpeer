@@ -68,11 +68,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "File Storage");
+    gtk_header_bar_set_title(header_bar, "Backpeer");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "File Storage");
+    gtk_window_set_title(window, "Backpeer");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -81,7 +81,7 @@ static void my_application_activate(GApplication* application) {
   if (exe != nullptr) {
     g_autofree gchar* dir = g_path_get_dirname(exe);
     g_autofree gchar* icon = g_build_filename(dir, "data", "icons",
-                                              "file-storage-256.png", nullptr);
+                                              "backpeer-256.png", nullptr);
     gtk_window_set_icon_from_file(window, icon, nullptr);
   }
 

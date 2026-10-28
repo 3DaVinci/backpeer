@@ -1,4 +1,4 @@
-name: file_storage_workspace
+name: backpeer_workspace
 description: Корень монорепозитория (pub workspace + melos).
 publish_to: none
 

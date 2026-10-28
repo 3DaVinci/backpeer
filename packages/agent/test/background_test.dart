@@ -272,7 +272,7 @@ void main() {
     final login = XdgLoginItem(autostartDir: '${dir.path}/autostart');
     await login.enable('/opt/app', ['--hidden']);
     final persistent = PersistentDaemons(
-      target: Directory('${dir.path}/local/lib/file-storage/daemons'),
+      target: Directory('${dir.path}/local/lib/backpeer/daemons'),
     );
     final source = Directory('${dir.path}/bundle/agent/bin')
       ..createSync(recursive: true);

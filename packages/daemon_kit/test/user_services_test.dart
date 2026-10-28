@@ -22,8 +22,8 @@ void main() {
 
   const spec = ServiceSpec(
     name: 'agent',
-    description: 'File Storage: агент бэкапа',
-    executable: '/opt/file storage/daemons/agent/bin/agent',
+    description: 'Backpeer: агент бэкапа',
+    executable: '/opt/my apps/backpeer/daemons/agent/bin/agent',
     arguments: ['run', '--home', r'/home/u/50% $data'],
   );
 
@@ -33,14 +33,14 @@ void main() {
       expect(
         text,
         contains(
-          'ExecStart="/opt/file storage/daemons/agent/bin/agent" "run" '
+          'ExecStart="/opt/my apps/backpeer/daemons/agent/bin/agent" "run" '
           r'"--home" "/home/u/50%% $$data"',
         ),
       );
       expect(
         text,
         contains(
-          'ConditionPathExists=/opt/file storage/daemons/agent/bin/agent',
+          'ConditionPathExists=/opt/my apps/backpeer/daemons/agent/bin/agent',
         ),
       );
       expect(text, contains('Restart=on-failure'));
@@ -54,24 +54,24 @@ void main() {
         unitDir: '${temp.path}/systemd/user',
         runner: runner.call,
       );
-      expect(services.serviceName('agent'), 'file-storage-agent.service');
+      expect(services.serviceName('agent'), 'backpeer-agent.service');
       expect(await services.state('agent'), ServiceState.notInstalled);
 
       await services.install(spec);
-      final unit = File('${temp.path}/systemd/user/file-storage-agent.service');
+      final unit = File('${temp.path}/systemd/user/backpeer-agent.service');
       expect(unit.readAsStringSync(), SystemdUserServices.unitText(spec));
       expect(runner.calls, [
         'systemctl --user daemon-reload',
-        'systemctl --user enable file-storage-agent.service',
-        'systemctl --user restart file-storage-agent.service',
+        'systemctl --user enable backpeer-agent.service',
+        'systemctl --user restart backpeer-agent.service',
       ]);
 
       // Тот же юнит: без daemon-reload и перезапуска.
       runner.calls.clear();
       await services.install(spec);
       expect(runner.calls, [
-        'systemctl --user enable file-storage-agent.service',
-        'systemctl --user start file-storage-agent.service',
+        'systemctl --user enable backpeer-agent.service',
+        'systemctl --user start backpeer-agent.service',
       ]);
 
       runner.answer = (c) => ProcessResult(
@@ -87,7 +87,7 @@ void main() {
       expect(unit.existsSync(), isFalse);
       expect(
         runner.calls.first,
-        'systemctl --user disable --now file-storage-agent.service',
+        'systemctl --user disable --now backpeer-agent.service',
       );
     });
 
@@ -147,7 +147,7 @@ void main() {
   group('launchd', () {
     test('plist: аргументы, окружение, перезапуск только после сбоя', () {
       final text = LaunchAgentServices.plistText(
-        'org.file_storage.agent',
+        'org.backpeer.agent',
         const ServiceSpec(
           name: 'agent',
           description: '',
@@ -174,13 +174,13 @@ void main() {
       );
       await services.install(spec);
       expect(
-        File('${temp.path}/org.file_storage.agent.plist').existsSync(),
+        File('${temp.path}/org.backpeer.agent.plist').existsSync(),
         isTrue,
       );
       expect(runner.calls, [
         'id -u',
-        'launchctl bootout gui/501/org.file_storage.agent',
-        'launchctl bootstrap gui/501 ${temp.path}/org.file_storage.agent.plist',
+        'launchctl bootout gui/501/org.backpeer.agent',
+        'launchctl bootstrap gui/501 ${temp.path}/org.backpeer.agent.plist',
       ]);
     });
   });
@@ -215,9 +215,9 @@ void main() {
       await services.install(spec);
       expect(
         runner.calls[1],
-        startsWith(r'schtasks /Create /TN \file-storage\agent /XML'),
+        startsWith(r'schtasks /Create /TN \backpeer\agent /XML'),
       );
-      expect(runner.calls.last, r'schtasks /Run /TN \file-storage\agent');
+      expect(runner.calls.last, r'schtasks /Run /TN \backpeer\agent');
       // Временный XML удалён.
       expect(temp.listSync(), isEmpty);
     });
@@ -247,12 +247,12 @@ void main() {
     test('XDG Autostart: TryExec и кавычки', () async {
       final item = XdgLoginItem(autostartDir: '${temp.path}/autostart');
       expect(item.enabled, isFalse);
-      await item.enable('/home/u/Apps/File Storage.AppImage', ['--hidden']);
+      await item.enable('/home/u/My Apps/Backpeer.AppImage', ['--hidden']);
       final text = item.file.readAsStringSync();
-      expect(text, contains('TryExec=/home/u/Apps/File Storage.AppImage\n'));
+      expect(text, contains('TryExec=/home/u/My Apps/Backpeer.AppImage\n'));
       expect(
         text,
-        contains('Exec="/home/u/Apps/File Storage.AppImage" --hidden\n'),
+        contains('Exec="/home/u/My Apps/Backpeer.AppImage" --hidden\n'),
       );
       expect(item.enabled, isTrue);
       await item.disable();

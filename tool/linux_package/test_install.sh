@@ -19,21 +19,21 @@ images=("$@")
 # Общая часть: программы, библиотеки, агент от пользователя, удаление.
 check='
 set -eu
-for p in file-storage-cli file-storage-agent; do "$p" --version; done
-/opt/file-storage/daemons/node/bin/node --version
-missing="$(ldd /opt/file-storage/file-storage | grep "not found" || true)"
+for p in backpeer-cli backpeer-agent; do "$p" --version; done
+/opt/backpeer/daemons/node/bin/node --version
+missing="$(ldd /opt/backpeer/backpeer | grep "not found" || true)"
 [ -z "$missing" ] || { echo "нет библиотек: $missing"; exit 1; }
-test -f /usr/share/applications/org.file_storage.app.desktop
-test -f /usr/share/icons/hicolor/256x256/apps/file-storage.png
-test -f /usr/share/metainfo/org.file_storage.app.metainfo.xml
+test -f /usr/share/applications/org.backpeer.app.desktop
+test -f /usr/share/icons/hicolor/256x256/apps/backpeer.png
+test -f /usr/share/metainfo/org.backpeer.app.metainfo.xml
 useradd -m tester
 su tester -c "
   export FS_HOME=/home/tester/fs FS_AGENT_SECRETS=none FS_AGENT_NOTIFY=none \
          FS_AGENT_POWER=none FS_SERVICES=none
-  file-storage-agent run --log /home/tester/agent.log &
-  for i in \$(seq 50); do file-storage-agent status >/dev/null 2>&1 && break; sleep 0.2; done
-  file-storage-agent status | grep -q \"\\\"status\\\": \\\"idle\\\"\"
-  file-storage-agent stop >/dev/null
+  backpeer-agent run --log /home/tester/agent.log &
+  for i in \$(seq 50); do backpeer-agent status >/dev/null 2>&1 && break; sleep 0.2; done
+  backpeer-agent status | grep -q \"\\\"status\\\": \\\"idle\\\"\"
+  backpeer-agent stop >/dev/null
   wait
 "
 echo "агент от пользователя: ок"
@@ -46,12 +46,12 @@ for image in "${images[@]}"; do
       pkg="$(ls "$packages"/*.rpm | head -1)"
       # В образе fedora нет su и useradd.
       install="dnf install -y -q util-linux shadow-utils /pkg/$(basename "$pkg") >/dev/null"
-      remove="dnf remove -y -q file-storage >/dev/null"
+      remove="dnf remove -y -q backpeer >/dev/null"
       ;;
     *)
       pkg="$(ls "$packages"/*.deb | head -1)"
       install="apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq /pkg/$(basename "$pkg") >/dev/null"
-      remove="DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq file-storage >/dev/null"
+      remove="DEBIAN_FRONTEND=noninteractive apt-get remove -y -qq backpeer >/dev/null"
       ;;
   esac
   docker run --rm -v "$packages:/pkg:ro" "$image" bash -c "
@@ -59,7 +59,7 @@ for image in "${images[@]}"; do
     $install
     $check
     $remove
-    test ! -e /opt/file-storage && test ! -e /usr/bin/file-storage-cli
+    test ! -e /opt/backpeer && test ! -e /usr/bin/backpeer-cli
     echo 'удаление: ок'
   "
 done
@@ -74,7 +74,7 @@ docker run --rm -v "$packages:/pkg:ro" ubuntu:22.04 bash -c "
   cd /tmp && ./app.AppImage --appimage-extract >/dev/null
   squashfs-root/AppRun cli --version
   squashfs-root/AppRun agent --version
-  missing=\"\$(ldd squashfs-root/file-storage | grep 'not found' || true)\"
+  missing=\"\$(ldd squashfs-root/backpeer | grep 'not found' || true)\"
   [ -z \"\$missing\" ] || { echo \"нет библиотек: \$missing\"; exit 1; }
   echo 'AppImage: ок'
 "

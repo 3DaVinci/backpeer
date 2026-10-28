@@ -146,7 +146,7 @@ void main() {
                 'enabled': true,
                 'settings': {
                   'enabled': true,
-                  'storageDir': '/home/anna/.local/share/file_storage/node',
+                  'storageDir': '/home/anna/.local/share/backpeer/node',
                   'quotaBytes': 500 * 1000 * 1000 * 1000,
                 },
                 'minQuotaBytes': 1 << 30,
@@ -225,7 +225,7 @@ void main() {
           final node = FakeProcess(
             status: {
               ...nodeStatus(),
-              'storageDir': '/home/anna/.local/share/file_storage/node',
+              'storageDir': '/home/anna/.local/share/backpeer/node',
               'freeBytes': (2 << 40) - (3 << 30),
               'diskAvailableBytes': 3 << 40,
               'listen': {'port': 7340},

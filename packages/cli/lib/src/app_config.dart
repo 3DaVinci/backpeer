@@ -13,16 +13,14 @@ final class AppHome {
     if (override != null) return AppHome(Directory(override));
     if (env['FS_HOME'] case final String home) return AppHome(Directory(home));
     if (Platform.isWindows) {
-      return AppHome(Directory('${env['APPDATA']}\\file_storage'));
+      return AppHome(Directory('${env['APPDATA']}\\backpeer'));
     }
     final home = env['HOME'] ?? '.';
     if (Platform.isMacOS) {
-      return AppHome(
-        Directory('$home/Library/Application Support/file_storage'),
-      );
+      return AppHome(Directory('$home/Library/Application Support/backpeer'));
     }
     final xdg = env['XDG_CONFIG_HOME'] ?? '$home/.config';
-    return AppHome(Directory('$xdg/file_storage'));
+    return AppHome(Directory('$xdg/backpeer'));
   }
 
   final Directory dir;

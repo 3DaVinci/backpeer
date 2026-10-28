@@ -168,16 +168,16 @@ Tray* tray_new(GtkApplication* app, GtkWindow* window) {
     return tray;
   }
   tray->indicator =
-      create(APPLICATION_ID, "file-storage-tray", kCategoryApplicationStatus);
+      create(APPLICATION_ID, "backpeer-tray", kCategoryApplicationStatus);
   g_autofree gchar* icons = icon_dir();
   if (set_theme_path != nullptr && icons != nullptr) {
     set_theme_path(tray->indicator, icons);
   }
-  if (set_title != nullptr) set_title(tray->indicator, "File Storage");
+  if (set_title != nullptr) set_title(tray->indicator, "Backpeer");
   set_status(tray->indicator, kStatusActive);
   // Пока Dart не прислал меню: без меню значок не показывается.
   GtkWidget* menu = gtk_menu_new();
-  add_item(tray, menu, "open", "File Storage", TRUE);
+  add_item(tray, menu, "open", "Backpeer", TRUE);
   tray->set_menu(tray->indicator, GTK_MENU(menu));
   tray->menu = menu;
   tray->watcher = has_watcher();

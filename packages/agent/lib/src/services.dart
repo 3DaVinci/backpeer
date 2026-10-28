@@ -65,7 +65,7 @@ final class DaemonBundle {
 
 /// AppImage монтируется по временному пути (`/tmp/.mount_…`), поэтому
 /// службы не могут указывать на программы внутри него: бандлы копируются
-/// в постоянное место, `~/.local/lib/file-storage/daemons` (задача 5.7.3).
+/// в постоянное место, `~/.local/lib/backpeer/daemons` (задача 5.7.3).
 /// Копия заменяется целиком переименованием: работающие процессы
 /// дорабатывают со старыми файлами.
 final class PersistentDaemons {
@@ -150,7 +150,7 @@ final class ClientServices {
 
   ServiceSpec agentSpec(String executable) => ServiceSpec(
     name: agentName,
-    description: 'File Storage: агент бэкапа',
+    description: 'Backpeer: агент бэкапа',
     executable: executable,
     arguments: [
       'run',
@@ -160,7 +160,7 @@ final class ClientServices {
 
   static ServiceSpec nodeSpec(String executable, String dataDir) => ServiceSpec(
     name: nodeName,
-    description: 'File Storage: хранитель',
+    description: 'Backpeer: хранитель',
     executable: executable,
     arguments: ['run', '--data', dataDir],
   );

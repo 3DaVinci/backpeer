@@ -213,7 +213,7 @@ final class PlatformSystemEvents implements SystemEvents {
       final process = await Process.start('systemd-inhibit', [
         '--what=sleep',
         '--mode=delay',
-        '--who=File Storage',
+        '--who=Backpeer',
         '--why=$why',
         // Ждёт конца ввода: закрыли stdin или агент упал — задержка снята,
         // осиротевших процессов не остаётся.

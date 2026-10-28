@@ -42,7 +42,7 @@ final class NoNotifier implements Notifier {
 /// Linux: `org.freedesktop.Notifications.Notify` по шине сеанса (GNOME,
 /// KDE и другие). Новое уведомление заменяет прежнее агента.
 final class DesktopNotifier implements Notifier {
-  new({this.appName = 'file_storage'});
+  new({this.appName = 'Backpeer'});
 
   final String appName;
   int _lastId = 0;

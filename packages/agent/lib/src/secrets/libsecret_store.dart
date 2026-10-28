@@ -19,7 +19,7 @@ final class LibsecretStore implements SecretStore {
   new _();
 
   /// Имя схемы: по нему записи видны в «Паролях и ключах».
-  static const schema = 'org.file_storage.Agent';
+  static const schema = 'org.backpeer.agent';
 
   /// libsecret и glib загружаются; нет — `null`.
   static LibsecretStore? open() {

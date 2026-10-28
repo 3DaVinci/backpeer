@@ -63,7 +63,7 @@ final class AgentKeyVault {
   });
 
   /// Подпись записи в хранилище ОС.
-  static const label = 'Ключ агента бэкапа (file_storage)';
+  static const label = 'Ключ агента бэкапа (Backpeer)';
 
   final File file;
   final CryptoProvider crypto;

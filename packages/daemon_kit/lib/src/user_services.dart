@@ -113,7 +113,7 @@ abstract interface class UserServices {
   /// они нужны (приложение, агент).
   bool get available;
 
-  /// Полное имя службы для [name]: `file-storage-agent.service`.
+  /// Полное имя службы для [name]: `backpeer-agent.service`.
   String serviceName(String name);
 
   Future<ServiceState> state(String name);
@@ -133,11 +133,11 @@ abstract interface class UserServices {
 
 /// Префикс имён служб и файлов. Название продукта ещё не выбрано
 /// (С.1.2) — временное, общее с пакетами (`tool/linux_package`).
-const servicePrefix = 'file-storage';
+const servicePrefix = 'backpeer';
 
 /// Идентификатор для macOS (обратная запись домена), временный, как
 /// [servicePrefix].
-const serviceBundleId = 'org.file_storage';
+const serviceBundleId = 'org.backpeer';
 
 /// Менеджера служб нет: [available] — `false`, методы бросают
 /// [ServiceException].

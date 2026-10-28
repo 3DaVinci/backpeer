@@ -1,7 +1,7 @@
 {
   "@@locale": "ru",
   "appTitle": "Backpeer",
-  "@appTitle": {"description": "Рабочее название продукта до выбора (С.1.2)"},
+  "@appTitle": {"description": "Название продукта (С.1.2)"},
   "navOverview": "Обзор",
   "navBackup": "Бэкап",
   "navRestore": "Восстановление",

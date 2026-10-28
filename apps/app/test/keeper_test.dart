@@ -27,8 +27,8 @@ void main() {
       'keeper.info' => {
         'enabled': settings != null,
         'settings': settings,
-        'dataDir': '/home/user/.local/share/file_storage/node',
-        'defaultStorageDir': '/home/user/.local/share/file_storage/node',
+        'dataDir': '/home/user/.local/share/backpeer/node',
+        'defaultStorageDir': '/home/user/.local/share/backpeer/node',
         'minQuotaBytes': 1 << 30,
       },
       'keeper.disk' => {'path': params['path'], 'availableBytes': available},
@@ -66,7 +66,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('keeper-enable')));
     await tester.pumpAndSettle();
     expect(a.last('keeper.disk'), {
-      'path': '/home/user/.local/share/file_storage/node',
+      'path': '/home/user/.local/share/backpeer/node',
     });
     // Сразу — половина свободного, не больше 500 ГБ.
     expect(find.text('200'), findsOneWidget);

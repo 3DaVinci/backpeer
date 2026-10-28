@@ -98,7 +98,7 @@ abstract class AppLocalizations {
     Locale('ru'),
   ];
 
-  /// Рабочее название продукта до выбора (С.1.2)
+  /// Название продукта (С.1.2)
   ///
   /// In ru, this message translates to:
   /// **'Backpeer'**

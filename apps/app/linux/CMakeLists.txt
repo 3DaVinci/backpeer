@@ -6,10 +6,10 @@ project(runner LANGUAGES CXX)
 # the on-disk name of your application.
 # Название продукта ещё не выбрано (С.1.2): имя файла и идентификатор
 # временные, общие с пакетами Linux (tool/linux_package).
-set(BINARY_NAME "file-storage")
+set(BINARY_NAME "backpeer")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "org.file_storage.app")
+set(APPLICATION_ID "org.backpeer.app")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -125,8 +125,8 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 
 # Значки трея и окна (runner/tray.cc, my_application.cc ищут их в
 # data/icons).
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/icons/file-storage-tray.png"
-  "${CMAKE_CURRENT_SOURCE_DIR}/icons/file-storage-256.png"
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/icons/backpeer-tray.png"
+  "${CMAKE_CURRENT_SOURCE_DIR}/icons/backpeer-256.png"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/icons" COMPONENT Runtime)
 
 # Install the AOT library on non-Debug builds only.

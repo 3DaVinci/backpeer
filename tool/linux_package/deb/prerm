@@ -3,11 +3,11 @@
 # менеджером служб (вошли или включён linger) остановить и убрать службы,
 # запуск значка при входе и linger, включённый приложением: `agent
 # uninstall` от имени пользователя. Данные и ключи остаются; полное
-# удаление — `file-storage-agent uninstall --purge` до удаления пакета
+# удаление — `backpeer-agent uninstall --purge` до удаления пакета
 # (docs/ops/linux-packages.md).
 # У остальных юниты остаются, но с ConditionPathExists не запускаются.
 set -e
-agent=/opt/file-storage/daemons/agent/bin/agent
+agent=/opt/backpeer/daemons/agent/bin/agent
 case "$1" in
   remove|deconfigure)
     if command -v loginctl >/dev/null 2>&1 && [ -x "$agent" ]; then

@@ -4,8 +4,8 @@
 
     python3 tool/linux_package/make_icons.py
 
-Пишет apps/app/linux/icons/: file-storage.svg, file-storage-<N>.png для
-пакетов (hicolor) и file-storage-tray.png для значка в трее. Нужен Pillow.
+Пишет apps/app/linux/icons/: backpeer.svg, backpeer-<N>.png для
+пакетов (hicolor) и backpeer-tray.png для значка в трее. Нужен Pillow.
 """
 
 import pathlib
@@ -59,11 +59,11 @@ def png(size: int, background: bool) -> Image.Image:
 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "file-storage.svg").write_text(svg())
+    (OUT / "backpeer.svg").write_text(svg())
     for size in SIZES:
-        png(size, True).save(OUT / f"file-storage-{size}.png", optimize=True)
+        png(size, True).save(OUT / f"backpeer-{size}.png", optimize=True)
     # Трей: без подложки, панель рисует свой фон.
-    png(64, False).save(OUT / "file-storage-tray.png", optimize=True)
+    png(64, False).save(OUT / "backpeer-tray.png", optimize=True)
 
 
 if __name__ == "__main__":

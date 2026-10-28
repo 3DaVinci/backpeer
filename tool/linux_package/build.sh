@@ -13,7 +13,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$root"
-image=file-storage-linux-build:22.04
+image=backpeer-linux-build:22.04
 version="$(sed -n 's/^version:[[:space:]]*//p' packages/cli/pubspec.yaml)"
 commit="${CI_COMMIT_SHORT_SHA:-$(git rev-parse --short HEAD)}"
 out="$root/build/packages"

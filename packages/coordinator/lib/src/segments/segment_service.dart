@@ -6,6 +6,7 @@ import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
 import 'package:coordinator/src/repair/live_fragments.dart';
+import 'package:coordinator/src/repair/repair_jobs.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/signer/ticket_signer.dart';
@@ -378,6 +379,8 @@ final class SegmentService {
       () => _db.transaction((tx) async {
         await _lockAccount(tx, accountId);
         if (await _state(tx, accountId, segmentId) == null) return false;
+        // Место новых фрагментов незавершённого ремонта (4.3.4).
+        await RepairJobs.releaseSegment(tx, accountId, segmentId);
         await _release(tx, accountId, segmentId);
         await _delete(tx, accountId, segmentId);
         return true;

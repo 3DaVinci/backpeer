@@ -92,8 +92,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         crypto: crypto,
         policy: config.audits,
         clock: clock,
-      ),
-      repair = RepairService(db, policy: config.repair, clock: clock) {
+      ) {
     rendezvousService = RendezvousService(
       crypto: crypto,
       keys: PostgresKeyDirectory(db),
@@ -107,6 +106,15 @@ final class DatabaseCoordinatorService extends CoordinatorService {
       signer: signer,
       policy: config.placement,
       placement: placement,
+      clock: clock,
+    );
+    repair = RepairService(
+      db,
+      crypto: crypto,
+      nodes: nodes,
+      signer: signer,
+      policy: config.repair,
+      placementPolicy: config.placement,
       clock: clock,
     );
   }
@@ -128,7 +136,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   final AuditService audits;
 
   /// Ремонт сегментов; каналы команд ему передаёт сервер.
-  final RepairService repair;
+  late final RepairService repair;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(
@@ -219,6 +227,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.ReportDamagedFragmentsRequest request,
   ) => nodes.reportDamaged(context, request);
+
+  @override
+  Future<pb.ReportRepairResponse> reportRepair(
+    CallContext context,
+    pb.ReportRepairRequest request,
+  ) => repair.report(context, request);
 
   @override
   Future<pb.CheckReachabilityResponse> checkReachability(

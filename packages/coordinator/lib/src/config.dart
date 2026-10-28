@@ -207,6 +207,8 @@ final class CoordinatorConfig {
     'repair.max_jobs',
     'repair.max_bytes_per_hour',
     'repair.retry_minutes',
+    'repair.job_minutes',
+    'repair.executor_min_reputation',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -493,6 +495,11 @@ final class _Reader {
         minutes:
             _int('repair.retry_minutes', 1, 24 * 60) ?? rp.retryDelay.inMinutes,
       ),
+      jobTimeout: Duration(
+        minutes: _int('repair.job_minutes', 1, 60) ?? rp.jobTimeout.inMinutes,
+      ),
+      executorMinReputation:
+          _double('repair.executor_min_reputation') ?? rp.executorMinReputation,
     );
   }
 

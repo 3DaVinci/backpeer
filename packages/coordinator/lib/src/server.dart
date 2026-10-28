@@ -115,7 +115,7 @@ final class CoordinatorServer {
         rendezvous = s.rendezvousService..channels = channels;
         await rendezvous.start();
         audits = (s.audits..channels = channels)..start();
-        repair = s.repair..start();
+        repair = (s.repair..channels = channels)..start();
       }
       // Новый отзыв устройства — узлы в канале дочитывают ListRevocations
       // сразу, не дожидаясь heartbeat.

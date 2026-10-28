@@ -1,11 +1,15 @@
 // Ремонт (группа 4.3; protocol.md, раздел 4.14): учёт живых фрагментов
-// (4.3.1), очередь (4.3.2). Нужен FS_TEST_POSTGRES.
+// (4.3.1), очередь (4.3.2), задания: выбор исполнителя и новых узлов,
+// талоны, отчёт, сроки (4.3.4). Исполнителя изображает тест поверх
+// FakeNodes; сквозной ремонт с демонами — repair_network_test.dart. Нужен
+// FS_TEST_POSTGRES.
 
 import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:coordinator/coordinator.dart';
 import 'package:core/core.dart';
+import 'package:fixnum/fixnum.dart';
 import 'package:postgres/postgres.dart';
 import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
@@ -127,8 +131,24 @@ void main() {
     return (live: live, state: state, since: since);
   }
 
-  RepairService repairService({RepairPolicy policy = const RepairPolicy()}) =>
-      RepairService(h.db, policy: policy, clock: h.clock.call);
+  RepairService repairService({
+    RepairPolicy policy = const RepairPolicy(),
+    int seed = 1,
+  }) => RepairService(
+    h.db,
+    crypto: h.crypto,
+    nodes: NodeService(
+      h.db,
+      CertificateChecks(h.crypto, clock: h.clock.call),
+      policy: DbHarness.testConfig.nodes,
+      clock: h.clock.call,
+    ),
+    signer: h.signer,
+    policy: policy,
+    placementPolicy: DbHarness.testConfig.placement,
+    clock: h.clock.call,
+    random: Random(seed),
+  );
 
   group('живые фрагменты (4.3.1)', () {
     setUp(start);
@@ -281,6 +301,310 @@ void main() {
         reason: 'трафик считается за последний час',
       );
       expect(RepairService.plannedBytes(10, 5, 1000), 15000);
+    });
+  });
+
+  group('задания ремонта (4.3.4)', () {
+    // 20 узлов держат фрагменты сегмента; новым фрагментам и исполнителю
+    // нужны другие.
+    setUp(() => start(nodeCount: 30));
+
+    /// Все узлы — старые и почти всегда в сети: проходят пороги
+    /// доступности и репутации исполнителя.
+    Future<void> healthy() => h.db.run(
+      (s) => s.execute(
+        Sql.named('''
+          UPDATE nodes SET availability = 0.99,
+                           registered_at = @t:timestamptz'''),
+        parameters: {'t': h.clock.now.subtract(const Duration(days: 60))},
+      ),
+    );
+
+    /// Узлы [gone] не в сети 73 часа и отмечены потерянными.
+    Future<void> lose(Set<int> gone) async {
+      h.clock.advance(const Duration(hours: 73));
+      await beatAll(except: gone);
+      await healthy();
+      await repairService().markLost();
+    }
+
+    int nodeOf(pb.Placement p) => byId[bytesToHex(p.node.nodeId)]!;
+
+    pb.FragmentTicket ticketOf(pb.Placement p) =>
+        FragmentTickets.parse(Uint8List.fromList(p.ticket.body));
+
+    Future<int> assignedTotal() async =>
+        (await h.db.run(
+              (x) => x.execute(
+                'SELECT coalesce(sum(assigned_bytes), 0)::int8 FROM nodes',
+              ),
+            )).single.single!
+            as int;
+
+    Future<int> assigned(int node) async =>
+        (await h.db.run(
+              (s) => s.execute(
+                Sql.named(
+                  'SELECT assigned_bytes FROM nodes WHERE node_id = @n:bytea',
+                ),
+                parameters: {'n': nodes[node].publicKey},
+              ),
+            )).single.single!
+            as int;
+
+    /// Выполняет задание, как исполнитель: k источников из FakeNodes,
+    /// пересоздание, загрузка на новые узлы (кроме [skip]) и отчёт.
+    Future<void> execute(
+      (String, pb.RepairCommand) job, {
+      Set<int> skip = const {},
+    }) async {
+      final (executor, c) = job;
+      final sources = [
+        for (final p in c.sources.take(c.k))
+          channels.fragments[bytesToHex(p.node.nodeId)]![bytesToHex(
+            ticketOf(p).fragmentId,
+          )]!,
+      ];
+      final indexes = [for (final p in c.targets) p.index];
+      final rebuilt = rebuildFragments(h.crypto, sources, indexes);
+      final stored = <int>[];
+      for (var i = 0; i < c.targets.length; i++) {
+        final p = c.targets[i];
+        expect(rebuilt[i].header.fragmentId(h.crypto), ticketOf(p).fragmentId);
+        if (skip.contains(p.index)) continue;
+        channels.add(Uint8List.fromList(p.node.nodeId), rebuilt[i]);
+        stored.add(p.index);
+      }
+      await h.call(
+        'ReportRepair',
+        pb.ReportRepairRequest(
+          jobId: c.jobId,
+          storedIndexes: stored,
+          failures: [
+            for (final i in skip.take(1))
+              pb.RepairFailure(index: i, reason: 'test'),
+          ],
+          bytesDownloaded: Int64(c.k * c.fragmentSize),
+          bytesUploaded: Int64(stored.length * c.fragmentSize),
+        ),
+        pb.ReportRepairResponse.fromBuffer,
+        key: nodes[byId[executor]!],
+        ip: '198.51.${byId[executor]}.10',
+      );
+    }
+
+    Future<List<int>> holdersNow(Uint8List segmentId) async => [
+      for (final [id as List<int>] in await h.db.run(
+        (s) => s.execute(
+          Sql.named('''
+            SELECT node_id FROM fragments WHERE segment_id = @g:bytea
+              ORDER BY idx'''),
+          parameters: {'g': segmentId},
+        ),
+      ))
+        byId[bytesToHex(id)]!,
+    ];
+
+    test('сегмент, потерявший 5 фрагментов, возвращается к 20 живым без '
+        'клиента', () async {
+      final s = await storeSegment(20);
+      final gone = {
+        for (final i in [1, 4, 9, 12, 17]) s.holders[i],
+      };
+      await lose(gone);
+      expect((await segment(s.id)).live, 15);
+      final size = s.fragments.first.bytes.length;
+      final before = await assigned(s.holders[4]);
+
+      final repair = repairService()..channels = channels;
+      expect(await repair.runOnce(), 1);
+      final (executor, c) = channels.repairs.single;
+      final e = byId[executor]!;
+      expect(
+        s.holders,
+        isNot(contains(e)),
+        reason: 'исполнитель без фрагментов',
+      );
+      expect((c.k, c.n, c.fragmentSize), (10, 20, size));
+      expect([for (final p in c.targets) p.index], [1, 4, 9, 12, 17]);
+      expect(c.sources, hasLength(15));
+      for (final p in c.sources) {
+        final t = ticketOf(p);
+        expect(t.operation, pb.TicketOperation.TICKET_OPERATION_GET);
+        expect(t.deviceSign, nodes[e].publicKey);
+        expect(t.ownerAccount, isEmpty);
+        expect(gone, isNot(contains(nodeOf(p))));
+      }
+      expect({for (final p in c.targets) nodeOf(p)}, hasLength(5));
+      for (final p in c.targets) {
+        final t = ticketOf(p);
+        expect(t.operation, pb.TicketOperation.TICKET_OPERATION_PUT);
+        expect(t.deviceSign, nodes[e].publicKey);
+        expect(t.ownerAccount, account.accountId);
+        expect(t.fragmentId, s.fragments[p.index].header.fragmentId(h.crypto));
+        expect(s.holders, isNot(contains(nodeOf(p))));
+        expect(nodeOf(p), isNot(e));
+        expect(await assigned(nodeOf(p)), size, reason: 'место занято');
+      }
+      // Пока задание идёт, второе для сегмента не начинается.
+      expect(await repair.runOnce(), 0);
+
+      await execute(channels.repairs.single);
+      await repair.runOnce();
+      expect(await segment(s.id), (live: 20, state: 1, since: null));
+      final now = await holdersNow(s.id);
+      for (final p in c.targets) {
+        expect(now[p.index], nodeOf(p));
+      }
+      expect(await assigned(s.holders[4]), before - size);
+      final [state as int, down as int, up as int] = (await h.db.run(
+        (x) => x.execute(
+          'SELECT state, bytes_downloaded, bytes_uploaded FROM repair_jobs',
+        ),
+      )).single;
+      expect(state, RepairJobState.done.index);
+      expect((down, up), (10 * size, 5 * size));
+      // Вернувшийся узел уже не держит номер сегмента.
+      await h.heartbeat(nodes[s.holders[4]], ip: '198.51.${s.holders[4]}.10');
+      expect((await segment(s.id)).live, 20);
+    });
+
+    test('меньше живых — раньше в работу', () async {
+      final at16 = await storeSegment(21, stored: List.generate(16, (i) => i));
+      final at11 = await storeSegment(22, stored: List.generate(11, (i) => i));
+      await healthy();
+      final repair = repairService(
+        policy: const RepairPolicy(maxJobs: 1, lazyDelay: Duration.zero),
+      )..channels = channels;
+      expect(await repair.runOnce(), 1);
+      expect(channels.repairs.single.$2.targets, hasLength(9));
+      await execute(channels.repairs.single);
+      await repair.runOnce();
+      expect((await segment(at11.id)).live, 20);
+      expect((await segment(at16.id)).live, 16);
+      expect(
+        channels.repairs,
+        hasLength(2),
+        reason: 'следующий — сегмент с 16',
+      );
+      expect(channels.repairs.last.$2.targets, hasLength(4));
+    });
+
+    test('отказ исполнителя и молчание до срока — задание провалено, '
+        'другой исполнитель', () async {
+      final s = await storeSegment(23, stored: List.generate(14, (i) => i));
+      await healthy();
+      final size = s.fragments.first.bytes.length;
+      final repair = repairService()..channels = channels;
+      final free = [
+        for (var i = 0; i < nodes.length; i++)
+          if (!s.holders.contains(i)) i,
+      ];
+      // Все, кроме одного свободного узла, отказываются.
+      for (final n in nodes) {
+        channels.refusing.add(bytesToHex(n.publicKey));
+      }
+      channels.refusing.remove(bytesToHex(nodes[free.last].publicKey));
+      var started = 0;
+      for (var i = 0; i < free.length && started == 0; i++) {
+        started = await repair.runOnce();
+      }
+      expect(started, 1);
+      expect(byId[channels.repairs.single.$1], free.last);
+      expect(
+        await assignedTotal(),
+        20 * size,
+        reason: 'место отказов свободно',
+      );
+
+      // Исполнитель молчит: после срока задание провалено, место
+      // освобождено, после паузы — новый исполнитель.
+      h.clock.advance(
+        const RepairPolicy().jobTimeout + const Duration(seconds: 1),
+      );
+      await beatAll();
+      await healthy();
+      channels.refusing.clear();
+      expect(await repair.expire(), 1);
+      expect(await assignedTotal(), 14 * size);
+      expect(await repair.runOnce(), 0, reason: 'пауза повтора');
+      h.clock.advance(const RepairPolicy().retryDelay);
+      await beatAll();
+      await healthy();
+      expect(await repair.runOnce(), 1);
+      expect(channels.repairs.last.$1, isNot(channels.repairs.first.$1));
+    });
+
+    test('ReportRepair: чужое задание, неверные номера, частичный '
+        'отчёт', () async {
+      final s = await storeSegment(24, stored: List.generate(15, (i) => i));
+      await healthy();
+      final repair = repairService()..channels = channels;
+      await repair.runOnce();
+      final (executor, c) = channels.repairs.single;
+      final e = nodes[byId[executor]!];
+      final other = nodes.firstWhere((n) => !identical(n, e));
+      Future<void> send(pb.ReportRepairRequest r, Ed25519KeyPair key) => h.call(
+        'ReportRepair',
+        r,
+        pb.ReportRepairResponse.fromBuffer,
+        key: key,
+      );
+      await expectLater(
+        send(pb.ReportRepairRequest(jobId: c.jobId), other),
+        failsWith(pb.ErrorCode.ERROR_CODE_NOT_FOUND),
+      );
+      await expectLater(
+        send(pb.ReportRepairRequest(jobId: c.jobId, storedIndexes: [0]), e),
+        failsWith(pb.ErrorCode.ERROR_CODE_BAD_REQUEST),
+      );
+      await expectLater(
+        send(
+          pb.ReportRepairRequest(
+            jobId: c.jobId,
+            storedIndexes: [15],
+            failures: [pb.RepairFailure(index: 15)],
+          ),
+          e,
+        ),
+        failsWith(pb.ErrorCode.ERROR_CODE_BAD_REQUEST),
+      );
+      // Два номера загружены, один не удался, два не упомянуты.
+      await execute(channels.repairs.single, skip: {17, 18, 19});
+      await repair.runOnce();
+      expect((await segment(s.id)).live, 17);
+      final targets = await h.db.run(
+        (x) => x.execute('SELECT idx, state FROM repair_targets ORDER BY idx'),
+      );
+      expect(
+        [for (final [i, st] in targets) (i, st)],
+        [(15, 2), (16, 2), (17, 3), (18, 3), (19, 3)],
+      );
+      // Повторный отчёт ничего не меняет.
+      await send(
+        pb.ReportRepairRequest(jobId: c.jobId, storedIndexes: [17]),
+        e,
+      );
+      expect((await segment(s.id)).live, 17);
+    });
+
+    test('удаление сегмента во время ремонта освобождает место', () async {
+      final s = await storeSegment(25, stored: List.generate(15, (i) => i));
+      await healthy();
+      final repair = repairService()..channels = channels;
+      await repair.runOnce();
+      expect(channels.repairs, hasLength(1));
+      await h.call(
+        'DeleteSegment',
+        pb.DeleteSegmentRequest(segmentId: s.id),
+        pb.DeleteSegmentResponse.fromBuffer,
+        key: device,
+      );
+      expect(await assignedTotal(), 0);
+      final jobs = await h.db.run(
+        (x) => x.execute('SELECT count(*) FROM repair_jobs'),
+      );
+      expect(jobs.single.single, 0);
     });
   });
 }

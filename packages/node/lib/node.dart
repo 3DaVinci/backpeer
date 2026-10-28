@@ -36,6 +36,7 @@ export 'src/net/udp_peers.dart';
 export 'src/peers/peer_service.dart';
 export 'src/peers/revocations.dart';
 export 'src/peers/speed_schedule.dart';
+export 'src/repair/repair_executor.dart';
 export 'src/storage/audits.dart';
 export 'src/storage/fragment_files.dart';
 export 'src/storage/fragment_index.dart';

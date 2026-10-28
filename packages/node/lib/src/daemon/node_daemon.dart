@@ -17,6 +17,7 @@ import 'package:node/src/net/relay_peers.dart';
 import 'package:node/src/net/udp_peers.dart';
 import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
+import 'package:node/src/repair/repair_executor.dart';
 import 'package:node/src/storage/audits.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:node/src/storage/integrity_checker.dart';
@@ -170,6 +171,13 @@ final class NodeDaemon {
   /// Доступность извне и адреса узла; `null` — нет [listener].
   Reachability? get reachability => _reachability;
   Reachability? _reachability;
+
+  /// Исполнитель ремонта; `null` — нет сертификата узла или координатора.
+  RepairExecutor? get repair => _repair;
+  RepairExecutor? _repair;
+
+  /// Счётчики ремонта: их ведёт [repair].
+  final RepairStats repairStats = RepairStats();
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
@@ -214,15 +222,23 @@ final class NodeDaemon {
     final trustedKeys = config.coordinatorKeys.isEmpty
         ? CoordinatorKeySet.builtIn
         : CoordinatorKeySet.fromHex(config.coordinatorKeys);
+    final uploadLimiter = BandwidthLimiter(
+      () => effectiveLimits.uploadBytesPerSecond,
+    );
+    final downloadLimiter = BandwidthLimiter(
+      () => effectiveLimits.downloadBytesPerSecond,
+    );
+    LocalPeer? local;
     if (identity.certificate case final certificate?) {
+      local = LocalPeer(
+        role: pb.PeerRole.PEER_ROLE_NODE,
+        staticKey: identity.keys.dh,
+        certificate: certificate,
+        software: 'node $appVersion',
+      );
       _peers = PeerService(
         crypto: crypto,
-        local: LocalPeer(
-          role: pb.PeerRole.PEER_ROLE_NODE,
-          staticKey: identity.keys.dh,
-          certificate: certificate,
-          software: 'node $appVersion',
-        ),
+        local: local,
         nodeId: identity.nodeId,
         storage: storage,
         trustedKeys: trustedKeys,
@@ -230,12 +246,8 @@ final class NodeDaemon {
         gate: gate,
         stats: stats,
         limits: config.peers,
-        uploadLimiter: BandwidthLimiter(
-          () => effectiveLimits.uploadBytesPerSecond,
-        ),
-        downloadLimiter: BandwidthLimiter(
-          () => effectiveLimits.downloadBytesPerSecond,
-        ),
+        uploadLimiter: uploadLimiter,
+        downloadLimiter: downloadLimiter,
       );
       final listener = _listener = await PeerListener.bind(
         config.listenHost,
@@ -276,6 +288,29 @@ final class NodeDaemon {
         trustedCertificates: trusted,
         userAgent: 'node/$appVersion',
       );
+      if (local != null) {
+        // Ремонт (задача 4.3.4): узел подключается к другим узлам, как
+        // клиент, со своим сертификатом и ключом узла.
+        final peer = local;
+        _repair = RepairExecutor(
+          crypto: crypto,
+          nodeId: identity.nodeId,
+          transport: () => ConnectionStrategy.forCoordinator(
+            crypto: crypto,
+            local: peer,
+            client: client,
+            key: identity.keys.sign,
+            udp: config.udp,
+            relay: config.relay != RelayMode.off,
+          ),
+          report: (request) =>
+              client.reportRepair(request, nodeKey: identity.keys.sign),
+          gate: gate,
+          stats: repairStats,
+          uploadLimiter: uploadLimiter,
+          downloadLimiter: downloadLimiter,
+        );
+      }
       _link = CoordinatorLink(
         client: client,
         identity: identity,
@@ -288,6 +323,7 @@ final class NodeDaemon {
         reachability: _reachability,
         rendezvous: _udp?.handle,
         audit: (command) => answerAudit(storage, command),
+        repair: _repair?.accept,
         trustedKeys: trustedKeys,
         commandChannel: config.commandChannel,
       )..start();
@@ -380,6 +416,7 @@ final class NodeDaemon {
     if (!drained && !_force) {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
+    _repair?.close();
     await _relay?.stop();
     await _listener?.close();
     await _udp?.close();
@@ -413,6 +450,7 @@ final class NodeDaemon {
         return {
           ...stats.toJson(),
           ...checker.toJson(),
+          'repair': {'busy': _repair?.busy ?? false, ...repairStats.toJson()},
           'activeTransfers': gate.active,
           'uptimeSeconds': DateTime.now().difference(startedAt).inSeconds,
         };

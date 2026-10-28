@@ -50,6 +50,7 @@ export 'src/placement/placement_policy.dart';
 export 'src/relay/relay_policy.dart';
 export 'src/relay/relay_service.dart';
 export 'src/repair/live_fragments.dart';
+export 'src/repair/repair_jobs.dart';
 export 'src/repair/repair_service.dart';
 export 'src/reputation/reputation.dart';
 export 'src/rpc/api_handler.dart';

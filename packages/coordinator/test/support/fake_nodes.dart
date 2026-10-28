@@ -23,6 +23,12 @@ final class FakeNodes implements NodeCommands {
 
   /// Отвечают соседним блоком.
   final lying = <String>{};
+
+  /// Отказываются от заданий ремонта (`UNAVAILABLE`).
+  final refusing = <String>{};
+
+  /// Принятые задания ремонта: исполнитель и команда.
+  final repairs = <(String, pb.RepairCommand)>[];
   int sent = 0;
 
   void add(Uint8List nodeId, Fragment f) =>
@@ -46,6 +52,15 @@ final class FakeNodes implements NodeCommands {
     final node = bytesToHex(nodeId);
     if (silent.contains(node)) throw TimeoutException('нет ответа');
     if (dropping.contains(node)) return null;
+    if (command.hasRepair()) {
+      if (refusing.contains(node)) {
+        return pb.NodeChannelMessage(
+          error: pb.Error(code: pb.ErrorCode.ERROR_CODE_UNAVAILABLE),
+        );
+      }
+      repairs.add((node, command.repair));
+      return pb.NodeChannelMessage(done: pb.CommandDone());
+    }
     final a = command.audit;
     final f = fragments[node]?[bytesToHex(a.fragmentId)];
     if (f == null) {

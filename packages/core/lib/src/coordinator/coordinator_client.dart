@@ -424,6 +424,17 @@ final class CoordinatorClient {
     key: nodeKey,
   );
 
+  /// Отчёт исполнителя ремонта (protocol.md, раздел 4.14).
+  Future<pb.ReportRepairResponse> reportRepair(
+    pb.ReportRepairRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'ReportRepair',
+    request,
+    pb.ReportRepairResponse.fromBuffer,
+    key: nodeKey,
+  );
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     pb.CheckReachabilityRequest request, {
     required Ed25519KeyPair nodeKey,

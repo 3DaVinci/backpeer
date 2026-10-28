@@ -49,7 +49,8 @@ abstract final class AdminAccess {
                           last_heartbeat_at, availability, excluded_at,
                           excluded_reason, relay, relay_until,
                           audits_passed, audits_failed, last_audit_at,
-                          audit_window_failures, audit_latency_ms)
+                          audit_window_failures, audit_latency_ms,
+                          lost_at, repair_suspended_until)
               ON nodes TO $role''',
           'GRANT UPDATE (excluded_at, excluded_reason) ON nodes TO $role',
           '''
@@ -63,6 +64,8 @@ abstract final class AdminAccess {
           'GRANT SELECT ON relay_usage, relay_reports, traffic_daily TO $role',
           // Итоги аудитов (задача 4.1.3): какие блоки и когда проверялись.
           'GRANT SELECT ON audits TO $role',
+          // Задания ремонта (задача 4.3.6): исполнители, узлы, трафик.
+          'GRANT SELECT ON repair_jobs, repair_targets TO $role',
           'GRANT SELECT, INSERT ON admin_audit TO $role',
           'GRANT USAGE ON SEQUENCE admin_audit_id_seq TO $role',
           // На случай прав, выданных вручную: журнал роль не меняет.

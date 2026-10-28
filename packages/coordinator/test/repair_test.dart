@@ -416,6 +416,17 @@ void main() {
       await lose(gone);
       expect((await segment(s.id)).live, 15);
       final size = s.fragments.first.bytes.length;
+      final queued = await AdminService(
+        h.db,
+        onlineWindow: const Duration(minutes: 15),
+        probation: Duration.zero,
+        clock: h.clock.call,
+      ).repairStats();
+      expect(queued['queue'], {
+        'segments': 1,
+        'byLive': {'15': 1},
+      });
+      expect(queued['minLive'], 15);
       final before = await assigned(s.holders[4]);
 
       final repair = repairService()..channels = channels;
@@ -466,6 +477,30 @@ void main() {
       )).single;
       expect(state, RepairJobState.done.index);
       expect((down, up), (10 * size, 5 * size));
+      // Метрики (4.3.6): очередь пуста, минимум живых — 20, трафик ремонта
+      // по отчёту и в пересчёте на хранимый терабайт за сутки.
+      final stats = await AdminService(
+        h.db,
+        onlineWindow: const Duration(minutes: 15),
+        probation: Duration.zero,
+        clock: h.clock.call,
+      ).repairStats();
+      expect(stats['queue'], {'segments': 0, 'byLive': <String, int>{}});
+      expect(stats['minLive'], 20);
+      expect(stats['nodesLost'], 5);
+      expect(stats['jobs'], {
+        'running': 0,
+        'verifying': 0,
+        'done': 1,
+        'failed': 0,
+      });
+      expect(stats['fragmentsRestored'], 5);
+      final traffic = stats['traffic']! as Map<String, Object?>;
+      expect(traffic['downloadedBytes'], 10 * size);
+      expect(traffic['uploadedBytes'], 5 * size);
+      final data = stats['storedDataBytes']! as int;
+      expect(data, 10 * (size - 96));
+      expect(traffic['bytesPerTbPerDay'], (15 * size / (data / 1e12)).round());
       // Вернувшийся узел уже не держит номер сегмента.
       await h.heartbeat(nodes[s.holders[4]], ip: '198.51.${s.holders[4]}.10');
       expect((await segment(s.id)).live, 20);

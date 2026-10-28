@@ -628,6 +628,104 @@ final class AdminService {
     };
   });
 
+  /// Метрики ремонта (задача 4.3.6; protocol.md, раздел 4.14): очередь —
+  /// сегменты с живыми не больше порога, по числу живых; наименьшее число
+  /// живых по сети; потерянные узлы; задания сейчас и за последние
+  /// [hours] часов; трафик ремонта по отчётам исполнителей и он же в
+  /// сутки на хранимый терабайт данных — для сравнения с моделью
+  /// `durability.md`, раздел 5 (около 12 ГБ в сутки на ТБ при уходе 5 %
+  /// узлов в месяц и t = 16).
+  Future<Map<String, Object?>> repairStats({int hours = 24}) =>
+      _db.run((s) async {
+        final now = _clock();
+        final since = now.subtract(Duration(hours: hours));
+        final queue = await s.execute(
+          'SELECT live, count(*) FROM segments WHERE state = 2 '
+          'GROUP BY live ORDER BY live',
+        );
+        final [
+          segments as int,
+          minLive as int?,
+          dataBytes as int,
+        ] = (await s.execute('''
+          SELECT count(*), min(live),
+                 coalesce(sum(k::int8 * (fragment_size - 96)), 0)::int8
+            FROM segments WHERE state <> 0''')).single;
+        final [lost as int, suspended as int] = (await s.execute(
+          Sql.named('''
+            SELECT count(*) FILTER (WHERE lost_at IS NOT NULL),
+                   count(*) FILTER (WHERE repair_suspended_until
+                                      > @t:timestamptz)
+              FROM nodes WHERE removed_at IS NULL'''),
+          parameters: {'t': now},
+        )).single;
+        final [
+          running as int,
+          verifying as int,
+          done as int,
+          failed as int,
+          planned as int,
+          down as int,
+          up as int,
+        ] = (await s.execute(
+          Sql.named('''
+            SELECT count(*) FILTER (WHERE state = 0),
+                   count(*) FILTER (WHERE state = 1),
+                   count(*) FILTER (WHERE state = 2
+                                      AND finished_at >= @t:timestamptz),
+                   count(*) FILTER (WHERE state = 3
+                                      AND finished_at >= @t:timestamptz),
+                   coalesce(sum(planned_bytes)
+                     FILTER (WHERE created_at >= @t:timestamptz), 0)::int8,
+                   coalesce(sum(bytes_downloaded)
+                     FILTER (WHERE reported_at >= @t:timestamptz), 0)::int8,
+                   coalesce(sum(bytes_uploaded)
+                     FILTER (WHERE reported_at >= @t:timestamptz), 0)::int8
+              FROM repair_jobs'''),
+          parameters: {'t': since},
+        )).single;
+        final [restored as int, rejected as int] = (await s.execute(
+          Sql.named('''
+            SELECT count(*) FILTER (WHERE t.state = 2),
+                   count(*) FILTER (WHERE t.state = 3
+                                      AND t.reason LIKE 'аудит:%')
+              FROM repair_targets t JOIN repair_jobs j USING (job_id)
+              WHERE j.created_at >= @t:timestamptz'''),
+          parameters: {'t': since},
+        )).single;
+        final traffic = down + up;
+        final perTbDay = dataBytes == 0
+            ? null
+            : traffic / (dataBytes / 1e12) / (hours / 24);
+        return {
+          'hours': hours,
+          'segments': segments,
+          'storedDataBytes': dataBytes,
+          'queue': {
+            'segments': queue.fold<int>(0, (a, r) => a + (r[1]! as int)),
+            'byLive': {for (final [live as int, n as int] in queue) '$live': n},
+          },
+          'minLive': minLive,
+          'nodesLost': lost,
+          'executorsSuspended': suspended,
+          'jobs': {
+            'running': running,
+            'verifying': verifying,
+            'done': done,
+            'failed': failed,
+          },
+          'fragmentsRestored': restored,
+          'fragmentsFailedAudit': rejected,
+          'traffic': {
+            'plannedBytes': planned,
+            'downloadedBytes': down,
+            'uploadedBytes': up,
+            'bytesPerTbPerDay': perTbDay?.round(),
+            'modelBytesPerTbPerDay': 12 * 1000 * 1000 * 1000,
+          },
+        };
+      });
+
   /// Последние записи журнала, новые сначала.
   Future<List<AuditRecord>> audit({int limit = 50}) async {
     final rows = await _db.run(

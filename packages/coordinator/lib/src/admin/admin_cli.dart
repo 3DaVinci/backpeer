@@ -56,6 +56,7 @@ const adminUsage = '''
   coordinator admin node include <узел> --reason ТЕКСТ [--yes]
   coordinator admin stats
   coordinator admin relay stats [--days N]
+  coordinator admin repair stats [--hours N]
   coordinator admin audit [--limit N]
 
 Учётная запись — имя для входа или 64 hex-символа (account_id, ключ
@@ -79,7 +80,8 @@ Future<int> runAdmin(
     ..addOption('reason')
     ..addOption('account')
     ..addOption('limit', defaultsTo: '50')
-    ..addOption('days', defaultsTo: '7');
+    ..addOption('days', defaultsTo: '7')
+    ..addOption('hours', defaultsTo: '24');
   final ArgResults args;
   try {
     args = parser.parse(arguments);
@@ -143,6 +145,9 @@ Future<int> runAdmin(
       ['stats'] => await service.stats(),
       ['relay', 'stats'] => await service.relayStats(
         days: (int.tryParse(args.option('days')!) ?? 7).clamp(1, 90),
+      ),
+      ['repair', 'stats'] => await service.repairStats(
+        hours: (int.tryParse(args.option('hours')!) ?? 24).clamp(1, 24 * 90),
       ),
       ['audit'] => await service.audit(
         limit: (int.tryParse(args.option('limit')!) ?? 50).clamp(1, 10000),

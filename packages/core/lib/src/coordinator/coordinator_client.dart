@@ -435,6 +435,28 @@ final class CoordinatorClient {
     key: nodeKey,
   );
 
+  /// Выход узла из сети или ход переноса (protocol.md, раздел 4.15).
+  Future<pb.LeaveNetworkResponse> leaveNetwork(
+    pb.LeaveNetworkRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'LeaveNetwork',
+    request,
+    pb.LeaveNetworkResponse.fromBuffer,
+    key: nodeKey,
+  );
+
+  /// Сверка фрагментов узла (protocol.md, раздел 4.15).
+  Future<pb.ReconcileFragmentsResponse> reconcileFragments(
+    pb.ReconcileFragmentsRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'ReconcileFragments',
+    request,
+    pb.ReconcileFragmentsResponse.fromBuffer,
+    key: nodeKey,
+  );
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     pb.CheckReachabilityRequest request, {
     required Ed25519KeyPair nodeKey,

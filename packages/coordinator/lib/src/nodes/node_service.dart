@@ -183,9 +183,9 @@ final class NodeService {
   ) async {
     final nodeId = context.caller!.publicKey;
     final capacity = _capacity(request.capacityBytes);
-    if (request.usedBytes.isNegative || request.usedBytes.toInt() > capacity) {
-      throw _bad('used_bytes больше ёмкости');
-    }
+    // Занятое может быть больше ёмкости: квоту уменьшили или кончается
+    // место на диске — координатор перенесёт лишнее (задача 4.4.2).
+    if (request.usedBytes.isNegative) throw _bad('used_bytes слишком велик');
     int? free;
     if (request.hasFreeBytes()) {
       free = _capacity(request.freeBytes);
@@ -194,13 +194,14 @@ final class NodeService {
     _checkEndpoints(request.endpoints);
     final subnet = _subnet(context);
     final now = _clock();
-    await _db.transaction((tx) async {
-      await tx.execute(
+    final reconcile = await _db.transaction((tx) async {
+      final rows = await tx.execute(
         Sql.named('''
           UPDATE nodes SET capacity_bytes = @cap:int8, used_bytes = @u:int8,
                  free_bytes = @free:int8, endpoints = @e:_text,
                  subnet = @sub:text
-            WHERE node_id = @n:bytea'''),
+            WHERE node_id = @n:bytea
+            RETURNING reconcile_at IS NOT NULL'''),
         parameters: {
           'n': nodeId,
           'cap': capacity,
@@ -211,9 +212,11 @@ final class NodeService {
         },
       );
       await _beat(tx, nodeId, now);
+      return rows.isNotEmpty && rows.single.single! as bool;
     });
     return pb.HeartbeatResponse(
       nextHeartbeatMs: policy.heartbeatInterval.inMilliseconds,
+      reconcile: reconcile,
     );
   }
 
@@ -409,8 +412,9 @@ final class NodeService {
   }
 
   /// Узлы, подходящие для размещения фрагментов размера [fragmentSize]
-  /// (задача 2.7.1): в сети, не удалены и не исключены оператором, владелец
-  /// не заблокирован, свободного места хватает, доступность не ниже
+  /// (задача 2.7.1): в сети, не удалены, не исключены оператором и не
+  /// объявили выход (4.4.1), владелец не заблокирован, свободного места
+  /// хватает, доступность не ниже
   /// [minAvailability], подсеть известна. Свободное место — ёмкость минус
   /// большее из занятого по словам узла и выданного координатором под
   /// фрагменты. Узлы владельца сегмента [exceptOwner] исключаются; узлы
@@ -504,6 +508,7 @@ final class NodeService {
             FROM nodes
             WHERE removed_at IS NULL
               AND excluded_at IS NULL
+              AND leaving_at IS NULL
               AND account_id NOT IN (
                 SELECT account_id FROM accounts WHERE blocked_at IS NOT NULL)
               AND last_heartbeat_at >= @online:timestamptz

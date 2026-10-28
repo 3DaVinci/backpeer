@@ -132,8 +132,12 @@ final class SegmentService {
         if (state != null) {
           if (state != SegmentState.allocated) throw _committed;
           // Повторное размещение неподтверждённого сегмента (например,
-          // после сбоя загрузки): прежние узлы освобождаются.
-          await _release(tx, accountId, segmentId);
+          // после сбоя загрузки): прежние узлы освобождаются и сверят
+          // фрагменты — клиент мог успеть загрузить на них (4.4.3).
+          await RepairJobs.requestReconcile(
+            tx,
+            await _release(tx, accountId, segmentId),
+          );
           await _delete(tx, accountId, segmentId);
         }
         await tx.execute(
@@ -381,7 +385,13 @@ final class SegmentService {
         if (await _state(tx, accountId, segmentId) == null) return false;
         // Место новых фрагментов незавершённого ремонта (4.3.4).
         await RepairJobs.releaseSegment(tx, accountId, segmentId);
-        await _release(tx, accountId, segmentId);
+        // Узлы, до которых клиент не дотянется с талонами DELETE (не в
+        // сети), удалят фрагменты после сверки (4.4.3). Только уже
+        // заблокированные _release: другие узлы — сверка по расписанию.
+        await RepairJobs.requestReconcile(
+          tx,
+          await _release(tx, accountId, segmentId),
+        );
         await _delete(tx, accountId, segmentId);
         return true;
       }),
@@ -516,8 +526,9 @@ final class SegmentService {
     );
   }
 
-  /// Освобождает место, которое занимает сегмент.
-  static Future<void> _release(
+  /// Освобождает место, которое занимает сегмент. Возвращает узлы, на
+  /// которых оно было.
+  static Future<List<Uint8List>> _release(
     TxSession tx,
     Uint8List accountId,
     Uint8List segmentId,
@@ -530,10 +541,12 @@ final class SegmentService {
             AND (f.stored OR g.state = 0)'''),
       parameters: {'a': accountId, 'g': segmentId},
     );
-    if (rows.isEmpty) return;
-    await _addAssigned(tx, accountId, [
+    if (rows.isEmpty) return const [];
+    final nodes = [
       for (final [node as List<int>, _] in rows) Uint8List.fromList(node),
-    ], -(rows.first[1]! as int));
+    ];
+    await _addAssigned(tx, accountId, nodes, -(rows.first[1]! as int));
+    return nodes;
   }
 
   static Future<void> _delete(

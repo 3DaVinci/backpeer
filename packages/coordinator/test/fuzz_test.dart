@@ -290,6 +290,10 @@ void main() {
         ),
         node,
       ),
+      'ReconcileFragments': (
+        pb.ReconcileFragmentsRequest(fragmentIds: [id(1), id(2)], first: true),
+        node,
+      ),
       // Адрес запросов фаззера — для документации: координатор не
       // подключается, итог NOT_CHECKED.
       'CheckReachability': (pb.CheckReachabilityRequest(ports: [7340]), node),
@@ -341,6 +345,9 @@ void main() {
         ),
         device,
       ),
+      // Последним: изменённый запрос без отмены удаляет узел фаззера без
+      // фрагментов, и методы после него получали бы UNAUTHENTICATED.
+      'LeaveNetwork': (pb.LeaveNetworkRequest(cancel: true), node),
     });
   });
   tearDownAll(() => h.close());

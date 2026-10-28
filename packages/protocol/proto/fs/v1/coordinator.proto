@@ -215,6 +215,10 @@ message HeartbeatRequest {
 }
 message HeartbeatResponse {
   uint32 next_heartbeat_ms = 1;
+  // Пора сверить фрагменты узла (ReconcileFragments, задача 4.4.3):
+  // координатор перестал учитывать какие-то из них — ремонт перенёс их на
+  // другие узлы, сегмент удалён, загрузка не засчитана.
+  bool reconcile = 2;
 }
 
 // Узел нашёл у себя фрагменты, не прошедшие проверку целостности или
@@ -291,6 +295,7 @@ message CoordinatorChannelMessage {
     RendezvousCommand rendezvous = 7;
     AuditCommand audit = 8;
     RepairCommand repair = 9;
+    RelocateCommand relocate = 10;
   }
 }
 
@@ -412,6 +417,49 @@ message RepairFailure {
   string reason = 2;                 // до 200 символов, для журнала
 }
 message ReportRepairResponse {}
+
+// --- Выход узла и уборка фрагментов (задачи 4.4.1–4.4.3) ---------------------
+//
+// protocol.md, раздел 4.15. Узел, который уходит из сети (LeaveNetwork) или
+// хранит больше, чем готов (ёмкость в heartbeat меньше выданного),
+// переносит свои фрагменты на другие узлы сам: координатор выбирает новый
+// узел по правилам размещения и поручает уходящему узлу загрузить туда
+// фрагмент (RelocateCommand). Отчёт — ReportRepair, новый фрагмент
+// засчитывается после аудита, как при ремонте. Фрагменты, которые
+// координатор больше не учитывает на узле, узел находит сверкой
+// (ReconcileFragments) и удаляет после карантина.
+
+// Перенос одного фрагмента: узел-исполнитель — тот, кто его хранит.
+message RelocateCommand {
+  bytes job_id = 1;                  // 16 байт
+  // Новый узел и талон PUT с device_sign = node_id исполнителя и
+  // owner_account. fragment_id и fragment_size — в талоне.
+  Placement target = 2;
+  int64 deadline_unix_ms = 3;        // отчёт не позже; талон действует до него
+}
+
+// Узел объявляет выход из сети или проверяет, как идёт перенос. Подписан
+// ключом узла.
+message LeaveNetworkRequest {
+  bool cancel = 1;                   // отменить выход
+}
+message LeaveNetworkResponse {
+  // Сохранённых фрагментов подтверждённых сегментов ещё на узле.
+  uint64 remaining_fragments = 1;
+  uint64 remaining_bytes = 2;
+  // Переносить нечего: узел удалён из сети, фрагменты можно удалить.
+  bool done = 3;
+}
+
+// Сверка: какие из фрагментов узла координатор больше не учитывает на
+// нём. Подписан ключом узла.
+message ReconcileFragmentsRequest {
+  repeated bytes fragment_ids = 1;   // от 1 до 1000, по 32 байта, без повторов
+  bool first = 2;                    // первая пачка прохода: снять отметку reconcile
+}
+message ReconcileFragmentsResponse {
+  repeated bytes unknown = 1;        // подмножество fragment_ids запроса
+}
 
 // --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------
 //

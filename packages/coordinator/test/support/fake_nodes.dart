@@ -29,6 +29,9 @@ final class FakeNodes implements NodeCommands {
 
   /// Принятые задания ремонта: исполнитель и команда.
   final repairs = <(String, pb.RepairCommand)>[];
+
+  /// Принятые задания переноса: исполнитель и команда.
+  final relocations = <(String, pb.RelocateCommand)>[];
   int sent = 0;
 
   void add(Uint8List nodeId, Fragment f) =>
@@ -59,6 +62,15 @@ final class FakeNodes implements NodeCommands {
         );
       }
       repairs.add((node, command.repair));
+      return pb.NodeChannelMessage(done: pb.CommandDone());
+    }
+    if (command.hasRelocate()) {
+      if (refusing.contains(node)) {
+        return pb.NodeChannelMessage(
+          error: pb.Error(code: pb.ErrorCode.ERROR_CODE_UNAVAILABLE),
+        );
+      }
+      relocations.add((node, command.relocate));
       return pb.NodeChannelMessage(done: pb.CommandDone());
     }
     final a = command.audit;

@@ -424,6 +424,30 @@ const List<Migration> schemaMigrations = [
     CREATE INDEX repair_targets_verify ON repair_targets (node_id)
       WHERE state = 1''',
   ]),
+  Migration(14, 'выход узла и уборка фрагментов', [
+    // Вид задания (задачи 4.4.1, 4.4.2): 0 — ремонт, 1 — перенос фрагмента
+    // с узла, который его хранит, на новый узел.
+    '''
+    ALTER TABLE repair_jobs
+      ADD COLUMN kind smallint NOT NULL DEFAULT 0 CHECK (kind IN (0, 1))''',
+    // Узел объявил выход из сети (LeaveNetwork): новых фрагментов не
+    // получает, его фрагменты переносятся.
+    'ALTER TABLE nodes ADD COLUMN leaving_at timestamptz',
+    // Координатор перестал учитывать фрагменты на узле (задача 4.4.3):
+    // heartbeat попросит узел сверить фрагменты (ReconcileFragments).
+    'ALTER TABLE nodes ADD COLUMN reconcile_at timestamptz',
+    '''
+    CREATE INDEX nodes_leaving ON nodes (leaving_at)
+      WHERE leaving_at IS NOT NULL AND removed_at IS NULL''',
+    // Новые фрагменты действующих заданий на узле: сверка их не удаляет,
+    // выход узла их ждёт.
+    '''
+    CREATE INDEX repair_targets_open ON repair_targets (node_id, fragment_id)
+      WHERE state IN (0, 1)''',
+    '''
+    CREATE INDEX repair_jobs_running ON repair_jobs (executor, kind)
+      WHERE state IN (0, 1)''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

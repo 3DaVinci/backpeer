@@ -211,6 +211,8 @@ final class CoordinatorConfig {
     'repair.executor_min_reputation',
     'repair.verify_hours',
     'repair.suspend_hours',
+    'repair.max_relocations',
+    'repair.relocations_per_node',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -509,6 +511,10 @@ final class _Reader {
       suspend: Duration(
         hours: _int('repair.suspend_hours', 0, 24 * 365) ?? rp.suspend.inHours,
       ),
+      maxRelocations:
+          _int('repair.max_relocations', 0, 100000) ?? rp.maxRelocations,
+      relocationsPerNode:
+          _int('repair.relocations_per_node', 1, 64) ?? rp.relocationsPerNode,
     );
   }
 

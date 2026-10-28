@@ -33,6 +33,8 @@ final class RepairPolicy {
     this.executorMinReputation = 0.5,
     this.verifyTimeout = const Duration(hours: 2),
     this.suspend = const Duration(hours: 24),
+    this.maxRelocations = 64,
+    this.relocationsPerNode = 4,
     this.tick = const Duration(seconds: 30),
   });
 
@@ -80,6 +82,14 @@ final class RepairPolicy {
   /// не прошёл проверку.
   final Duration suspend;
 
+  /// Заданий переноса (задачи 4.4.1, 4.4.2) одновременно на координатор;
+  /// 0 — перенос выключен. Предел [maxBytesPerHour] на перенос не
+  /// распространяется: фрагмент отдаёт сам уходящий узел, одной загрузкой.
+  final int maxRelocations;
+
+  /// Заданий переноса одновременно на один узел.
+  final int relocationsPerNode;
+
   /// Как часто планировщик ищет работу.
   final Duration tick;
 }
@@ -111,6 +121,19 @@ final class RepairCandidate {
   final DateTime since;
 }
 
+/// Фрагмент сегмента и его узел для задания.
+typedef _SegmentFragment = ({
+  int index,
+  Uint8List fragmentId,
+  Uint8List nodeId,
+  String owner,
+  String? subnet,
+  List<String> endpoints,
+  bool live,
+  bool online,
+  bool probation,
+});
+
 /// Ремонт сегментов (группа 4.3; protocol.md, раздел 4.14).
 ///
 /// **Потерянные узлы.** Раз в [RepairPolicy.tick] узлы без heartbeat
@@ -137,6 +160,18 @@ final class RepairCandidate {
 /// фрагмент становится живым ([RepairJobs.acceptTarget]) только после
 /// аудита на своём узле ([settle], задача 4.3.5). Нет отчёта к сроку —
 /// задание провалено.
+///
+/// **Перенос** (задачи 4.4.1, 4.4.2; protocol.md, раздел 4.15): с узла,
+/// объявившего выход ([leave]) или хранящего больше своей ёмкости,
+/// фрагменты переносятся заданиями того же журнала (`kind` = 1) по
+/// одному: исполнитель — сам узел, команда канала `relocate`, отчёт и
+/// проверка — как у ремонта ([startRelocations]). Узел, с которого
+/// переносить больше нечего, удаляется, и [leave] отвечает `done`.
+///
+/// **Сверка** (задача 4.4.3): фрагменты, которые координатор перестал
+/// учитывать на узле, узел находит запросом [reconcile] и удаляет после
+/// карантина; heartbeat просит сверить (`reconcile`), когда такие
+/// фрагменты появились ([RepairJobs.requestReconcile]).
 final class RepairService {
   new(
     this._db, {
@@ -199,15 +234,15 @@ final class RepairService {
   }
 
   /// Один проход планировщика: потерянные узлы, просроченные задания,
-  /// приём отчитанных фрагментов, новые задания. Возвращает число начатых
-  /// заданий.
+  /// приём отчитанных фрагментов, новые задания ремонта и переноса.
+  /// Возвращает число начатых заданий.
   Future<int> runOnce() async {
     await markLost();
     await expire();
     final commands = channels;
     if (commands == null) return 0;
     await settle(commands);
-    return await startJobs(commands);
+    return await startJobs(commands) + await startRelocations(commands);
   }
 
   // --- задания ---------------------------------------------------------------
@@ -241,49 +276,7 @@ final class RepairService {
   ) async {
     final now = _clock();
     final fields = {'segment': _segmentLabel(c), 'live': c.live};
-    final rows = await _db.run(
-      (s) => s.execute(
-        Sql.named('''
-          SELECT f.idx, f.fragment_id, f.node_id, n.account_id, n.subnet,
-                 n.endpoints, (${LiveFragments.condition}) AS live,
-                 n.last_heartbeat_at >= @online:timestamptz AS online,
-                 n.registered_at > @probation:timestamptz AS probation
-            FROM fragments f JOIN nodes n USING (node_id)
-            WHERE f.account_id = @a:bytea AND f.segment_id = @g:bytea
-            ORDER BY n.availability DESC, f.idx'''),
-        parameters: {
-          'a': c.accountId,
-          'g': c.segmentId,
-          'online': now.subtract(nodes.policy.onlineWindow),
-          'probation': now.subtract(placementPolicy.probation),
-        },
-      ),
-    );
-    final fragments = [
-      for (final [
-            idx as int,
-            fid as List<int>,
-            node as List<int>,
-            owner as List<int>,
-            subnet as String?,
-            endpoints as List<Object?>,
-            live as bool,
-            online as bool,
-            probation as bool,
-          ]
-          in rows)
-        (
-          index: idx,
-          fragmentId: Uint8List.fromList(fid),
-          nodeId: Uint8List.fromList(node),
-          owner: bytesToHex(owner),
-          subnet: subnet,
-          endpoints: [for (final e in endpoints) e! as String],
-          live: live,
-          online: online,
-          probation: probation,
-        ),
-    ];
+    final fragments = await _segmentFragments(c, now);
     final sources = [
       for (final f in fragments)
         if (f.live && f.online) f,
@@ -353,54 +346,19 @@ final class RepairService {
           owner: c.accountId,
         ),
     ]);
-    try {
-      await _db.transaction((tx) async {
-        await tx.execute(
-          Sql.named('''
-            INSERT INTO repair_jobs
-              (job_id, account_id, segment_id, executor, live, planned_bytes,
-               state, created_at, deadline)
-            VALUES (@j:bytea, @a:bytea, @g:bytea, @e:bytea, @l:int2,
-                    @b:int8, 0, @t:timestamptz, @d:timestamptz)'''),
-          parameters: {
-            'j': jobId,
-            'a': c.accountId,
-            'g': c.segmentId,
-            'e': executor.nodeId,
-            'l': c.live,
-            'b': planned,
-            't': now,
-            'd': deadline,
-          },
-        );
-        await tx.execute(
-          Sql.named('''
-            INSERT INTO repair_targets (job_id, idx, node_id, fragment_id,
-                                        state)
-            SELECT @j:bytea, idx, decode(node, 'hex'), decode(fid, 'hex'), 0
-              FROM unnest(@idx:_int4, @nodes:_text, @fids:_text)
-                AS t(idx, node, fid)'''),
-          parameters: {
-            'j': jobId,
-            'idx': [for (final (i, _) in targets) i],
-            'nodes': [for (final (_, n) in targets) bytesToHex(n.nodeId)],
-            'fids': [
-              for (final (i, _) in targets) bytesToHex(byIndex[i]!.fragmentId),
-            ],
-          },
-        );
-        await RepairJobs.addNodeBytes(tx, [
-          for (final (_, n) in targets) n.nodeId,
-        ], c.fragmentSize);
-      });
-    } on ServerException catch (e) {
-      // Другой проход уже начал задание этого сегмента.
-      if (e.code == '23505') return 0;
-      rethrow;
-    }
-    nodes.noteAssigned([
-      for (final (_, n) in targets) n.nodeId,
-    ], c.fragmentSize);
+    final created = await _createJob(
+      jobId,
+      c,
+      kind: _repairKind,
+      executor: executor.nodeId,
+      planned: planned,
+      now: now,
+      deadline: deadline,
+      targets: [
+        for (final (i, n) in targets) (i, n.nodeId, byIndex[i]!.fragmentId),
+      ],
+    );
+    if (!created) return 0;
     final command = pb.RepairCommand(
       jobId: jobId,
       k: c.k,
@@ -430,36 +388,536 @@ final class RepairService {
       'executor': bytesToHex(executor.nodeId),
       'targets': [for (final (i, _) in targets) i],
     };
-    String? refused;
-    try {
-      final reply = await commands.send(
-        executor.nodeId,
-        pb.CoordinatorChannelMessage(repair: command),
-      );
-      if (reply == null) {
-        refused = 'исполнитель: канал закрыт';
-      } else if (reply.hasError()) {
-        refused = 'исполнитель: ${errorCodeName(reply.error.code)}';
-      } else if (!reply.hasDone()) {
-        refused = 'исполнитель: ответ без done';
-      }
-    } on TimeoutException {
-      refused = 'исполнитель: нет ответа';
-    }
+    final refused = await _dispatch(
+      commands,
+      executor.nodeId,
+      pb.CoordinatorChannelMessage(repair: command),
+    );
     if (refused != null) {
-      final reason = refused;
       // Повтор сразу: исполнитель этого задания для сегмента не выбирается
       // сутки.
       await _db.transaction(
-        (tx) => RepairJobs.failJob(tx, jobId, reason, now: now, retryAt: now),
+        (tx) => RepairJobs.failJob(tx, jobId, refused, now: now, retryAt: now),
       );
       _log.warning(
-        LogEvent('repair_job_refused', {...jobFields, 'reason': reason}),
+        LogEvent('repair_job_refused', {...jobFields, 'reason': refused}),
       );
       return 0;
     }
     _log.info(LogEvent('repair_job_started', jobFields));
     return planned;
+  }
+
+  // --- перенос, выход узла и сверка (задачи 4.4.1–4.4.3) ------------------
+
+  /// Начинает задания переноса (protocol.md, раздел 4.15): с узла,
+  /// объявившего выход, переносятся все сохранённые фрагменты
+  /// подтверждённых сегментов, с узла, которому выдано больше его ёмкости
+  /// из heartbeat (уменьшили квоту, кончается место на диске), — сколько
+  /// нужно, чтобы выданное не превышало ёмкость с учётом уже идущих
+  /// переносов. Исполнитель — сам узел, он отдаёт свой фрагмент новому
+  /// узлу; узел без канала команд ждёт. Возвращает число начатых заданий.
+  Future<int> startRelocations(NodeCommands commands) async {
+    final signer = _signer;
+    if (signer == null || policy.maxRelocations == 0) return 0;
+    final now = _clock();
+    final active =
+        (await _db.run(
+              (s) => s.execute('''
+        SELECT count(*) FROM repair_jobs WHERE state IN (0, 1) AND kind = 1'''),
+            )).single.single!
+            as int;
+    var left = policy.maxRelocations - active;
+    if (left <= 0) return 0;
+    final rows = await _db.run(
+      (s) => s.execute(
+        Sql.named('''
+          SELECT n.node_id, n.leaving_at IS NOT NULL,
+                 n.assigned_bytes - n.capacity_bytes,
+                 coalesce(j.jobs, 0)::int4, coalesce(j.bytes, 0)::int8
+            FROM nodes n
+              LEFT JOIN (SELECT executor, count(*) AS jobs,
+                                sum(planned_bytes) AS bytes
+                           FROM repair_jobs
+                           WHERE state IN (0, 1) AND kind = 1
+                           GROUP BY executor) j ON j.executor = n.node_id
+            WHERE n.removed_at IS NULL AND n.lost_at IS NULL
+              AND n.last_heartbeat_at >= @online:timestamptz
+              AND (n.leaving_at IS NOT NULL
+                   OR n.assigned_bytes > n.capacity_bytes)
+            ORDER BY n.leaving_at NULLS LAST, n.node_id'''),
+        parameters: {'online': now.subtract(nodes.policy.onlineWindow)},
+      ),
+    );
+    var started = 0;
+    for (final [
+          id as List<int>,
+          leaving as bool,
+          excess as int,
+          jobs as int,
+          moving as int,
+        ]
+        in rows) {
+      if (left <= 0 || _closed) break;
+      final nodeId = Uint8List.fromList(id);
+      if (!commands.isConnected(nodeId)) continue;
+      final slots = min(policy.relocationsPerNode - jobs, left);
+      if (slots <= 0) continue;
+      // Сколько ещё перенести с узла сверх ёмкости; при выходе — всё.
+      var need = leaving ? null : excess - moving;
+      if (need != null && need <= 0) continue;
+      for (final (c, index) in await _relocatable(nodeId, now, slots)) {
+        if (need != null && need <= 0) break;
+        if (_closed) break;
+        if (await _startRelocation(commands, signer, nodeId, c, index, now)) {
+          started++;
+          left--;
+          if (need != null) need -= c.fragmentSize;
+        }
+      }
+    }
+    return started;
+  }
+
+  /// До [limit] фрагментов узла [nodeId], которые можно переносить:
+  /// сохранённые, не повреждённые, подтверждённых сегментов без
+  /// действующего задания и паузы повтора. Порядок — по `fragment_id`
+  /// (индекс `fragments_audit`): без сортировки всех фрагментов узла.
+  Future<List<(RepairCandidate, int)>> _relocatable(
+    Uint8List nodeId,
+    DateTime now,
+    int limit,
+  ) async {
+    final rows = await _db.run(
+      (s) => s.execute(
+        Sql.named('''
+          SELECT g.account_id, g.segment_id, g.k, g.n, g.repair_threshold,
+                 g.fragment_size, g.live,
+                 coalesce(g.repair_since, g.committed_at, g.allocated_at),
+                 f.idx
+            FROM fragments f JOIN segments g USING (account_id, segment_id)
+            WHERE f.node_id = @n:bytea AND f.stored AND f.damaged_at IS NULL
+              AND g.state <> 0
+              AND (g.repair_retry_at IS NULL
+                   OR g.repair_retry_at <= @now:timestamptz)
+              AND NOT EXISTS (
+                SELECT 1 FROM repair_jobs j
+                  WHERE j.account_id = g.account_id
+                    AND j.segment_id = g.segment_id AND j.state IN (0, 1))
+            ORDER BY f.fragment_id
+            LIMIT @l:int4'''),
+        parameters: {'n': nodeId, 'now': now, 'l': limit},
+      ),
+    );
+    return [
+      for (final [
+            account as List<int>,
+            segment as List<int>,
+            k as int,
+            n as int,
+            t as int,
+            size as int,
+            live as int,
+            since as DateTime,
+            index as int,
+          ]
+          in rows)
+        (
+          RepairCandidate(
+            accountId: Uint8List.fromList(account),
+            segmentId: Uint8List.fromList(segment),
+            k: k,
+            n: n,
+            threshold: t,
+            fragmentSize: size,
+            live: live,
+            since: since,
+          ),
+          index,
+        ),
+    ];
+  }
+
+  /// Задание переноса фрагмента номера [index] сегмента [c] с узла
+  /// [nodeId] на новый узел. `false` — не начато (сегмент ждёт повтора).
+  Future<bool> _startRelocation(
+    NodeCommands commands,
+    TicketSigner signer,
+    Uint8List nodeId,
+    RepairCandidate c,
+    int index,
+    DateTime now,
+  ) async {
+    final fields = {
+      'segment': _segmentLabel(c),
+      'index': index,
+      'node_id': bytesToHex(nodeId),
+    };
+    final fragments = await _segmentFragments(c, now);
+    final moving = fragments
+        .where((f) => f.index == index && constantTimeEquals(f.nodeId, nodeId))
+        .firstOrNull;
+    if (moving == null) return false;
+    // Новый узел — как при ремонте, но владелец и подсеть уходящего узла
+    // не заняты: его фрагмент заменяется.
+    final targets = await _chooseTargets(
+      c,
+      [index],
+      fragments
+          .where((f) => f.live && f.index != index)
+          .map(
+            (f) => (owner: f.owner, subnet: f.subnet, probation: f.probation),
+          ),
+      {for (final f in fragments) bytesToHex(f.nodeId)},
+    );
+    if (targets.isEmpty) {
+      await _retryLater(c, now);
+      _log.warning(LogEvent('relocation_no_target', fields));
+      return false;
+    }
+    final (_, target) = targets.single;
+    final deadline = now.add(policy.jobTimeout);
+    final jobId = crypto.randomBytes(16);
+    final [ticket] = await signer.sign([
+      _ticket(
+        pb.TicketOperation.TICKET_OPERATION_PUT,
+        node: target.nodeId,
+        executor: nodeId,
+        fragmentId: moving.fragmentId,
+        size: c.fragmentSize,
+        expires: deadline,
+        owner: c.accountId,
+      ),
+    ]);
+    final created = await _createJob(
+      jobId,
+      c,
+      kind: _relocationKind,
+      executor: nodeId,
+      planned: c.fragmentSize,
+      now: now,
+      deadline: deadline,
+      targets: [(index, target.nodeId, moving.fragmentId)],
+    );
+    if (!created) return false;
+    final jobFields = {
+      ...fields,
+      'job': bytesToHex(jobId),
+      'target': bytesToHex(target.nodeId),
+    };
+    final refused = await _dispatch(
+      commands,
+      nodeId,
+      pb.CoordinatorChannelMessage(
+        relocate: pb.RelocateCommand(
+          jobId: jobId,
+          target: pb.Placement(
+            index: index,
+            node: _address(target.nodeId, target.endpoints),
+            ticket: ticket,
+          ),
+          deadlineUnixMs: Int64(deadline.millisecondsSinceEpoch),
+        ),
+      ),
+    );
+    if (refused != null) {
+      // Исполнитель переноса — всегда этот узел: повтор после паузы.
+      await _db.transaction(
+        (tx) => RepairJobs.failJob(
+          tx,
+          jobId,
+          refused,
+          now: now,
+          retryAt: now.add(policy.retryDelay),
+        ),
+      );
+      _log.warning(
+        LogEvent('relocation_refused', {...jobFields, 'reason': refused}),
+      );
+      return false;
+    }
+    _log.info(LogEvent('relocation_started', jobFields));
+    return true;
+  }
+
+  /// `LeaveNetwork` (задача 4.4.1; protocol.md, раздел 4.15): узел
+  /// объявляет выход из сети — новых фрагментов, заданий ремонта и
+  /// размещений он больше не получает, его фрагменты переносятся
+  /// ([startRelocations]). Повторный запрос сообщает, сколько осталось.
+  /// Когда на узле нет сохранённых фрагментов подтверждённых сегментов и
+  /// новых фрагментов действующих заданий, узел удаляется (`removed_at`) и
+  /// ответ — `done`: его фрагменты координатор больше не учитывает.
+  /// `cancel` — выход отменяется, перенесённое остаётся на новых узлах.
+  Future<pb.LeaveNetworkResponse> leave(
+    CallContext context,
+    pb.LeaveNetworkRequest request,
+  ) async {
+    final nodeId = context.caller!.publicKey;
+    final now = _clock();
+    final result = await _db.transaction((tx) async {
+      final updated = await tx.execute(
+        Sql.named(
+          request.cancel
+              ? '''
+                UPDATE nodes SET leaving_at = NULL
+                  WHERE node_id = @n:bytea AND removed_at IS NULL
+                  RETURNING false'''
+              : '''
+                UPDATE nodes SET leaving_at = coalesce(leaving_at,
+                                                       @t:timestamptz)
+                  WHERE node_id = @n:bytea AND removed_at IS NULL
+                  RETURNING leaving_at = @t:timestamptz''',
+        ),
+        parameters: {'n': nodeId, if (!request.cancel) 't': now},
+      );
+      if (updated.isEmpty) throw _nodeNotFound;
+      final [count as int, bytes as int, incoming as int] = (await tx.execute(
+        Sql.named('''
+          SELECT count(*)::int4, coalesce(sum(g.fragment_size), 0)::int8,
+                 (SELECT count(*)::int4 FROM repair_targets t
+                    WHERE t.node_id = @n:bytea AND t.state IN (0, 1))
+            FROM fragments f JOIN segments g USING (account_id, segment_id)
+            WHERE f.node_id = @n:bytea AND f.stored AND f.damaged_at IS NULL
+              AND g.state <> 0'''),
+        parameters: {'n': nodeId},
+      )).single;
+      final done = !request.cancel && count == 0 && incoming == 0;
+      if (done) {
+        await tx.execute(
+          Sql.named('''
+            UPDATE nodes SET removed_at = @t:timestamptz
+              WHERE node_id = @n:bytea'''),
+          parameters: {'n': nodeId, 't': now},
+        );
+      }
+      return (
+        started: updated.single.single! as bool,
+        count: count,
+        bytes: bytes,
+        done: done,
+      );
+    });
+    final fields = {
+      'rid': context.requestId,
+      'node_id': bytesToHex(nodeId),
+      'fragments': result.count,
+    };
+    if (request.cancel) {
+      _log.info(LogEvent('node_leave_cancelled', fields));
+    } else if (result.done) {
+      _log.info(LogEvent('node_left', fields));
+    } else if (result.started) {
+      _log.info(LogEvent('node_leaving', fields));
+    }
+    return pb.LeaveNetworkResponse(
+      remainingFragments: Int64(result.count),
+      remainingBytes: Int64(result.bytes),
+      done: result.done,
+    );
+  }
+
+  /// Наибольшая пачка `ReconcileFragments`.
+  static const maxReconcileBatch = 1000;
+
+  /// `ReconcileFragments` (задача 4.4.3; protocol.md, раздел 4.15): какие
+  /// из перечисленных фрагментов координатор не учитывает на этом узле —
+  /// ни как фрагмент сегмента, ни как новый фрагмент действующего задания.
+  /// Такие узел удаляет после карантина. `first` снимает отметку «пора
+  /// сверить» до проверки: события после неё поставят отметку снова.
+  Future<pb.ReconcileFragmentsResponse> reconcile(
+    CallContext context,
+    pb.ReconcileFragmentsRequest request,
+  ) async {
+    final ids = request.fragmentIds;
+    if (ids.isEmpty || ids.length > maxReconcileBatch) {
+      throw _bad('fragment_ids: от 1 до $maxReconcileBatch');
+    }
+    if (ids.any((id) => id.length != 32)) {
+      throw _bad('fragment_ids: по 32 байта');
+    }
+    if ({for (final id in ids) bytesToHex(id)}.length != ids.length) {
+      throw _bad('fragment_ids повторяются');
+    }
+    final nodeId = context.caller!.publicKey;
+    final rows = await _db.transaction((tx) async {
+      if (request.first) {
+        await tx.execute(
+          Sql.named(
+            'UPDATE nodes SET reconcile_at = NULL WHERE node_id = @n:bytea',
+          ),
+          parameters: {'n': nodeId},
+        );
+      }
+      return await tx.execute(
+        Sql.named('''
+          SELECT id FROM unnest(@ids:_bytea) id
+            WHERE NOT EXISTS (
+                SELECT 1 FROM fragments f
+                  WHERE f.node_id = @n:bytea AND f.fragment_id = id)
+              AND NOT EXISTS (
+                SELECT 1 FROM repair_targets t
+                  WHERE t.node_id = @n:bytea AND t.fragment_id = id
+                    AND t.state IN (0, 1))'''),
+        parameters: {
+          'n': nodeId,
+          'ids': [for (final id in ids) Uint8List.fromList(id)],
+        },
+      );
+    });
+    if (rows.isNotEmpty) {
+      _log.info(
+        LogEvent('fragments_unknown', {
+          'rid': context.requestId,
+          'node_id': bytesToHex(nodeId),
+          'checked': ids.length,
+          'unknown': rows.length,
+        }),
+      );
+    }
+    return pb.ReconcileFragmentsResponse(
+      unknown: [for (final [id as List<int>] in rows) id],
+    );
+  }
+
+  static const _nodeNotFound = RpcException(
+    pb.ErrorCode.ERROR_CODE_NOT_FOUND,
+    'узел не зарегистрирован',
+  );
+
+  /// `repair_jobs.kind`: ремонт и перенос (задачи 4.3.4, 4.4.1).
+  static const _repairKind = 0;
+  static const _relocationKind = 1;
+
+  /// Фрагменты сегмента [c] с узлами: живой ли, в сети ли узел, на
+  /// испытательном ли сроке; сначала узлы с большей доступностью.
+  Future<List<_SegmentFragment>> _segmentFragments(
+    RepairCandidate c,
+    DateTime now,
+  ) async {
+    final rows = await _db.run(
+      (s) => s.execute(
+        Sql.named('''
+          SELECT f.idx, f.fragment_id, f.node_id, n.account_id, n.subnet,
+                 n.endpoints, (${LiveFragments.condition}) AS live,
+                 n.last_heartbeat_at >= @online:timestamptz AS online,
+                 n.registered_at > @probation:timestamptz AS probation
+            FROM fragments f JOIN nodes n USING (node_id)
+            WHERE f.account_id = @a:bytea AND f.segment_id = @g:bytea
+            ORDER BY n.availability DESC, f.idx'''),
+        parameters: {
+          'a': c.accountId,
+          'g': c.segmentId,
+          'online': now.subtract(nodes.policy.onlineWindow),
+          'probation': now.subtract(placementPolicy.probation),
+        },
+      ),
+    );
+    return [
+      for (final [
+            idx as int,
+            fid as List<int>,
+            node as List<int>,
+            owner as List<int>,
+            subnet as String?,
+            endpoints as List<Object?>,
+            live as bool,
+            online as bool,
+            probation as bool,
+          ]
+          in rows)
+        (
+          index: idx,
+          fragmentId: Uint8List.fromList(fid),
+          nodeId: Uint8List.fromList(node),
+          owner: bytesToHex(owner),
+          subnet: subnet,
+          endpoints: [for (final e in endpoints) e! as String],
+          live: live,
+          online: online,
+          probation: probation,
+        ),
+    ];
+  }
+
+  /// Записывает задание [jobId] вида [kind] с новыми фрагментами
+  /// [targets] (номер, узел, `fragment_id`) и занимает место на их узлах.
+  /// `false` — у сегмента уже есть действующее задание.
+  Future<bool> _createJob(
+    Uint8List jobId,
+    RepairCandidate c, {
+    required int kind,
+    required Uint8List executor,
+    required int planned,
+    required DateTime now,
+    required DateTime deadline,
+    required List<(int, Uint8List, Uint8List)> targets,
+  }) async {
+    try {
+      await _db.transaction((tx) async {
+        await tx.execute(
+          Sql.named('''
+            INSERT INTO repair_jobs
+              (job_id, account_id, segment_id, executor, kind, live,
+               planned_bytes, state, created_at, deadline)
+            VALUES (@j:bytea, @a:bytea, @g:bytea, @e:bytea, @kind:int2,
+                    @l:int2, @b:int8, 0, @t:timestamptz, @d:timestamptz)'''),
+          parameters: {
+            'j': jobId,
+            'a': c.accountId,
+            'g': c.segmentId,
+            'e': executor,
+            'kind': kind,
+            'l': c.live,
+            'b': planned,
+            't': now,
+            'd': deadline,
+          },
+        );
+        await tx.execute(
+          Sql.named('''
+            INSERT INTO repair_targets (job_id, idx, node_id, fragment_id,
+                                        state)
+            SELECT @j:bytea, idx, decode(node, 'hex'), decode(fid, 'hex'), 0
+              FROM unnest(@idx:_int4, @nodes:_text, @fids:_text)
+                AS t(idx, node, fid)'''),
+          parameters: {
+            'j': jobId,
+            'idx': [for (final (i, _, _) in targets) i],
+            'nodes': [for (final (_, n, _) in targets) bytesToHex(n)],
+            'fids': [for (final (_, _, f) in targets) bytesToHex(f)],
+          },
+        );
+        await RepairJobs.addNodeBytes(tx, [
+          for (final (_, n, _) in targets) n,
+        ], c.fragmentSize);
+      });
+    } on ServerException catch (e) {
+      // Другой проход уже начал задание этого сегмента.
+      if (e.code == '23505') return false;
+      rethrow;
+    }
+    nodes.noteAssigned([for (final (_, n, _) in targets) n], c.fragmentSize);
+    return true;
+  }
+
+  /// Отправляет команду задания исполнителю; причина отказа или `null` —
+  /// принята.
+  Future<String?> _dispatch(
+    NodeCommands commands,
+    Uint8List executor,
+    pb.CoordinatorChannelMessage message,
+  ) async {
+    try {
+      final reply = await commands.send(executor, message);
+      if (reply == null) return 'исполнитель: канал закрыт';
+      if (reply.hasError()) {
+        return 'исполнитель: ${errorCodeName(reply.error.code)}';
+      }
+      if (!reply.hasDone()) return 'исполнитель: ответ без done';
+      return null;
+    } on TimeoutException {
+      return 'исполнитель: нет ответа';
+    }
   }
 
   /// Исполнитель: узел в сети с каналом команд, не исключённый, вне
@@ -948,17 +1406,19 @@ final class RepairService {
     ];
   }
 
-  /// Сколько заданий и байт трафика можно начать сейчас: остаток
-  /// [RepairPolicy.maxJobs] и [RepairPolicy.maxBytesPerHour].
+  /// Сколько заданий ремонта и байт трафика можно начать сейчас: остаток
+  /// [RepairPolicy.maxJobs] и [RepairPolicy.maxBytesPerHour]. Задания
+  /// переноса сюда не входят: у них свои пределы.
   Future<({int jobs, int bytes})> budget() async {
     final now = _clock();
     final [active as int, recent as int] = (await _db.run(
       (s) => s.execute(
         Sql.named('''
-          SELECT (SELECT count(*) FROM repair_jobs WHERE state IN (0, 1)),
+          SELECT (SELECT count(*) FROM repair_jobs
+                    WHERE state IN (0, 1) AND kind = 0),
                  (SELECT coalesce(sum(planned_bytes), 0)::int8
                     FROM repair_jobs
-                    WHERE created_at > @h:timestamptz)'''),
+                    WHERE created_at > @h:timestamptz AND kind = 0)'''),
         parameters: {'h': now.subtract(const Duration(hours: 1))},
       ),
     )).single;

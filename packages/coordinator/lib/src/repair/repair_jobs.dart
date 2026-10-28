@@ -71,9 +71,29 @@ abstract final class RepairJobs {
     );
   }
 
+  /// Координатор перестал учитывать фрагменты на узлах [nodes] (задача
+  /// 4.4.3): следующий heartbeat попросит их сверить фрагменты
+  /// (`ReconcileFragments`). Вызывается под блокировкой этих узлов.
+  static Future<void> requestReconcile(
+    TxSession tx,
+    Iterable<List<int>> nodes,
+  ) async {
+    final hex = {for (final n in nodes) bytesToHex(n)}.toList()..sort();
+    if (hex.isEmpty) return;
+    await tx.execute(
+      Sql.named('''
+        UPDATE nodes SET reconcile_at = coalesce(reconcile_at, now())
+          WHERE node_id IN (SELECT decode(h, 'hex') FROM unnest(@ids:_text) h)
+            AND reconcile_at IS NULL'''),
+      parameters: {'ids': hex},
+    );
+  }
+
   /// Проваливает новые фрагменты задания [jobId] в состояниях `pending`
   /// и `reported` (или только номера [indexes]) с причиной [reason] и
-  /// освобождает их место. Возвращает число проваленных.
+  /// освобождает их место. Узел мог успеть принять фрагмент — он сверит
+  /// фрагменты и удалит лишний ([requestReconcile]). Возвращает число
+  /// проваленных.
   static Future<int> failTargets(
     TxSession tx,
     Uint8List jobId,
@@ -96,9 +116,9 @@ abstract final class RepairJobs {
       },
     );
     if (rows.isEmpty) return 0;
-    await addNodeBytes(tx, [
-      for (final [node as List<int>, _] in rows) node,
-    ], -(rows.first[1]! as int));
+    final nodes = [for (final [node as List<int>, _] in rows) node];
+    await addNodeBytes(tx, nodes, -(rows.first[1]! as int));
+    await requestReconcile(tx, nodes);
     return rows.length;
   }
 
@@ -134,9 +154,9 @@ abstract final class RepairJobs {
 
   /// Новый фрагмент номера [index] на узле [nodeId] проверен: номер
   /// сегмента переходит на этот узел, фрагмент сохранён и без отметок
-  /// повреждения, место на прежнем узле освобождается, число живых
-  /// пересчитывается. `false` — сегмента или номера уже нет (сегмент
-  /// удалён).
+  /// повреждения, место на прежнем узле освобождается, прежний узел
+  /// сверит фрагменты, число живых пересчитывается. `false` — сегмента
+  /// или номера уже нет (сегмент удалён).
   static Future<bool> acceptTarget(
     TxSession tx, {
     required Uint8List jobId,
@@ -176,6 +196,9 @@ abstract final class RepairJobs {
     );
     if (stored) {
       await addNodeBytes(tx, [old], -size);
+      // Прежний узел хранит фрагмент без ссылок: вернувшийся после потери
+      // или уходящий узел удалит его после сверки (задача 4.4.3).
+      await requestReconcile(tx, [old]);
     } else {
       // Фрагмент номера не был загружен клиентом: место учётной записи
       // занимается впервые.
@@ -252,8 +275,8 @@ abstract final class RepairJobs {
       parameters: {'a': accountId, 'g': segmentId},
     );
     if (rows.isEmpty) return;
-    await addNodeBytes(tx, [
-      for (final [node as List<int>, _] in rows) node,
-    ], -(rows.first[1]! as int));
+    final nodes = [for (final [node as List<int>, _] in rows) node];
+    await addNodeBytes(tx, nodes, -(rows.first[1]! as int));
+    await requestReconcile(tx, nodes);
   }
 }

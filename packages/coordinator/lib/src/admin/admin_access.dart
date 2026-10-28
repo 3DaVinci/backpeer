@@ -50,7 +50,8 @@ abstract final class AdminAccess {
                           excluded_reason, relay, relay_until,
                           audits_passed, audits_failed, last_audit_at,
                           audit_window_failures, audit_latency_ms,
-                          lost_at, repair_suspended_until)
+                          lost_at, repair_suspended_until, leaving_at,
+                          reconcile_at)
               ON nodes TO $role''',
           'GRANT UPDATE (excluded_at, excluded_reason) ON nodes TO $role',
           '''

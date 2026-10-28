@@ -111,6 +111,16 @@ abstract base class CoordinatorService {
     pb.ReportRepairRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.LeaveNetworkResponse> leaveNetwork(
+    CallContext context,
+    pb.LeaveNetworkRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.ReconcileFragmentsResponse> reconcileFragments(
+    CallContext context,
+    pb.ReconcileFragmentsRequest request,
+  ) => _unimplemented(context);
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     CallContext context,
     pb.CheckReachabilityRequest request,

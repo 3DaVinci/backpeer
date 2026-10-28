@@ -196,6 +196,18 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.ReportRepairRequest.fromBuffer,
     handle: s.reportRepair,
   ),
+  RpcMethod<pb.LeaveNetworkRequest, pb.LeaveNetworkResponse>(
+    name: 'LeaveNetwork',
+    auth: AuthRequirement.node,
+    parse: pb.LeaveNetworkRequest.fromBuffer,
+    handle: s.leaveNetwork,
+  ),
+  RpcMethod<pb.ReconcileFragmentsRequest, pb.ReconcileFragmentsResponse>(
+    name: 'ReconcileFragments',
+    auth: AuthRequirement.node,
+    parse: pb.ReconcileFragmentsRequest.fromBuffer,
+    handle: s.reconcileFragments,
+  ),
   RpcMethod<pb.GetRelayPassRequest, pb.GetRelayPassResponse>(
     name: 'GetRelayPass',
     auth: AuthRequirement.deviceOrNode,

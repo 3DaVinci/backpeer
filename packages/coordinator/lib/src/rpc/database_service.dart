@@ -235,6 +235,18 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   ) => repair.report(context, request);
 
   @override
+  Future<pb.LeaveNetworkResponse> leaveNetwork(
+    CallContext context,
+    pb.LeaveNetworkRequest request,
+  ) => repair.leave(context, request);
+
+  @override
+  Future<pb.ReconcileFragmentsResponse> reconcileFragments(
+    CallContext context,
+    pb.ReconcileFragmentsRequest request,
+  ) => repair.reconcile(context, request);
+
+  @override
   Future<pb.CheckReachabilityResponse> checkReachability(
     CallContext context,
     pb.CheckReachabilityRequest request,

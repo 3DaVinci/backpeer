@@ -19,6 +19,13 @@ final class RepairStats {
   int bytesDownloaded = 0;
   int bytesUploaded = 0;
 
+  /// Перенос своих фрагментов на другие узлы (задачи 4.4.1, 4.4.2).
+  int relocationsAccepted = 0;
+  int relocationsRejected = 0;
+  int relocationsDone = 0;
+  int relocationsFailed = 0;
+  int bytesRelocated = 0;
+
   Map<String, Object?> toJson() => {
     'jobsAccepted': jobsAccepted,
     'jobsRejected': jobsRejected,
@@ -27,6 +34,11 @@ final class RepairStats {
     'fragmentsRebuilt': fragmentsRebuilt,
     'bytesDownloaded': bytesDownloaded,
     'bytesUploaded': bytesUploaded,
+    'relocationsAccepted': relocationsAccepted,
+    'relocationsRejected': relocationsRejected,
+    'relocationsDone': relocationsDone,
+    'relocationsFailed': relocationsFailed,
+    'bytesRelocated': bytesRelocated,
   };
 }
 
@@ -347,41 +359,59 @@ final class RepairExecutor {
   }
 
   /// Отчёт с повтором до срока задания.
-  Future<void> _report(_Job job, pb.ReportRepairRequest request) async {
-    final deadline = DateTime.fromMillisecondsSinceEpoch(
-      job.command.deadlineUnixMs.toInt(),
-    );
-    while (true) {
-      try {
-        await report(request);
-        return;
-      } on Object catch (e) {
-        if (e is CoordinatorException &&
-            e.code != pb.ErrorCode.ERROR_CODE_UNAVAILABLE &&
-            e.code != pb.ErrorCode.ERROR_CODE_INTERNAL &&
-            e.code != pb.ErrorCode.ERROR_CODE_RATE_LIMITED) {
-          // Отчёт отклонён по существу (задание неизвестно, поля): повтор
-          // не поможет.
-          _log.warning(
-            LogEvent('repair_report_rejected', {
-              'job': job.id,
-              'code': errorCodeName(e.code),
-            }),
-          );
-          return;
-        }
-        if (_clock().add(reportRetry).isAfter(deadline)) {
-          _log.warning(LogEvent('repair_report_lost', {'job': job.id}));
-          return;
-        }
-        await Future<void>.delayed(reportRetry);
-      }
-    }
-  }
+  Future<void> _report(_Job job, pb.ReportRepairRequest request) =>
+      sendRepairReport(
+        report,
+        request,
+        deadline: DateTime.fromMillisecondsSinceEpoch(
+          job.command.deadlineUnixMs.toInt(),
+        ),
+        retry: reportRetry,
+        clock: _clock,
+      );
 
   static pb.RepairFailure _failure(int index, String reason) =>
       pb.RepairFailure(index: index, reason: _clip(reason));
 
   static String _clip(String s) =>
       s.length <= maxReasonLength ? s : s.substring(0, maxReasonLength);
+}
+
+/// Отправляет `ReportRepair` через [report] с повтором через [retry] до
+/// [deadline]: ремонт и перенос (protocol.md, разделы 4.14, 4.15). Отказ
+/// координатора по существу (задание неизвестно, поля) не повторяется.
+Future<void> sendRepairReport(
+  Future<void> Function(pb.ReportRepairRequest request) report,
+  pb.ReportRepairRequest request, {
+  required DateTime deadline,
+  required Duration retry,
+  required DateTime Function() clock,
+}) async {
+  final job = bytesToHex(request.jobId);
+  while (true) {
+    try {
+      await report(request);
+      return;
+    } on Object catch (e) {
+      if (e is CoordinatorException &&
+          e.code != pb.ErrorCode.ERROR_CODE_UNAVAILABLE &&
+          e.code != pb.ErrorCode.ERROR_CODE_INTERNAL &&
+          e.code != pb.ErrorCode.ERROR_CODE_RATE_LIMITED) {
+        RepairExecutor._log.warning(
+          LogEvent('repair_report_rejected', {
+            'job': job,
+            'code': errorCodeName(e.code),
+          }),
+        );
+        return;
+      }
+      if (clock().add(retry).isAfter(deadline)) {
+        RepairExecutor._log.warning(
+          LogEvent('repair_report_lost', {'job': job}),
+        );
+        return;
+      }
+      await Future<void>.delayed(retry);
+    }
+  }
 }

@@ -11,6 +11,7 @@ import 'package:coordinator/src/db/postgres_key_directory.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
+import 'package:coordinator/src/repair/repair_service.dart';
 import 'package:coordinator/src/rpc/api_handler.dart';
 import 'package:coordinator/src/rpc/database_service.dart';
 import 'package:coordinator/src/rpc/methods.dart';
@@ -33,6 +34,7 @@ final class CoordinatorServer {
     this._watch,
     this.rendezvous,
     this.audits,
+    this.repair,
   );
 
   /// Открывает базу, проверяет версию схемы и начинает слушать порт.
@@ -56,6 +58,7 @@ final class CoordinatorServer {
     final signer = socket == null ? null : SocketTicketSigner(socket);
     RendezvousService? rendezvous;
     AuditService? audits;
+    RepairService? repair;
     try {
       final migrator = Migrator(db);
       final version = migrate
@@ -112,6 +115,7 @@ final class CoordinatorServer {
         rendezvous = s.rendezvousService..channels = channels;
         await rendezvous.start();
         audits = (s.audits..channels = channels)..start();
+        repair = s.repair..start();
       }
       // Новый отзыв устройства — узлы в канале дочитывают ListRevocations
       // сразу, не дожидаясь heartbeat.
@@ -154,6 +158,7 @@ final class CoordinatorServer {
           'rendezvous': ?rendezvous?.ports,
           'relays': config.relay.servers.length,
           'audits': audits != null && config.audits.enabled,
+          'repair': repair != null && config.repair.enabled,
         }),
       );
       if (!config.placement.distinctSubnets) {
@@ -171,8 +176,10 @@ final class CoordinatorServer {
         watch,
         rendezvous,
         audits,
+        repair,
       );
     } on Object {
+      await repair?.close();
       await audits?.close();
       await rendezvous?.close();
       await signer?.close();
@@ -197,10 +204,14 @@ final class CoordinatorServer {
   /// Аудиты хранения; `null` — сервис без базы (тесты).
   final AuditService? audits;
 
+  /// Ремонт сегментов; `null` — сервис без базы (тесты).
+  final RepairService? repair;
+
   int get port => _http.port;
 
   Future<void> close() async {
     await _watch?.cancel();
+    await repair?.close();
     await audits?.close();
     await channels.close();
     await rendezvous?.close();

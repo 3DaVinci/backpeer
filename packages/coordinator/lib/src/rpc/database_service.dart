@@ -10,6 +10,7 @@ import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/objects/object_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/relay/relay_service.dart';
+import 'package:coordinator/src/repair/repair_service.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/service.dart';
 import 'package:coordinator/src/segments/segment_service.dart';
@@ -91,7 +92,8 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         crypto: crypto,
         policy: config.audits,
         clock: clock,
-      ) {
+      ),
+      repair = RepairService(db, policy: config.repair, clock: clock) {
     rendezvousService = RendezvousService(
       crypto: crypto,
       keys: PostgresKeyDirectory(db),
@@ -124,6 +126,9 @@ final class DatabaseCoordinatorService extends CoordinatorService {
 
   /// Аудиты хранения; каналы команд ему передаёт сервер.
   final AuditService audits;
+
+  /// Ремонт сегментов; каналы команд ему передаёт сервер.
+  final RepairService repair;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(

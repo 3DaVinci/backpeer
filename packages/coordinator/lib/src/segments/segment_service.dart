@@ -5,6 +5,7 @@ import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
+import 'package:coordinator/src/repair/live_fragments.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/signer/ticket_signer.dart';
@@ -22,8 +23,8 @@ enum SegmentState {
   /// Сохранён: загружено больше t фрагментов.
   stored,
 
-  /// Сохранён, но фрагментов не больше порога ремонта t — помечен для
-  /// ремонта (этап 4).
+  /// Сохранён, но живых фрагментов не больше порога ремонта t — в
+  /// очереди ремонта (`LiveFragments`, задача 4.3.1).
   needsRepair,
 }
 
@@ -246,23 +247,26 @@ final class SegmentService {
                 AND idx = ANY(@idx:_int4)'''),
           parameters: {'a': accountId, 'g': segmentId, 'idx': stored.toList()},
         );
-        final next = stored.length <= t
-            ? SegmentState.needsRepair
-            : SegmentState.stored;
+        final now = _clock();
         await tx.execute(
           Sql.named('''
             UPDATE segments
-              SET state = @s:int2,
+              SET state = greatest(state, 1),
                   committed_at = coalesce(committed_at, @now:timestamptz)
               WHERE account_id = @a:bytea AND segment_id = @g:bytea'''),
-          parameters: {
-            'a': accountId,
-            'g': segmentId,
-            's': next.index,
-            'now': _clock(),
-          },
+          parameters: {'a': accountId, 'g': segmentId, 'now': now},
         );
-        return next;
+        // Живые — сохранённые на узлах в сети (4.3.1); не больше t —
+        // сегмент в очереди ремонта.
+        final live = await LiveFragments.recountSegment(
+          tx,
+          accountId,
+          segmentId,
+          now,
+        );
+        return live != null && live.live <= t
+            ? SegmentState.needsRepair
+            : SegmentState.stored;
       }),
     );
     _log.info(

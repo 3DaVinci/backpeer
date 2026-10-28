@@ -18,7 +18,7 @@ import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
 
 import '../../core/test/support/fuzz.dart';
-import 'audit_test.dart' show prove, segmentFragments;
+import 'support/fake_nodes.dart' show prove, segmentFragments;
 
 void main() {
   late CryptoProvider crypto;

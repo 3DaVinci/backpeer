@@ -328,6 +328,43 @@ const List<Migration> schemaMigrations = [
       ADD COLUMN audit_window_failures integer NOT NULL DEFAULT 0
         CHECK (audit_window_failures >= 0)''',
   ]),
+  Migration(12, 'живые фрагменты', [
+    // Узел не в сети дольше repair.offline_hours (задача 4.3.1): его
+    // фрагменты не считаются живыми; heartbeat снимает отметку.
+    'ALTER TABLE nodes ADD COLUMN lost_at timestamptz',
+    // Живые фрагменты сохранённого сегмента: сохранены, не повреждены, на
+    // неудалённом узле без lost_at. Пересчитывается по событиям
+    // (LiveFragments). Состояние 2 теперь значит live ≤ repair_threshold,
+    // repair_since — с какого времени сегмент в очереди ремонта.
+    '''
+    ALTER TABLE segments
+      ADD COLUMN live smallint NOT NULL DEFAULT 0 CHECK (live >= 0),
+      ADD COLUMN repair_since timestamptz''',
+    '''
+    UPDATE segments g SET live = c.live
+      FROM (SELECT f.account_id, f.segment_id,
+                   count(*) FILTER (WHERE f.stored AND f.damaged_at IS NULL
+                                      AND n.removed_at IS NULL) AS live
+              FROM fragments f JOIN nodes n USING (node_id)
+              GROUP BY f.account_id, f.segment_id) c
+      WHERE g.account_id = c.account_id AND g.segment_id = c.segment_id
+        AND g.state <> 0''',
+    '''
+    UPDATE segments
+      SET state = CASE WHEN live <= repair_threshold THEN 2 ELSE 1 END,
+          repair_since = CASE WHEN live <= repair_threshold
+                              THEN coalesce(committed_at, allocated_at) END
+      WHERE state <> 0''',
+    // Очередь ремонта — по возрастанию живых; минимум по сети — первая
+    // строка индекса.
+    'DROP INDEX segments_repair',
+    '''
+    CREATE INDEX segments_live ON segments (live, repair_since)
+      WHERE state <> 0''',
+    '''
+    CREATE INDEX nodes_lost ON nodes (lost_at)
+      WHERE lost_at IS NOT NULL''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

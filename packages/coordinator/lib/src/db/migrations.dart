@@ -365,6 +365,65 @@ const List<Migration> schemaMigrations = [
     CREATE INDEX nodes_lost ON nodes (lost_at)
       WHERE lost_at IS NOT NULL''',
   ]),
+  Migration(13, 'задания ремонта', [
+    // Сегмент, для которого задание не удалось создать или оно провалилось,
+    // ждёт до repair_retry_at (задача 4.3.2).
+    'ALTER TABLE segments ADD COLUMN repair_retry_at timestamptz',
+    // Исполнитель, отчитавшийся о непроверенной работе, не получает
+    // заданий до этого времени (задача 4.3.5).
+    'ALTER TABLE nodes ADD COLUMN repair_suspended_until timestamptz',
+    // Задание ремонта (задачи 4.3.3–4.3.5). Состояние: 0 — выполняется,
+    // 1 — исполнитель отчитался, новые фрагменты проверяются аудитом,
+    // 2 — завершено, 3 — провалено (reason). planned_bytes — оценка
+    // трафика: k фрагментов скачать и новые разослать; bytes_* — по
+    // отчёту исполнителя (трафик ремонта узла, этап 7).
+    '''
+    CREATE TABLE repair_jobs (
+      job_id bytea PRIMARY KEY CHECK (length(job_id) = 16),
+      account_id bytea NOT NULL,
+      segment_id bytea NOT NULL,
+      executor bytea NOT NULL REFERENCES nodes (node_id),
+      live smallint NOT NULL,
+      planned_bytes bigint NOT NULL CHECK (planned_bytes >= 0),
+      state smallint NOT NULL CHECK (state IN (0, 1, 2, 3)),
+      reason text,
+      created_at timestamptz NOT NULL,
+      deadline timestamptz NOT NULL,
+      reported_at timestamptz,
+      finished_at timestamptz,
+      bytes_downloaded bigint NOT NULL DEFAULT 0
+        CHECK (bytes_downloaded >= 0),
+      bytes_uploaded bigint NOT NULL DEFAULT 0 CHECK (bytes_uploaded >= 0),
+      FOREIGN KEY (account_id, segment_id)
+        REFERENCES segments (account_id, segment_id) ON DELETE CASCADE
+    )''',
+    '''
+    CREATE UNIQUE INDEX repair_jobs_active ON repair_jobs
+      (account_id, segment_id) WHERE state IN (0, 1)''',
+    '''
+    CREATE INDEX repair_jobs_open ON repair_jobs (deadline)
+      WHERE state IN (0, 1)''',
+    'CREATE INDEX repair_jobs_created ON repair_jobs (created_at)',
+    'CREATE INDEX repair_jobs_executor ON repair_jobs (executor, created_at)',
+    // Новые фрагменты задания: 0 — ждут отчёта, 1 — загружены по отчёту и
+    // ждут проверки аудитом, 2 — проверены и стали живыми, 3 — не
+    // загружены или не прошли проверку. Место на узле занято с создания
+    // задания до провала или до замены фрагмента сегмента.
+    '''
+    CREATE TABLE repair_targets (
+      job_id bytea NOT NULL
+        REFERENCES repair_jobs (job_id) ON DELETE CASCADE,
+      idx smallint NOT NULL,
+      node_id bytea NOT NULL REFERENCES nodes (node_id),
+      fragment_id bytea NOT NULL CHECK (length(fragment_id) = 32),
+      state smallint NOT NULL CHECK (state IN (0, 1, 2, 3)),
+      reason text,
+      PRIMARY KEY (job_id, idx)
+    )''',
+    '''
+    CREATE INDEX repair_targets_verify ON repair_targets (node_id)
+      WHERE state = 1''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

@@ -1,5 +1,5 @@
 // Ремонт (группа 4.3; protocol.md, раздел 4.14): учёт живых фрагментов
-// (4.3.1). Нужен FS_TEST_POSTGRES.
+// (4.3.1), очередь (4.3.2). Нужен FS_TEST_POSTGRES.
 
 import 'dart:math';
 import 'dart:typed_data';
@@ -209,6 +209,78 @@ void main() {
       final back = s.holders[0];
       await h.heartbeat(nodes[back], ip: '198.51.$back.10');
       expect(await segment(s.id), (live: 17, state: 1, since: null));
+    });
+  });
+
+  group('очередь ремонта (4.3.2)', () {
+    setUp(start);
+
+    /// Действующее задание для сегмента [segmentId] с оценкой [bytes].
+    Future<void> activeJob(Uint8List segmentId, int bytes) => h.db.run(
+      (s) => s.execute(
+        Sql.named('''
+          INSERT INTO repair_jobs (job_id, account_id, segment_id, executor,
+                                   live, planned_bytes, state, created_at,
+                                   deadline)
+            VALUES (@j:bytea, @a:bytea, @g:bytea, @e:bytea, 0, @b:int8, 0,
+                    @t:timestamptz, @t:timestamptz)'''),
+        parameters: {
+          'j': h.crypto.randomBytes(16),
+          'a': account.accountId,
+          'g': segmentId,
+          'e': nodes[0].publicKey,
+          'b': bytes,
+          't': h.clock.now,
+        },
+      ),
+    );
+
+    test('меньше живых — раньше; с запасом — после ленивой паузы', () async {
+      final at16 = await storeSegment(10, stored: List.generate(16, (i) => i));
+      final at11 = await storeSegment(11, stored: List.generate(11, (i) => i));
+      await storeSegment(12);
+      final at13 = await storeSegment(13, stored: List.generate(13, (i) => i));
+      List<int> lives(List<RepairCandidate> q) => [for (final c in q) c.live];
+
+      final eager = repairService(
+        policy: const RepairPolicy(lazyDelay: Duration.zero),
+      );
+      final q = await eager.queue();
+      expect(lives(q), [11, 13, 16]);
+      expect(q.first.segmentId, at11.id);
+      expect(q.last.segmentId, at16.id);
+
+      final lazy = repairService();
+      expect(lives(await lazy.queue()), [11, 13], reason: '16 = t ждёт');
+      h.clock.advance(const RepairPolicy().lazyDelay);
+      expect(lives(await lazy.queue()), [11, 13, 16]);
+      final wider = repairService(policy: const RepairPolicy(lazyMargin: 3));
+      h.clock.advance(const Duration(hours: -1));
+      expect(lives(await wider.queue()), [11]);
+
+      // Сегмент с действующим заданием не стоит в очереди.
+      await activeJob(at13.id, 1000);
+      expect(lives(await eager.queue()), [11, 16]);
+      expect(lives(await eager.queue(limit: 1)), [11]);
+    });
+
+    test('предел заданий и трафика за час', () async {
+      final a = await storeSegment(14, stored: List.generate(12, (i) => i));
+      final b = await storeSegment(15, stored: List.generate(12, (i) => i));
+      final repair = repairService(
+        policy: const RepairPolicy(maxJobs: 3, maxBytesPerHour: 1 << 30),
+      );
+      expect(await repair.budget(), (jobs: 3, bytes: 1 << 30));
+      await activeJob(a.id, 400 << 20);
+      await activeJob(b.id, 400 << 20);
+      expect(await repair.budget(), (jobs: 1, bytes: 224 << 20));
+      h.clock.advance(const Duration(minutes: 61));
+      expect(
+        (await repair.budget()).bytes,
+        1 << 30,
+        reason: 'трафик считается за последний час',
+      );
+      expect(RepairService.plannedBytes(10, 5, 1000), 15000);
     });
   });
 }

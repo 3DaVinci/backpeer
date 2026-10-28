@@ -202,6 +202,11 @@ final class CoordinatorConfig {
     'audits.retention_days',
     'repair.enabled',
     'repair.offline_hours',
+    'repair.lazy_margin',
+    'repair.lazy_hours',
+    'repair.max_jobs',
+    'repair.max_bytes_per_hour',
+    'repair.retry_minutes',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -475,6 +480,18 @@ final class _Reader {
       enabled: _bool('repair.enabled') ?? rp.enabled,
       offline: Duration(
         hours: _int('repair.offline_hours', 1, 24 * 365) ?? rp.offline.inHours,
+      ),
+      lazyMargin: _int('repair.lazy_margin', 0, 254) ?? rp.lazyMargin,
+      lazyDelay: Duration(
+        hours: _int('repair.lazy_hours', 0, 24 * 30) ?? rp.lazyDelay.inHours,
+      ),
+      maxJobs: _int('repair.max_jobs', 1, 100000) ?? rp.maxJobs,
+      maxBytesPerHour:
+          _int('repair.max_bytes_per_hour', 1 << 20, 1 << 60) ??
+          rp.maxBytesPerHour,
+      retryDelay: Duration(
+        minutes:
+            _int('repair.retry_minutes', 1, 24 * 60) ?? rp.retryDelay.inMinutes,
       ),
     );
   }

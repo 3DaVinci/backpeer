@@ -31,6 +31,10 @@ final class RestoreResult {
   /// Уже существующие пути, которые не перезаписаны (без `overwrite`).
   final List<String> skippedExisting = [];
 
+  /// Восстановлены рядом с существующими под другим именем
+  /// ([ExistingFiles.keepBoth]): исходный путь и новый.
+  final List<(String, String)> renamed = [];
+
   /// Пути, которые не удалось восстановить, и причина.
   final List<(String, String)> errors = [];
 
@@ -38,6 +42,21 @@ final class RestoreResult {
   bool ownersRestored = false;
 
   bool get isComplete => errors.isEmpty && skippedExisting.isEmpty;
+}
+
+/// Что делать с файлом, который уже есть на месте восстанавливаемого
+/// (задача 5.4.2). Каталоги не заменяются: восстановление идёт внутрь
+/// существующего.
+enum ExistingFiles {
+  /// Оставить существующий, восстановленный не записывать.
+  skip,
+
+  /// Заменить существующий.
+  overwrite,
+
+  /// Оставить существующий, восстановленный записать рядом:
+  /// `отчёт (restored).txt`, `отчёт (restored 2).txt`.
+  keepBoth,
 }
 
 /// Ожидание узлов при восстановлении (задача 3.9.3; durability.md,
@@ -72,6 +91,8 @@ final class RestoreProgress {
     required this.nextRetry,
     required this.waitLeft,
     required this.elapsed,
+    this.waitingPaths = const [],
+    this.waitingReason,
   });
 
   final int files;
@@ -85,6 +106,13 @@ final class RestoreProgress {
 
   /// Файлов и каталогов, отложенных до появления узлов.
   final int waitingFiles;
+
+  /// Первые из отложенных (не больше пяти) — чтобы показать, чего ждём.
+  final List<String> waitingPaths;
+
+  /// Почему отложен первый из ожидающих: например, у сегмента меньше k
+  /// фрагментов на узлах в сети.
+  final String? waitingReason;
 
   /// Через сколько повтор отложенных; `null` — сейчас не ждём.
   final Duration? nextRetry;
@@ -112,8 +140,13 @@ final class RestoreProgress {
 /// (задача 1.6.4). Корни снимка (исходные пути) раскладываются в [target]
 /// по полному пути: `/home/u/data` → `<target>/home/u/data`.
 ///
+/// [originalLocation] — на исходное место (по пути из снимка), [target]
+/// тогда не нужен (задача 5.4.2).
+///
 /// [paths] — выбранные пути в исходном виде (`/home/u/data/sub`); пусто —
-/// весь снимок. Существующие файлы не перезаписываются без [overwrite].
+/// весь снимок. С уже существующими файлами поступает [existing]; без него —
+/// заменяет при [overwrite], иначе пропускает. Для выбранных путей объём
+/// считается заранее по деревьям снимка — для доли и оставшегося времени.
 /// Ошибки отдельных файлов (например, недоступный сегмент) не прерывают
 /// восстановление и попадают в [RestoreResult.errors].
 ///
@@ -131,16 +164,22 @@ Future<RestoreResult> runRestore({
   required FragmentStore fragments,
   required ObjectStore objects,
   required Uint8List snapshotId,
-  required Directory target,
+  Directory? target,
+  bool originalLocation = false,
   SegmentLocator? locator,
   List<String> paths = const [],
   bool overwrite = false,
+  ExistingFiles? existing,
+  String renameSuffix = 'restored',
   CancellationToken? cancel,
   FileSystemWriter? writer,
   RestoreWait wait = RestoreWait.none,
   void Function(RestoreProgress)? onProgress,
   Duration progressInterval = const Duration(milliseconds: 250),
 }) async {
+  if (target == null && !originalLocation) {
+    throw ArgumentError('нужен target или originalLocation');
+  }
   final watch = Stopwatch()..start();
   final catalog = SnapshotCatalog(
     crypto: crypto,
@@ -160,12 +199,14 @@ Future<RestoreResult> runRestore({
     writer: writer ?? FileSystemWriter.forPlatform(),
     fs: TreeWalker.defaultFileSystem(),
     selected: [for (final p in paths) _normalize(p)],
-    overwrite: overwrite,
+    existing:
+        existing ?? (overwrite ? ExistingFiles.overwrite : ExistingFiles.skip),
+    renameSuffix: renameSuffix,
     cancel: cancel ?? CancellationToken(),
     separator: Platform.isWindows ? 0x5C : 0x2F,
     wait: wait,
   );
-  final totalBytes = paths.isEmpty && snapshot.hasStats()
+  var totalBytes = paths.isEmpty && snapshot.hasStats()
       ? snapshot.stats.bytes.toInt()
       : null;
   void progress() => onProgress?.call(
@@ -175,6 +216,8 @@ Future<RestoreResult> runRestore({
       totalBytes: totalBytes,
       segmentsFetched: restorer.reader.segmentsFetched,
       waitingFiles: restorer.deferred.length,
+      waitingPaths: [for (final d in restorer.deferred.take(5)) d.show],
+      waitingReason: restorer.deferred.firstOrNull?.error,
       nextRetry: restorer.nextRetry?.difference(DateTime.now()),
       waitLeft: restorer.deadline?.difference(DateTime.now()),
       elapsed: watch.elapsed,
@@ -184,11 +227,12 @@ Future<RestoreResult> runRestore({
       ? null
       : Timer.periodic(progressInterval, (_) => progress());
   try {
-    target.createSync(recursive: true);
+    target?.createSync(recursive: true);
     final root = await restorer.waitFor(
       () => restorer.tree(_ids(snapshot.rootTree)),
     );
-    await _restoreRoots(restorer, root, target);
+    if (paths.isNotEmpty) totalBytes = await restorer.selectedBytes(root);
+    await _restoreRoots(restorer, root, originalLocation ? null : target);
     await restorer.retryDeferred();
     progress();
   } finally {
@@ -200,21 +244,28 @@ Future<RestoreResult> runRestore({
   return restorer.result;
 }
 
+/// Корни снимка в [target] по полному пути или, без [target], — на их
+/// исходные места.
 Future<void> _restoreRoots(
   _Restorer restorer,
   pb.Tree root,
-  Directory target,
+  Directory? target,
 ) async {
   for (final node in root.nodes) {
     final original = utf8.decode(node.name, allowMalformed: true);
     final logical = _normalize(original);
     if (!restorer.wanted(logical)) continue;
-    final relative = logical
-        .replaceFirst(RegExp('^/+'), '')
-        .replaceAll(':', '');
-    var path = utf8.encode(target.absolute.path);
-    for (final part in relative.split('/').where((p) => p.isNotEmpty)) {
-      path = restorer.join(path, utf8.encode(part));
+    Uint8List path;
+    if (target == null) {
+      path = utf8.encode(Directory(original).absolute.path);
+    } else {
+      final relative = logical
+          .replaceFirst(RegExp('^/+'), '')
+          .replaceAll(':', '');
+      path = utf8.encode(target.absolute.path);
+      for (final part in relative.split('/').where((p) => p.isNotEmpty)) {
+        path = restorer.join(path, utf8.encode(part));
+      }
     }
     // Каталоги над корнем бэкапа создаются как есть, без метаданных.
     Directory.fromRawPath(path).parent.createSync(recursive: true);
@@ -240,7 +291,8 @@ final class _Restorer {
     required this.writer,
     required this.fs,
     required this.selected,
-    required this.overwrite,
+    required this.existing,
+    required this.renameSuffix,
     required this.cancel,
     required this.separator,
     required this.wait,
@@ -250,7 +302,8 @@ final class _Restorer {
   final FileSystemWriter writer;
   final FileSystemReader fs;
   final List<String> selected;
-  final bool overwrite;
+  final ExistingFiles existing;
+  final String renameSuffix;
   final CancellationToken cancel;
   final int separator;
   final RestoreWait wait;
@@ -366,6 +419,33 @@ final class _Restorer {
       selected.isEmpty ||
       selected.any((s) => s == logical || logical.startsWith('$s/'));
 
+  /// Объём файлов выбранных путей по деревьям снимка; дерево не
+  /// прочитать (узлы не в сети) — `null`: доля и оставшееся время не
+  /// показываются, восстановление само подождёт узлы.
+  Future<int?> selectedBytes(pb.Tree root) async {
+    var total = 0;
+    Future<void> walk(pb.Tree tree, String? parent) async {
+      for (final node in tree.nodes) {
+        cancel.check();
+        final name = utf8.decode(node.name, allowMalformed: true);
+        final logical = parent == null ? _normalize(name) : '$parent/$name';
+        if (!wanted(logical)) continue;
+        if (node.type == pb.NodeType.NODE_TYPE_DIRECTORY) {
+          await walk(await this.tree(_ids(node.subtree)), logical);
+        } else if (node.type == pb.NodeType.NODE_TYPE_FILE && _whole(logical)) {
+          total += node.size.toInt();
+        }
+      }
+    }
+
+    try {
+      await walk(root, null);
+      return total;
+    } on CoreException {
+      return null;
+    }
+  }
+
   Future<pb.Tree> tree(List<ChunkId> ids) async {
     final out = BytesBuilder(copy: false);
     for (final id in ids) {
@@ -440,17 +520,50 @@ final class _Restorer {
     if (_whole(logical)) _metadata(node, path, isSymlink: false);
   }
 
-  Future<void> _file(pb.Node node, Uint8List path, String show) async {
-    final existing = _kind(path);
-    if (existing != null) {
-      if (!overwrite) {
+  /// Путь для записи с учётом [existing]; `null` — пропустить.
+  Uint8List? _destination(Uint8List path, String show) {
+    final kind = _kind(path);
+    if (kind == null) return path;
+    switch (existing) {
+      case ExistingFiles.skip:
         result.skippedExisting.add(show);
-        return;
-      }
-      if (existing == EntryKind.directory) {
-        Directory.fromRawPath(path).deleteSync(recursive: true);
-      }
+        return null;
+      case ExistingFiles.overwrite:
+        if (kind == EntryKind.directory) {
+          Directory.fromRawPath(path).deleteSync(recursive: true);
+        }
+        return path;
+      case ExistingFiles.keepBoth:
+        final free = _freeName(path);
+        result.renamed.add((show, utf8.decode(free, allowMalformed: true)));
+        return free;
     }
+  }
+
+  /// `имя (restored).ext`, `имя (restored 2).ext`… — первое свободное.
+  Uint8List _freeName(Uint8List path) {
+    final cut = path.lastIndexOf(separator) + 1;
+    final name = path.sublist(cut);
+    // Расширение — после последней точки, но не у скрытых `.name`.
+    var dot = name.lastIndexOf(0x2E);
+    if (dot <= 0) dot = name.length;
+    for (var n = 1; ; n++) {
+      final mark = utf8.encode(
+        n == 1 ? ' ($renameSuffix)' : ' ($renameSuffix $n)',
+      );
+      final candidate = Uint8List.fromList([
+        ...path.sublist(0, cut),
+        ...name.sublist(0, dot),
+        ...mark,
+        ...name.sublist(dot),
+      ]);
+      if (_kind(candidate) == null) return candidate;
+    }
+  }
+
+  Future<void> _file(pb.Node node, Uint8List original, String show) async {
+    final path = _destination(original, show);
+    if (path == null) return;
     final tempPath = Uint8List.fromList([
       ...path,
       ...utf8.encode('.fs-restore-tmp'),
@@ -484,19 +597,10 @@ final class _Restorer {
     result.bytes += written;
   }
 
-  void _symlink(pb.Node node, Uint8List path, String show) {
-    final existing = _kind(path);
-    if (existing != null) {
-      if (!overwrite) {
-        result.skippedExisting.add(show);
-        return;
-      }
-      if (existing == EntryKind.directory) {
-        Directory.fromRawPath(path).deleteSync(recursive: true);
-      } else {
-        writer.unlink(path);
-      }
-    }
+  void _symlink(pb.Node node, Uint8List original, String show) {
+    final path = _destination(original, show);
+    if (path == null) return;
+    if (identical(path, original) && _kind(path) != null) writer.unlink(path);
     writer.symlink(path, Uint8List.fromList(node.symlinkTarget));
     _metadata(node, path, isSymlink: true);
     result.symlinks++;

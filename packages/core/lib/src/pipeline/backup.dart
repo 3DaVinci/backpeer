@@ -10,6 +10,7 @@ import 'package:core/src/format/durability.dart';
 import 'package:core/src/pipeline/segment_encoder.dart';
 import 'package:core/src/pipeline/segment_packer.dart';
 import 'package:core/src/snapshot/exclude_rules.dart';
+import 'package:core/src/snapshot/fs_entry.dart';
 import 'package:core/src/snapshot/manifest_objects.dart';
 import 'package:core/src/snapshot/snapshot_catalog.dart';
 import 'package:core/src/snapshot/tree_builder.dart';
@@ -20,6 +21,7 @@ import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
 import 'package:core/src/storage/placement.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:meta/meta.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Прогресс бэкапа.
@@ -104,6 +106,7 @@ Future<BackupResult> runBackup({
   CancellationToken? cancel,
   void Function(BackupProgress)? onProgress,
   Duration progressInterval = const Duration(milliseconds: 250),
+  @visibleForTesting FileSystemReader? fs,
 }) async {
   if (paths.isEmpty) throw ArgumentError('Нет путей для бэкапа');
   final token = cancel ?? CancellationToken();
@@ -130,7 +133,7 @@ Future<BackupResult> runBackup({
     maxInFlight: maxInFlight,
     cancel: token,
   );
-  final walker = TreeWalker(excludes: excludes);
+  final walker = TreeWalker(excludes: excludes, fs: fs);
   final builder = TreeBuilder(
     walker: walker,
     cdc: FastCdc(GearTable.derive(crypto, keys.gearKey)),

@@ -290,6 +290,7 @@ message CoordinatorChannelMessage {
     SyncRevocationsCommand sync_revocations = 6;
     RendezvousCommand rendezvous = 7;
     AuditCommand audit = 8;
+    RepairCommand repair = 9;
   }
 }
 
@@ -369,6 +370,48 @@ message AuditReply {
   bytes block = 1;                   // блок тела: 65 536 байт, последний короче
   repeated bytes path = 2;           // путь от листа к корню, по 32 байта (RFC 6962)
 }
+
+// --- Ремонт (задачи 4.3.3–4.3.5) --------------------------------------------
+//
+// protocol.md, раздел 4.14. Координатор поручает узлу-исполнителю
+// пересоздать недостающие фрагменты сегмента: скачать k живых (талоны GET
+// на исполнителя), проверить, восстановить Reed–Solomon недостающие и
+// разослать их новым узлам (талоны PUT на исполнителя с owner_account).
+// Фрагменты — шифротекст: ключи пользователя не нужны. Узел принимает
+// команду ответом CommandDone и отчитывается ReportRepair по HTTP;
+// координатор засчитывает новые фрагменты живыми только после аудита
+// каждого на его узле.
+
+// Команда исполнителю. Размер — до 64 КиБ, как любое сообщение
+// координатора в канале.
+message RepairCommand {
+  bytes job_id = 1;                  // 16 байт
+  uint32 k = 2;
+  uint32 n = 3;
+  uint32 fragment_size = 4;          // заголовок + тело, байт
+  // Живые фрагменты, сначала узлы в сети и с большей доступностью;
+  // талоны GET с device_sign = node_id исполнителя. Не меньше k.
+  repeated Placement sources = 5;
+  // Недостающие фрагменты по номерам: узел и талон PUT с device_sign =
+  // node_id исполнителя и owner_account. fragment_id — в талоне.
+  repeated Placement targets = 6;
+  int64 deadline_unix_ms = 7;        // отчёт не позже; талоны действуют до него
+}
+
+// Отчёт исполнителя. Подписан ключом узла-исполнителя.
+message ReportRepairRequest {
+  bytes job_id = 1;
+  repeated uint32 stored_indexes = 2; // номера, которые новые узлы приняли
+  repeated RepairFailure failures = 3; // номера, которые разослать не удалось
+  string error = 4;                  // задание не выполнено целиком: почему
+  uint64 bytes_downloaded = 5;       // трафик ремонта исполнителя
+  uint64 bytes_uploaded = 6;
+}
+message RepairFailure {
+  uint32 index = 1;
+  string reason = 2;                 // до 200 символов, для журнала
+}
+message ReportRepairResponse {}
 
 // --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------
 //

@@ -464,6 +464,113 @@ void peerServiceTests({bool udp = false, bool relay = false}) {
       await nodeClient.close();
     });
 
+    test('узел-исполнитель ремонта загружает фрагмент владельца сегмента '
+        '(4.3.3)', () async {
+      final repairer = await DeviceKeys.generate(crypto);
+      final repairerPeer = LocalPeer(
+        role: pb.PeerRole.PEER_ROLE_NODE,
+        staticKey: repairer.dh,
+        certificate: await NodeCertificates.issue(
+          crypto,
+          bob.account,
+          nodeId: repairer.sign.publicKey,
+          nodeDh: repairer.dh.publicKey,
+          issuedAt: DateTime.now(),
+        ),
+      );
+      Future<PeerClient> connectAs(LocalPeer local) async {
+        final (a, b) = await pair();
+        unawaited(service.serve(b));
+        return PeerClient(
+          await PeerHandshake.initiate(
+            crypto,
+            a,
+            local: local,
+            policy: PeerPolicy.node(node.sign.publicKey),
+          ),
+        );
+      }
+
+      var n = 0;
+      Future<pb.Signed> repairPut(List<int> device, {List<int>? owner}) =>
+          SignedMessages.sign(
+            crypto,
+            coordinator,
+            FragmentTickets.signingContext,
+            pb.FragmentTicket(
+              operation: pb.TicketOperation.TICKET_OPERATION_PUT,
+              nodeId: node.sign.publicKey,
+              deviceSign: device,
+              fragmentId: fragmentId,
+              fragmentSize: fragment.bytes.length,
+              expiresAtUnixMs: Int64(
+                DateTime.now()
+                    .add(const Duration(minutes: 5))
+                    .millisecondsSinceEpoch,
+              ),
+              ticketId: Uint8List(16)..fillRange(0, 16, 0xd0 + ++n),
+              ownerAccount: owner,
+            ),
+          );
+
+      final nodeClient = await connectAs(repairerPeer);
+      // Без owner_account узел фрагмент не загружает.
+      await expectLater(
+        nodeClient.putFragment(
+          await repairPut(repairer.sign.publicKey),
+          fragment.bytes,
+        ),
+        failsWith(pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED, 'owner_account'),
+      );
+      // Клиент не загружает от чужого имени.
+      final c = await connect(bob);
+      await expectLater(
+        c.putFragment(
+          await repairPut(
+            bob.keys.sign.publicKey,
+            owner: alice.account.accountId,
+          ),
+          fragment.bytes,
+        ),
+        failsWith(pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED, 'owner_account'),
+      );
+      expect(storage.record(fragmentId), isNull);
+
+      expect(
+        await nodeClient.putFragment(
+          await repairPut(
+            repairer.sign.publicKey,
+            owner: alice.account.accountId,
+          ),
+          fragment.bytes,
+        ),
+        fragmentId,
+      );
+      expect(storage.record(fragmentId)!.accountId, alice.account.accountId);
+      // Повтор после потерянного ответа — успех; удаляет только владелец.
+      expect(
+        await nodeClient.putFragment(
+          await repairPut(
+            repairer.sign.publicKey,
+            owner: alice.account.accountId,
+          ),
+          fragment.bytes,
+        ),
+        fragmentId,
+      );
+      await expectLater(
+        c.deleteFragment(await delete(bob)),
+        failsWith(pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED),
+      );
+      final owner = await connect(alicePhone);
+      expect(await owner.hasFragments([fragmentId]), [true]);
+      await owner.deleteFragment(await delete(alicePhone));
+      expect(storage.record(fragmentId), isNull);
+      await c.close();
+      await owner.close();
+      await nodeClient.close();
+    });
+
     test('повтор загрузки той же учётной записью — успех без '
         'передачи', () async {
       final c = await connect(alice, capacity: 1 << 16);

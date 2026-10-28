@@ -300,7 +300,8 @@ class NodeCertificate extends $pb.GeneratedMessage {
 }
 
 /// Контекст подписи "ticket"; подписывает ключ координатора. Разрешает
-/// устройству одну операцию с одним фрагментом на одном узле.
+/// устройству (или узлу-исполнителю ремонта) одну операцию с одним
+/// фрагментом на одном узле.
 class FragmentTicket extends $pb.GeneratedMessage {
   factory FragmentTicket({
     TicketOperation? operation,
@@ -310,6 +311,7 @@ class FragmentTicket extends $pb.GeneratedMessage {
     $core.int? fragmentSize,
     $fixnum.Int64? expiresAtUnixMs,
     $core.List<$core.int>? ticketId,
+    $core.List<$core.int>? ownerAccount,
   }) {
     final result = FragmentTicket._();
     if (operation != null) result.operation = operation;
@@ -319,6 +321,7 @@ class FragmentTicket extends $pb.GeneratedMessage {
     if (fragmentSize != null) result.fragmentSize = fragmentSize;
     if (expiresAtUnixMs != null) result.expiresAtUnixMs = expiresAtUnixMs;
     if (ticketId != null) result.ticketId = ticketId;
+    if (ownerAccount != null) result.ownerAccount = ownerAccount;
     return result;
   }
 
@@ -348,6 +351,8 @@ class FragmentTicket extends $pb.GeneratedMessage {
     ..aInt64(6, _omitFieldNames ? '' : 'expiresAtUnixMs')
     ..a<$core.List<$core.int>>(
         7, _omitFieldNames ? '' : 'ticketId', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        8, _omitFieldNames ? '' : 'ownerAccount', $pb.PbFieldType.OY)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -434,6 +439,19 @@ class FragmentTicket extends $pb.GeneratedMessage {
   $core.bool hasTicketId() => $_has(6);
   @$pb.TagNumber(7)
   void clearTicketId() => $_clearField(7);
+
+  /// Только PUT от узла-исполнителя ремонта (protocol.md, раздел 4.14):
+  /// учётная запись-владелец сегмента, 32 байта. Узел записывает её
+  /// владельцем фрагмента — удалить его сможет только устройство этой
+  /// учётной записи. У PUT от клиента и у GET, DELETE поле пустое.
+  @$pb.TagNumber(8)
+  $core.List<$core.int> get ownerAccount => $_getN(7);
+  @$pb.TagNumber(8)
+  set ownerAccount($core.List<$core.int> value) => $_setBytes(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasOwnerAccount() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearOwnerAccount() => $_clearField(8);
 }
 
 const $core.bool _omitFieldNames =

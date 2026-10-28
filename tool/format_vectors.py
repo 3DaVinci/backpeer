@@ -528,6 +528,50 @@ def main() -> None:
           "идентификатор (по индексу или талону), если задан.", cases,
           extra={"minimalFragment": {"bytes": minimal.hex(), "fragmentId": H(small[0][0]).hex()}})
 
+    # Ремонт (protocol.md, раздел 4.14): пересоздание недостающих фрагментов
+    # из любых k. Эталон — полное кодирование блоба: пересозданный фрагмент
+    # совпадает с ним байт в байт.
+    repair_blob = cv.splitmix64_bytes(41, 1000)
+    repair_id = bytes(range(0x40, 0x60))
+    rk, rn = 4, 8
+    full = [h + b for h, b in fragments(repair_blob, repair_id, rk, rn)]
+    foreign = [h + b for h, b in fragments(cv.splitmix64_bytes(42, 1000), bytes(range(0x60, 0x80)), rk, rn)]
+    repair_cases = []
+
+    def repair_case(name, given, wanted, error=None, replace=None):
+        inputs = [full[i] for i in given]
+        if replace is not None:
+            position, data = replace
+            inputs[position] = data
+        expected = {"error": error} if error else {"fragments": [
+            {"index": i, "bytes": full[i], "fragmentId": H(full[i][:96])} for i in wanted]}
+        repair_cases.append({
+            "name": name,
+            "input": {"k": rk, "n": rn, "fragments": inputs, "indexes": wanted,
+                      "expectedFragmentIds": {str(i): H(full[i][:96]) for i in given}},
+            "expected": expected,
+        })
+
+    flipped = bytearray(full[1])
+    flipped[96 + 7] ^= 1
+    repair_case("parity-from-data", [0, 1, 2, 3], [4, 5, 6, 7])
+    repair_case("data-from-parity", [4, 5, 6, 7], [0, 1, 2, 3])
+    repair_case("mixed", [1, 3, 5, 7], [0, 6])
+    repair_case("more-than-k", [0, 1, 2, 3, 4], [7])
+    repair_case("present-index", [0, 2, 4, 6], [2, 5])
+    repair_case("reject-insufficient", [2, 5, 6], [0], error="insufficient")
+    repair_case("reject-foreign-segment", [0, 1, 2, 3], [4], error="integrity",
+                replace=(3, foreign[3]))
+    repair_case("reject-flipped-body", [0, 1, 2, 3], [4], error="integrity",
+                replace=(1, bytes(flipped)))
+    write("repair.json", "format/repair",
+          "Ремонт (protocol.md, раздел 4.14; data-format.md, разделы 4–5): из k или больше "
+          "фрагментов сегмента (блоб 1000 байт, k = 4, n = 8) — фрагменты с номерами indexes, "
+          "байт в байт как при полном кодировании. expectedFragmentIds — ожидаемые "
+          "идентификаторы входных фрагментов по номерам (из задания ремонта). error: "
+          "insufficient — меньше k фрагментов, integrity — чужой сегмент или фрагмент не "
+          "сходится с корнем или идентификатором.", repair_cases)
+
     print(f"Средняя длина чанка (расчёт): {expected_average():.0f} байт")
     lengths = next(c for c in json.load(open(os.path.join(OUT_DIR, "fastcdc.json")))["cases"]
                    if c["name"] == "random-24MiB")["expected"]["chunkLengths"]

@@ -51,6 +51,7 @@ void main() {
         expect(ticket.fragmentSize, expected['fragmentSize']);
         expect(ticket.expiresAtUnixMs.toInt(), expected['expiresAtUnixMs']);
         expect(bytesToHex(ticket.ticketId), expected['ticketId']);
+        expect(bytesToHex(ticket.ownerAccount), expected['ownerAccount']);
         expect(await authorize(ticket), ticket);
         // Узел-заглушка: талон чужого узла или другой операции не годится.
         await expectLater(

@@ -988,6 +988,15 @@ const CoordinatorChannelMessage$json = {
       '9': 0,
       '10': 'audit'
     },
+    {
+      '1': 'repair',
+      '3': 9,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.RepairCommand',
+      '9': 0,
+      '10': 'repair'
+    },
   ],
   '8': [
     {'1': 'body'},
@@ -1003,7 +1012,8 @@ final $typed_data.Uint8List coordinatorChannelMessageDescriptor = $convert.base6
     'YXRpb25zGAYgASgLMh0uZnMudjEuU3luY1Jldm9jYXRpb25zQ29tbWFuZEgAUg9zeW5jUmV2b2'
     'NhdGlvbnMSOgoKcmVuZGV6dm91cxgHIAEoCzIYLmZzLnYxLlJlbmRlenZvdXNDb21tYW5kSABS'
     'CnJlbmRlenZvdXMSKwoFYXVkaXQYCCABKAsyEy5mcy52MS5BdWRpdENvbW1hbmRIAFIFYXVkaX'
-    'RCBgoEYm9keQ==');
+    'QSLgoGcmVwYWlyGAkgASgLMhQuZnMudjEuUmVwYWlyQ29tbWFuZEgAUgZyZXBhaXJCBgoEYm9k'
+    'eQ==');
 
 @$core.Deprecated('Use commandDoneDescriptor instead')
 const CommandDone$json = {
@@ -1179,6 +1189,93 @@ const AuditReply$json = {
 /// Descriptor for `AuditReply`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List auditReplyDescriptor = $convert.base64Decode(
     'CgpBdWRpdFJlcGx5EhQKBWJsb2NrGAEgASgMUgVibG9jaxISCgRwYXRoGAIgAygMUgRwYXRo');
+
+@$core.Deprecated('Use repairCommandDescriptor instead')
+const RepairCommand$json = {
+  '1': 'RepairCommand',
+  '2': [
+    {'1': 'job_id', '3': 1, '4': 1, '5': 12, '10': 'jobId'},
+    {'1': 'k', '3': 2, '4': 1, '5': 13, '10': 'k'},
+    {'1': 'n', '3': 3, '4': 1, '5': 13, '10': 'n'},
+    {'1': 'fragment_size', '3': 4, '4': 1, '5': 13, '10': 'fragmentSize'},
+    {
+      '1': 'sources',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.Placement',
+      '10': 'sources'
+    },
+    {
+      '1': 'targets',
+      '3': 6,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.Placement',
+      '10': 'targets'
+    },
+    {'1': 'deadline_unix_ms', '3': 7, '4': 1, '5': 3, '10': 'deadlineUnixMs'},
+  ],
+};
+
+/// Descriptor for `RepairCommand`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List repairCommandDescriptor = $convert.base64Decode(
+    'Cg1SZXBhaXJDb21tYW5kEhUKBmpvYl9pZBgBIAEoDFIFam9iSWQSDAoBaxgCIAEoDVIBaxIMCg'
+    'FuGAMgASgNUgFuEiMKDWZyYWdtZW50X3NpemUYBCABKA1SDGZyYWdtZW50U2l6ZRIqCgdzb3Vy'
+    'Y2VzGAUgAygLMhAuZnMudjEuUGxhY2VtZW50Ugdzb3VyY2VzEioKB3RhcmdldHMYBiADKAsyEC'
+    '5mcy52MS5QbGFjZW1lbnRSB3RhcmdldHMSKAoQZGVhZGxpbmVfdW5peF9tcxgHIAEoA1IOZGVh'
+    'ZGxpbmVVbml4TXM=');
+
+@$core.Deprecated('Use reportRepairRequestDescriptor instead')
+const ReportRepairRequest$json = {
+  '1': 'ReportRepairRequest',
+  '2': [
+    {'1': 'job_id', '3': 1, '4': 1, '5': 12, '10': 'jobId'},
+    {'1': 'stored_indexes', '3': 2, '4': 3, '5': 13, '10': 'storedIndexes'},
+    {
+      '1': 'failures',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.RepairFailure',
+      '10': 'failures'
+    },
+    {'1': 'error', '3': 4, '4': 1, '5': 9, '10': 'error'},
+    {'1': 'bytes_downloaded', '3': 5, '4': 1, '5': 4, '10': 'bytesDownloaded'},
+    {'1': 'bytes_uploaded', '3': 6, '4': 1, '5': 4, '10': 'bytesUploaded'},
+  ],
+};
+
+/// Descriptor for `ReportRepairRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportRepairRequestDescriptor = $convert.base64Decode(
+    'ChNSZXBvcnRSZXBhaXJSZXF1ZXN0EhUKBmpvYl9pZBgBIAEoDFIFam9iSWQSJQoOc3RvcmVkX2'
+    'luZGV4ZXMYAiADKA1SDXN0b3JlZEluZGV4ZXMSMAoIZmFpbHVyZXMYAyADKAsyFC5mcy52MS5S'
+    'ZXBhaXJGYWlsdXJlUghmYWlsdXJlcxIUCgVlcnJvchgEIAEoCVIFZXJyb3ISKQoQYnl0ZXNfZG'
+    '93bmxvYWRlZBgFIAEoBFIPYnl0ZXNEb3dubG9hZGVkEiUKDmJ5dGVzX3VwbG9hZGVkGAYgASgE'
+    'Ug1ieXRlc1VwbG9hZGVk');
+
+@$core.Deprecated('Use repairFailureDescriptor instead')
+const RepairFailure$json = {
+  '1': 'RepairFailure',
+  '2': [
+    {'1': 'index', '3': 1, '4': 1, '5': 13, '10': 'index'},
+    {'1': 'reason', '3': 2, '4': 1, '5': 9, '10': 'reason'},
+  ],
+};
+
+/// Descriptor for `RepairFailure`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List repairFailureDescriptor = $convert.base64Decode(
+    'Cg1SZXBhaXJGYWlsdXJlEhQKBWluZGV4GAEgASgNUgVpbmRleBIWCgZyZWFzb24YAiABKAlSBn'
+    'JlYXNvbg==');
+
+@$core.Deprecated('Use reportRepairResponseDescriptor instead')
+const ReportRepairResponse$json = {
+  '1': 'ReportRepairResponse',
+};
+
+/// Descriptor for `ReportRepairResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List reportRepairResponseDescriptor =
+    $convert.base64Decode('ChRSZXBvcnRSZXBhaXJSZXNwb25zZQ==');
 
 @$core.Deprecated('Use getRelayPassRequestDescriptor instead')
 const GetRelayPassRequest$json = {

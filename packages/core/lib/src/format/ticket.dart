@@ -71,8 +71,8 @@ abstract final class FragmentTickets {
   static const fragmentIdLength = 32;
   static const ticketIdLength = 16;
 
-  /// Каноническое тело талона не длиннее: три ключа и идентификаторы с
-  /// тегами и длинами, числа в varint — около 150 байт.
+  /// Каноническое тело талона не длиннее: до четырёх ключей и
+  /// идентификаторы с тегами и длинами, числа в varint — около 190 байт.
   static const maxEncodedLength = 256;
 
   /// Разбирает тело талона и проверяет поля и каноничность. Ошибки —
@@ -183,6 +183,14 @@ abstract final class FragmentTickets {
     _length('device_sign', ticket.deviceSign, keyLength);
     _length('fragment_id', ticket.fragmentId, fragmentIdLength);
     _length('ticket_id', ticket.ticketId, ticketIdLength);
+    // Владелец фрагмента — только у PUT узла-исполнителя ремонта
+    // (protocol.md, раздел 4.14).
+    if (ticket.ownerAccount.isNotEmpty) {
+      if (ticket.operation != pb.TicketOperation.TICKET_OPERATION_PUT) {
+        throw _error(FormatProblem.invalidField, 'owner_account не у PUT');
+      }
+      _length('owner_account', ticket.ownerAccount, keyLength);
+    }
     final size = ticket.fragmentSize;
     if (size < minFragmentSize || size > maxFragmentSize) {
       throw _error(FormatProblem.invalidField, 'fragment_size = $size');

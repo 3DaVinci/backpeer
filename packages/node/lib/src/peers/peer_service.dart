@@ -216,12 +216,13 @@ final class PeerService {
         pb.TicketOperation.TICKET_OPERATION_PUT,
       );
       claimed = _claim(ticket);
+      final owner = _owner(s.peer, ticket);
       final fragmentId = Uint8List.fromList(ticket.fragmentId);
       if (storage.record(fragmentId) case final r?) {
         // Повтор загрузки (ответ потерялся): успех для той же учётной
         // записи, остаток частей не нужен.
         if (r.state == FragmentState.stored &&
-            constantTimeEquals(r.accountId, s.peer.accountId)) {
+            constantTimeEquals(r.accountId, owner)) {
           _useTicket(ticket);
           await s.reply(
             pb.PeerMessage(
@@ -239,7 +240,7 @@ final class PeerService {
       incoming = await storage.beginPut(
         fragmentId: fragmentId,
         size: ticket.fragmentSize,
-        accountId: s.peer.accountId,
+        accountId: owner,
       );
       while (true) {
         final chunk = await op.next(limits.transferTimeout);
@@ -451,6 +452,30 @@ final class PeerService {
   }
 
   // --- проверки ------------------------------------------------------------
+
+  /// Учётная запись-владелец загружаемого фрагмента (protocol.md,
+  /// разделы 4.14, 5): у клиента — его собственная, у узла-исполнителя
+  /// ремонта — `owner_account` из талона. Удалить фрагмент сможет только
+  /// устройство владельца.
+  static Uint8List _owner(PeerIdentity peer, pb.FragmentTicket ticket) {
+    final owner = ticket.ownerAccount;
+    if (peer.isClient) {
+      if (owner.isNotEmpty) {
+        throw const _Rejected(
+          pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED,
+          'талон: owner_account — только для узла-исполнителя ремонта',
+        );
+      }
+      return peer.accountId;
+    }
+    if (owner.isEmpty) {
+      throw const _Rejected(
+        pb.ErrorCode.ERROR_CODE_PERMISSION_DENIED,
+        'узел загружает фрагменты только при ремонте: нужен owner_account',
+      );
+    }
+    return Uint8List.fromList(owner);
+  }
 
   Transfer _beginTransfer() =>
       gate.tryBegin() ??

@@ -49,6 +49,7 @@ final class CoordinatorLink {
     this.reachability,
     this.rendezvous,
     this.audit,
+    this.repair,
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
     bool commandChannel = false,
@@ -105,6 +106,11 @@ final class CoordinatorLink {
   /// Отвечает на аудит (задача 4.1.2; protocol.md, раздел 4.13); `null` —
   /// хранилища нет, команда отклоняется `NOT_FOUND`.
   final Future<pb.AuditReply> Function(pb.AuditCommand command)? audit;
+
+  /// Принимает задание ремонта (задача 4.3.4; protocol.md, раздел 4.14) и
+  /// выполняет его в фоне; отказ — [CoordinatorException]. `null` — узел
+  /// не выполняет ремонт, команда отклоняется `UNAVAILABLE`.
+  final void Function(pb.RepairCommand command)? repair;
   final Duration maxBackoff;
 
   /// Наибольшая случайная задержка `ListRevocations` по команде.
@@ -265,6 +271,17 @@ final class CoordinatorLink {
           );
         }
         return pb.NodeChannelMessage(audit: await handler(command.audit));
+      case pb.CoordinatorChannelMessage_Body.repair:
+        final handler = repair;
+        if (handler == null) {
+          throw const CoordinatorException(
+            pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+            'узел не выполняет ремонт',
+          );
+        }
+        // Принятое задание выполняется в фоне, итог — ReportRepair.
+        handler(command.repair);
+        return null;
       case pb.CoordinatorChannelMessage_Body.syncRevocations:
         final list = revocations;
         if (list == null ||

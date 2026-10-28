@@ -1105,4 +1105,372 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get snapshotsOnRestore => 'The list of snapshots is under Restore.';
+
+  @override
+  String get restoreOpenSnapshot => 'Open snapshot';
+
+  @override
+  String get browserBack => 'Back to snapshots';
+
+  @override
+  String get browserRoot => 'Snapshot';
+
+  @override
+  String get searchHint =>
+      'Search by name: part of a name or a pattern like *.pdf';
+
+  @override
+  String get searchClear => 'Clear search';
+
+  @override
+  String searchResults(int count) {
+    return 'Found: $count';
+  }
+
+  @override
+  String searchTruncated(int count) {
+    return 'Showing the first $count. Narrow the search.';
+  }
+
+  @override
+  String get searchNothing => 'Nothing found';
+
+  @override
+  String get folderEmpty => 'The folder is empty';
+
+  @override
+  String get loadingItem => 'Loading…';
+
+  @override
+  String selectedCount(int count) {
+    return 'Selected: $count';
+  }
+
+  @override
+  String get restoreSelected => 'Restore selected';
+
+  @override
+  String get clearSelection => 'Clear selection';
+
+  @override
+  String get fileVersions => 'File versions';
+
+  @override
+  String versionsTitle(String name) {
+    return 'Versions of “$name”';
+  }
+
+  @override
+  String get versionChanged => 'changed';
+
+  @override
+  String get versionSame => 'unchanged';
+
+  @override
+  String get versionAbsent => 'not in this snapshot';
+
+  @override
+  String get restoreThisVersion => 'Restore';
+
+  @override
+  String get chooseFolder => 'Choose a folder';
+
+  @override
+  String restoreWhat(String what) {
+    return 'What: $what';
+  }
+
+  @override
+  String get restoreWholeSnapshot => 'the whole snapshot';
+
+  @override
+  String get restoreWhere => 'Where to';
+
+  @override
+  String get restoreOriginal => 'To the original location';
+
+  @override
+  String get restoreOriginalHint =>
+      'Files go back to where they were backed up from.';
+
+  @override
+  String get restoreToFolder => 'To another folder';
+
+  @override
+  String get restoreExisting => 'If the file already exists';
+
+  @override
+  String get existingKeepBoth =>
+      'Keep both: the restored copy gets “(restored)” in its name';
+
+  @override
+  String get existingSkip => 'Keep the existing file, skip the restored one';
+
+  @override
+  String get existingOverwrite =>
+      'Replace the existing file with the restored one';
+
+  @override
+  String get restoredSuffix => 'restored';
+
+  @override
+  String get restoreWait => 'If some keepers are offline';
+
+  @override
+  String get waitNone => 'Don’t wait — restore what is available';
+
+  @override
+  String get waitHour => 'Wait up to an hour';
+
+  @override
+  String get waitDay => 'Wait up to a day';
+
+  @override
+  String get restoreStart => 'Restore';
+
+  @override
+  String get restoreStarted =>
+      'Restore started. Progress is shown here and on the Overview.';
+
+  @override
+  String get restoreCurrent => 'Restore in progress';
+
+  @override
+  String waitingTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files are waiting for keepers',
+      one: '$count file is waiting for keepers',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get waitingExplain =>
+      'Parts of these files are held by keepers that are offline right now: fewer fragments are available than needed to rebuild them. Everything else is being restored; these files will follow when the keepers come back.';
+
+  @override
+  String andMore(int count) {
+    return 'and $count more';
+  }
+
+  @override
+  String waitingRetry(String time) {
+    return 'Next attempt within $time';
+  }
+
+  @override
+  String waitingLeft(String time) {
+    return 'Will keep waiting for up to $time';
+  }
+
+  @override
+  String waitingReason(String reason) {
+    return 'Details: $reason';
+  }
+
+  @override
+  String get lastRestore => 'Last restore';
+
+  @override
+  String get restoreWhen => 'When';
+
+  @override
+  String get restoreProblem => 'Error';
+
+  @override
+  String get restoreWhereLabel => 'Where';
+
+  @override
+  String get restoreRestored => 'Restored';
+
+  @override
+  String get restoreSkippedLabel => 'Existing files left as is';
+
+  @override
+  String get restoreRenamedLabel => 'Saved next to existing files';
+
+  @override
+  String get restoreErrorsLabel => 'Not restored';
+
+  @override
+  String get speedUnlimited => 'unlimited';
+
+  @override
+  String speedValue(String size) {
+    return '$size/s';
+  }
+
+  @override
+  String get keeperEnableTitle => 'Share space';
+
+  @override
+  String get keeperEditTitle => 'Keeper settings';
+
+  @override
+  String get keeperPrivacy =>
+      'Fragments are encrypted on the owner’s computer before they are sent. A keeper cannot read them and does not know whose files they are or what they are called.';
+
+  @override
+  String get keeperFolder => 'Folder for fragments';
+
+  @override
+  String keeperFree(String size) {
+    return 'Free on this disk: $size';
+  }
+
+  @override
+  String get keeperQuotaLabel => 'Space to share, GB';
+
+  @override
+  String get keeperQuotaInvalid => 'Enter a number of gigabytes';
+
+  @override
+  String get keeperQuotaTooBig => 'More than is free on the disk';
+
+  @override
+  String get keeperQuotaMin =>
+      'The server usually accepts keepers sharing 100 GB or more';
+
+  @override
+  String get keeperUpload => 'Upload';
+
+  @override
+  String get keeperDownload => 'Download';
+
+  @override
+  String get keeperWorkHours => 'During work hours (Mon–Fri, 9–18)';
+
+  @override
+  String get keeperBackgroundNote =>
+      'The keeper runs in the background, even with the window closed.';
+
+  @override
+  String get keeperEnable => 'Become a keeper';
+
+  @override
+  String get keeperEnabled => 'You are now a keeper';
+
+  @override
+  String get keeperNoBinary =>
+      'Settings are saved, but the keeper program was not found next to the app. Start the keeper service manually.';
+
+  @override
+  String get keeperNoCoordinator =>
+      'This account has no server, so the keeper has nowhere to register.';
+
+  @override
+  String get keeperNotRunning =>
+      'The keeper role is on, but the keeper service is not running.';
+
+  @override
+  String get keeperStart => 'Start';
+
+  @override
+  String get keeperStats => 'Statistics';
+
+  @override
+  String get keeperFreeQuota => 'Free of shared space';
+
+  @override
+  String get keeperDisk => 'Free on disk';
+
+  @override
+  String get keeperTraffic => 'Traffic since start';
+
+  @override
+  String keeperTrafficValue(String sent, String received) {
+    return 'sent $sent, received $received';
+  }
+
+  @override
+  String get keeperUdp => 'over UDP after hole punching';
+
+  @override
+  String get keeperRelay => 'through a relay';
+
+  @override
+  String get keeperNoIncoming => 'no incoming connections';
+
+  @override
+  String keeperPortHint(int port) {
+    return 'For faster direct connections, open port $port (TCP and UDP) on your router or enable UPnP on it.';
+  }
+
+  @override
+  String keeperPortMappingError(String error) {
+    return 'Could not open the port automatically: $error';
+  }
+
+  @override
+  String get keeperCoordinator => 'How the server sees you';
+
+  @override
+  String get keeperNoCoordinatorShort => 'no server configured';
+
+  @override
+  String get keeperRegistered => 'registered';
+
+  @override
+  String keeperNotRegistered(String error) {
+    return 'not registered: $error';
+  }
+
+  @override
+  String get keeperWaitingCoordinator => 'waiting for the server';
+
+  @override
+  String get keeperAvailability => 'Availability, last 30 days';
+
+  @override
+  String get keeperReputation => 'Reputation';
+
+  @override
+  String keeperProbation(String date) {
+    return 'on probation until $date';
+  }
+
+  @override
+  String get keeperAudits => 'Storage audits';
+
+  @override
+  String keeperAuditsValue(int passed, int failed) {
+    return 'passed $passed, failed $failed';
+  }
+
+  @override
+  String get keeperExcluded =>
+      'The server has excluded this keeper: no new fragments will arrive.';
+
+  @override
+  String get keeperStandingSoon =>
+      'Details appear after the next contact with the server.';
+
+  @override
+  String get keeperBarter => 'Balance';
+
+  @override
+  String get keeperBarterSoon =>
+      'Your barter balance will appear here: how much space you share and how much you can store.';
+
+  @override
+  String get keeperRole => 'Keeper role';
+
+  @override
+  String get keeperChange => 'Change';
+
+  @override
+  String get keeperStop => 'Turn the keeper off';
+
+  @override
+  String get keeperStopConfirm =>
+      'The keeper stops; fragments stay on the disk. If it stays off for long, the server rebuilds these fragments on other keepers. You can turn it back on at any time.';
+
+  @override
+  String get keeperLeave => 'Leave the keeper role';
+
+  @override
+  String get keeperLeaveSoon =>
+      'Leaving with fragments moved to other keepers and the space freed is coming in a later version. For now you can turn the keeper off.';
 }

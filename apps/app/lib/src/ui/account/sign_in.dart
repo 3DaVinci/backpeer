@@ -208,6 +208,13 @@ class _RestoreAllPageState extends State<RestoreAllPage> {
   String? _error;
   var _started = false;
 
+  /// Папка для восстановления диалогом ОС (5.4.2).
+  Future<void> _pickTarget() async {
+    final folder = await AppScope.of(context)
+        .pickFolder(initialDirectory: _target.text);
+    if (folder != null && mounted) setState(() => _target.text = folder);
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -349,12 +356,24 @@ class _RestoreAllPageState extends State<RestoreAllPage> {
           const SizedBox(height: 8),
           Text(l10n.restoreAllBody),
           const SizedBox(height: 12),
-          TextField(
-            key: const ValueKey('target'),
-            controller: _target,
-            enabled: !_busy,
-            decoration: InputDecoration(labelText: l10n.restoreTarget),
-            onChanged: (_) => setState(() {}),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const ValueKey('target'),
+                  controller: _target,
+                  enabled: !_busy,
+                  decoration: InputDecoration(labelText: l10n.restoreTarget),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: l10n.chooseFolder,
+                onPressed: _busy ? null : _pickTarget,
+                icon: const Icon(Icons.folder_open),
+              ),
+            ],
           ),
         ],
         if (_busy) ...[

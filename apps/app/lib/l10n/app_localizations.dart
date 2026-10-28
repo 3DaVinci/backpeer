@@ -1915,6 +1915,624 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Список снимков — в разделе «Восстановление».'**
   String get snapshotsOnRestore;
+
+  /// No description provided for @restoreOpenSnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть снимок'**
+  String get restoreOpenSnapshot;
+
+  /// No description provided for @browserBack.
+  ///
+  /// In ru, this message translates to:
+  /// **'К списку снимков'**
+  String get browserBack;
+
+  /// No description provided for @browserRoot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снимок'**
+  String get browserRoot;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск по имени: часть имени или шаблон вроде *.pdf'**
+  String get searchHint;
+
+  /// No description provided for @searchClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить поиск'**
+  String get searchClear;
+
+  /// No description provided for @searchResults.
+  ///
+  /// In ru, this message translates to:
+  /// **'Найдено: {count}'**
+  String searchResults(int count);
+
+  /// No description provided for @searchTruncated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показаны первые {count}. Уточните запрос.'**
+  String searchTruncated(int count);
+
+  /// No description provided for @searchNothing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не найдено'**
+  String get searchNothing;
+
+  /// No description provided for @folderEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Папка пуста'**
+  String get folderEmpty;
+
+  /// No description provided for @loadingItem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка…'**
+  String get loadingItem;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрано: {count}'**
+  String selectedCount(int count);
+
+  /// No description provided for @restoreSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановить выбранное'**
+  String get restoreSelected;
+
+  /// No description provided for @clearSelection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снять выделение'**
+  String get clearSelection;
+
+  /// No description provided for @fileVersions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версии файла'**
+  String get fileVersions;
+
+  /// No description provided for @versionsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версии «{name}»'**
+  String versionsTitle(String name);
+
+  /// No description provided for @versionChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'изменён'**
+  String get versionChanged;
+
+  /// No description provided for @versionSame.
+  ///
+  /// In ru, this message translates to:
+  /// **'без изменений'**
+  String get versionSame;
+
+  /// No description provided for @versionAbsent.
+  ///
+  /// In ru, this message translates to:
+  /// **'нет в этом снимке'**
+  String get versionAbsent;
+
+  /// No description provided for @restoreThisVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановить'**
+  String get restoreThisVersion;
+
+  /// No description provided for @chooseFolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать папку'**
+  String get chooseFolder;
+
+  /// No description provided for @restoreWhat.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что: {what}'**
+  String restoreWhat(String what);
+
+  /// No description provided for @restoreWholeSnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'весь снимок'**
+  String get restoreWholeSnapshot;
+
+  /// No description provided for @restoreWhere.
+  ///
+  /// In ru, this message translates to:
+  /// **'Куда'**
+  String get restoreWhere;
+
+  /// No description provided for @restoreOriginal.
+  ///
+  /// In ru, this message translates to:
+  /// **'На исходное место'**
+  String get restoreOriginal;
+
+  /// No description provided for @restoreOriginalHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлы вернутся туда, откуда были сохранены.'**
+  String get restoreOriginalHint;
+
+  /// No description provided for @restoreToFolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'В другую папку'**
+  String get restoreToFolder;
+
+  /// No description provided for @restoreExisting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Если такой файл уже есть'**
+  String get restoreExisting;
+
+  /// No description provided for @existingKeepBoth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить оба: к имени восстановленного добавится «(восстановлено)»'**
+  String get existingKeepBoth;
+
+  /// No description provided for @existingSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить существующий, восстановленный не записывать'**
+  String get existingSkip;
+
+  /// No description provided for @existingOverwrite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить существующий восстановленным'**
+  String get existingOverwrite;
+
+  /// No description provided for @restoredSuffix.
+  ///
+  /// In ru, this message translates to:
+  /// **'восстановлено'**
+  String get restoredSuffix;
+
+  /// No description provided for @restoreWait.
+  ///
+  /// In ru, this message translates to:
+  /// **'Если часть хранителей не в сети'**
+  String get restoreWait;
+
+  /// No description provided for @waitNone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не ждать — восстановить то, что доступно'**
+  String get waitNone;
+
+  /// No description provided for @waitHour.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ждать до часа'**
+  String get waitHour;
+
+  /// No description provided for @waitDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ждать до суток'**
+  String get waitDay;
+
+  /// No description provided for @restoreStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановить'**
+  String get restoreStart;
+
+  /// No description provided for @restoreStarted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановление началось. Ход — здесь и на «Обзоре».'**
+  String get restoreStarted;
+
+  /// No description provided for @restoreCurrent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущее восстановление'**
+  String get restoreCurrent;
+
+  /// No description provided for @waitingTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} файл ждёт хранителей} few{{count} файла ждут хранителей} many{{count} файлов ждут хранителей} other{{count} файла ждут хранителей}}'**
+  String waitingTitle(int count);
+
+  /// No description provided for @waitingExplain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Части этих файлов лежат у хранителей, которые сейчас не в сети: доступных фрагментов меньше, чем нужно для сборки. Остальное уже восстанавливается, а эти файлы докачаются, когда хранители появятся.'**
+  String get waitingExplain;
+
+  /// No description provided for @andMore.
+  ///
+  /// In ru, this message translates to:
+  /// **'и ещё {count}'**
+  String andMore(int count);
+
+  /// No description provided for @waitingRetry.
+  ///
+  /// In ru, this message translates to:
+  /// **'Следующая попытка — в течение {time}'**
+  String waitingRetry(String time);
+
+  /// No description provided for @waitingLeft.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ждём ещё не дольше {time}'**
+  String waitingLeft(String time);
+
+  /// No description provided for @waitingReason.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробности: {reason}'**
+  String waitingReason(String reason);
+
+  /// No description provided for @lastRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Последнее восстановление'**
+  String get lastRestore;
+
+  /// No description provided for @restoreWhen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Когда'**
+  String get restoreWhen;
+
+  /// No description provided for @restoreProblem.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка'**
+  String get restoreProblem;
+
+  /// No description provided for @restoreWhereLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Куда'**
+  String get restoreWhereLabel;
+
+  /// No description provided for @restoreRestored.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановлено'**
+  String get restoreRestored;
+
+  /// No description provided for @restoreSkippedLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не тронуто существующих'**
+  String get restoreSkippedLabel;
+
+  /// No description provided for @restoreRenamedLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранено рядом с существующими'**
+  String get restoreRenamedLabel;
+
+  /// No description provided for @restoreErrorsLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не восстановлено'**
+  String get restoreErrorsLabel;
+
+  /// No description provided for @speedUnlimited.
+  ///
+  /// In ru, this message translates to:
+  /// **'без предела'**
+  String get speedUnlimited;
+
+  /// No description provided for @speedValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'{size}/с'**
+  String speedValue(String size);
+
+  /// No description provided for @keeperEnableTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отдать место'**
+  String get keeperEnableTitle;
+
+  /// No description provided for @keeperEditTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки хранителя'**
+  String get keeperEditTitle;
+
+  /// No description provided for @keeperPrivacy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фрагменты шифруются на компьютере владельца ещё до отправки. Хранитель не может их прочитать и не знает, чьи это файлы и как они называются.'**
+  String get keeperPrivacy;
+
+  /// No description provided for @keeperFolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Папка для фрагментов'**
+  String get keeperFolder;
+
+  /// No description provided for @keeperFree.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свободно на диске: {size}'**
+  String keeperFree(String size);
+
+  /// No description provided for @keeperQuotaLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сколько места отдать, ГБ'**
+  String get keeperQuotaLabel;
+
+  /// No description provided for @keeperQuotaInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите число гигабайт'**
+  String get keeperQuotaInvalid;
+
+  /// No description provided for @keeperQuotaTooBig.
+  ///
+  /// In ru, this message translates to:
+  /// **'Больше, чем свободно на диске'**
+  String get keeperQuotaTooBig;
+
+  /// No description provided for @keeperQuotaMin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер обычно принимает хранителей от 100 ГБ'**
+  String get keeperQuotaMin;
+
+  /// No description provided for @keeperUpload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отдача'**
+  String get keeperUpload;
+
+  /// No description provided for @keeperDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приём'**
+  String get keeperDownload;
+
+  /// No description provided for @keeperWorkHours.
+  ///
+  /// In ru, this message translates to:
+  /// **'В рабочие часы (пн–пт, 9–18)'**
+  String get keeperWorkHours;
+
+  /// No description provided for @keeperBackgroundNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранитель работает в фоне и без открытого окна.'**
+  String get keeperBackgroundNote;
+
+  /// No description provided for @keeperEnable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стать хранителем'**
+  String get keeperEnable;
+
+  /// No description provided for @keeperEnabled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Роль хранителя включена'**
+  String get keeperEnabled;
+
+  /// No description provided for @keeperNoBinary.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки сохранены, но программа хранителя не найдена рядом с приложением. Запустите службу хранителя вручную.'**
+  String get keeperNoBinary;
+
+  /// No description provided for @keeperNoCoordinator.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учётная запись без сервера: хранителю негде зарегистрироваться.'**
+  String get keeperNoCoordinator;
+
+  /// No description provided for @keeperNotRunning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Роль включена, но служба хранителя не запущена.'**
+  String get keeperNotRunning;
+
+  /// No description provided for @keeperStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить'**
+  String get keeperStart;
+
+  /// No description provided for @keeperStats.
+  ///
+  /// In ru, this message translates to:
+  /// **'Статистика'**
+  String get keeperStats;
+
+  /// No description provided for @keeperFreeQuota.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свободно из отданного'**
+  String get keeperFreeQuota;
+
+  /// No description provided for @keeperDisk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свободно на диске'**
+  String get keeperDisk;
+
+  /// No description provided for @keeperTraffic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Трафик с запуска'**
+  String get keeperTraffic;
+
+  /// No description provided for @keeperTrafficValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'отдано {sent}, принято {received}'**
+  String keeperTrafficValue(String sent, String received);
+
+  /// No description provided for @keeperUdp.
+  ///
+  /// In ru, this message translates to:
+  /// **'по UDP после сведения'**
+  String get keeperUdp;
+
+  /// No description provided for @keeperRelay.
+  ///
+  /// In ru, this message translates to:
+  /// **'через relay'**
+  String get keeperRelay;
+
+  /// No description provided for @keeperNoIncoming.
+  ///
+  /// In ru, this message translates to:
+  /// **'входящих соединений нет'**
+  String get keeperNoIncoming;
+
+  /// No description provided for @keeperPortHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чтобы к этому компьютеру подключались напрямую и быстрее, откройте на роутере порт {port} (TCP и UDP) или включите на нём UPnP.'**
+  String keeperPortHint(int port);
+
+  /// No description provided for @keeperPortMappingError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически открыть порт не получилось: {error}'**
+  String keeperPortMappingError(String error);
+
+  /// No description provided for @keeperCoordinator.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как вас видит сервер'**
+  String get keeperCoordinator;
+
+  /// No description provided for @keeperNoCoordinatorShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'сервер не задан'**
+  String get keeperNoCoordinatorShort;
+
+  /// No description provided for @keeperRegistered.
+  ///
+  /// In ru, this message translates to:
+  /// **'зарегистрирован'**
+  String get keeperRegistered;
+
+  /// No description provided for @keeperNotRegistered.
+  ///
+  /// In ru, this message translates to:
+  /// **'не зарегистрирован: {error}'**
+  String keeperNotRegistered(String error);
+
+  /// No description provided for @keeperWaitingCoordinator.
+  ///
+  /// In ru, this message translates to:
+  /// **'ждём ответа сервера'**
+  String get keeperWaitingCoordinator;
+
+  /// No description provided for @keeperAvailability.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступность за 30 дней'**
+  String get keeperAvailability;
+
+  /// No description provided for @keeperReputation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Репутация'**
+  String get keeperReputation;
+
+  /// No description provided for @keeperProbation.
+  ///
+  /// In ru, this message translates to:
+  /// **'испытательный срок до {date}'**
+  String keeperProbation(String date);
+
+  /// No description provided for @keeperAudits.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверки хранения'**
+  String get keeperAudits;
+
+  /// No description provided for @keeperAuditsValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'пройдено {passed}, провалено {failed}'**
+  String keeperAuditsValue(int passed, int failed);
+
+  /// No description provided for @keeperExcluded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер исключил этого хранителя: новых фрагментов не будет.'**
+  String get keeperExcluded;
+
+  /// No description provided for @keeperStandingSoon.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сведения появятся после следующей связи с сервером.'**
+  String get keeperStandingSoon;
+
+  /// No description provided for @keeperBarter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Баланс'**
+  String get keeperBarter;
+
+  /// No description provided for @keeperBarterSoon.
+  ///
+  /// In ru, this message translates to:
+  /// **'Здесь появится баланс бартера: сколько места вы отдали и сколько можете хранить сами.'**
+  String get keeperBarterSoon;
+
+  /// No description provided for @keeperRole.
+  ///
+  /// In ru, this message translates to:
+  /// **'Роль хранителя'**
+  String get keeperRole;
+
+  /// No description provided for @keeperChange.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изменить'**
+  String get keeperChange;
+
+  /// No description provided for @keeperStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключить хранителя'**
+  String get keeperStop;
+
+  /// No description provided for @keeperStopConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранитель остановится, фрагменты останутся на диске. Если он долго не вернётся, сервер восстановит эти фрагменты у других хранителей. Включить снова можно в любой момент.'**
+  String get keeperStopConfirm;
+
+  /// No description provided for @keeperLeave.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выйти из роли'**
+  String get keeperLeave;
+
+  /// No description provided for @keeperLeaveSoon.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выход с переносом фрагментов к другим хранителям и освобождением места появится в следующих версиях. Пока хранителя можно выключить.'**
+  String get keeperLeaveSoon;
 }
 
 class _AppLocalizationsDelegate

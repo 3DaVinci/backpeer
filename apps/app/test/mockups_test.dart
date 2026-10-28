@@ -142,6 +142,15 @@ void main() {
                   },
                 ],
               },
+              'keeper.info' => {
+                'enabled': true,
+                'settings': {
+                  'enabled': true,
+                  'storageDir': '/home/anna/.local/share/file_storage/node',
+                  'quotaBytes': 500 * 1000 * 1000 * 1000,
+                },
+                'minQuotaBytes': 1 << 30,
+              },
               'account.info' => {
                 'configured': true,
                 'coordinator': 'https://coordinator.example',
@@ -213,7 +222,30 @@ void main() {
               },
             },
           );
-          final node = FakeProcess(status: nodeStatus());
+          final node = FakeProcess(
+            status: {
+              ...nodeStatus(),
+              'storageDir': '/home/anna/.local/share/file_storage/node',
+              'freeBytes': (2 << 40) - (3 << 30),
+              'diskAvailableBytes': 3 << 40,
+              'listen': {'port': 7340},
+              'coordinator': {
+                'registered': true,
+                'standing': {
+                  'availability': 0.986,
+                  'reputation': 0.91,
+                  'onProbation': false,
+                  'auditsPassed': 214,
+                  'auditsFailed': 0,
+                  'excluded': false,
+                },
+              },
+            },
+            answer: (method, _) async => switch (method) {
+              'stats' => {'bytesSent': 41 << 30, 'bytesReceived': 380 << 30},
+              _ => const {},
+            },
+          );
           final key = GlobalKey();
           await tester.pumpWidget(
             RepaintBoundary(

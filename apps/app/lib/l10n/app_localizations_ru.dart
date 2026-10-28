@@ -1125,4 +1125,372 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get snapshotsOnRestore =>
       'Список снимков — в разделе «Восстановление».';
+
+  @override
+  String get restoreOpenSnapshot => 'Открыть снимок';
+
+  @override
+  String get browserBack => 'К списку снимков';
+
+  @override
+  String get browserRoot => 'Снимок';
+
+  @override
+  String get searchHint => 'Поиск по имени: часть имени или шаблон вроде *.pdf';
+
+  @override
+  String get searchClear => 'Сбросить поиск';
+
+  @override
+  String searchResults(int count) {
+    return 'Найдено: $count';
+  }
+
+  @override
+  String searchTruncated(int count) {
+    return 'Показаны первые $count. Уточните запрос.';
+  }
+
+  @override
+  String get searchNothing => 'Ничего не найдено';
+
+  @override
+  String get folderEmpty => 'Папка пуста';
+
+  @override
+  String get loadingItem => 'Загрузка…';
+
+  @override
+  String selectedCount(int count) {
+    return 'Выбрано: $count';
+  }
+
+  @override
+  String get restoreSelected => 'Восстановить выбранное';
+
+  @override
+  String get clearSelection => 'Снять выделение';
+
+  @override
+  String get fileVersions => 'Версии файла';
+
+  @override
+  String versionsTitle(String name) {
+    return 'Версии «$name»';
+  }
+
+  @override
+  String get versionChanged => 'изменён';
+
+  @override
+  String get versionSame => 'без изменений';
+
+  @override
+  String get versionAbsent => 'нет в этом снимке';
+
+  @override
+  String get restoreThisVersion => 'Восстановить';
+
+  @override
+  String get chooseFolder => 'Выбрать папку';
+
+  @override
+  String restoreWhat(String what) {
+    return 'Что: $what';
+  }
+
+  @override
+  String get restoreWholeSnapshot => 'весь снимок';
+
+  @override
+  String get restoreWhere => 'Куда';
+
+  @override
+  String get restoreOriginal => 'На исходное место';
+
+  @override
+  String get restoreOriginalHint =>
+      'Файлы вернутся туда, откуда были сохранены.';
+
+  @override
+  String get restoreToFolder => 'В другую папку';
+
+  @override
+  String get restoreExisting => 'Если такой файл уже есть';
+
+  @override
+  String get existingKeepBoth =>
+      'Сохранить оба: к имени восстановленного добавится «(восстановлено)»';
+
+  @override
+  String get existingSkip =>
+      'Оставить существующий, восстановленный не записывать';
+
+  @override
+  String get existingOverwrite => 'Заменить существующий восстановленным';
+
+  @override
+  String get restoredSuffix => 'восстановлено';
+
+  @override
+  String get restoreWait => 'Если часть хранителей не в сети';
+
+  @override
+  String get waitNone => 'Не ждать — восстановить то, что доступно';
+
+  @override
+  String get waitHour => 'Ждать до часа';
+
+  @override
+  String get waitDay => 'Ждать до суток';
+
+  @override
+  String get restoreStart => 'Восстановить';
+
+  @override
+  String get restoreStarted =>
+      'Восстановление началось. Ход — здесь и на «Обзоре».';
+
+  @override
+  String get restoreCurrent => 'Текущее восстановление';
+
+  @override
+  String waitingTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count файла ждут хранителей',
+      many: '$count файлов ждут хранителей',
+      few: '$count файла ждут хранителей',
+      one: '$count файл ждёт хранителей',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get waitingExplain =>
+      'Части этих файлов лежат у хранителей, которые сейчас не в сети: доступных фрагментов меньше, чем нужно для сборки. Остальное уже восстанавливается, а эти файлы докачаются, когда хранители появятся.';
+
+  @override
+  String andMore(int count) {
+    return 'и ещё $count';
+  }
+
+  @override
+  String waitingRetry(String time) {
+    return 'Следующая попытка — в течение $time';
+  }
+
+  @override
+  String waitingLeft(String time) {
+    return 'Ждём ещё не дольше $time';
+  }
+
+  @override
+  String waitingReason(String reason) {
+    return 'Подробности: $reason';
+  }
+
+  @override
+  String get lastRestore => 'Последнее восстановление';
+
+  @override
+  String get restoreWhen => 'Когда';
+
+  @override
+  String get restoreProblem => 'Ошибка';
+
+  @override
+  String get restoreWhereLabel => 'Куда';
+
+  @override
+  String get restoreRestored => 'Восстановлено';
+
+  @override
+  String get restoreSkippedLabel => 'Не тронуто существующих';
+
+  @override
+  String get restoreRenamedLabel => 'Сохранено рядом с существующими';
+
+  @override
+  String get restoreErrorsLabel => 'Не восстановлено';
+
+  @override
+  String get speedUnlimited => 'без предела';
+
+  @override
+  String speedValue(String size) {
+    return '$size/с';
+  }
+
+  @override
+  String get keeperEnableTitle => 'Отдать место';
+
+  @override
+  String get keeperEditTitle => 'Настройки хранителя';
+
+  @override
+  String get keeperPrivacy =>
+      'Фрагменты шифруются на компьютере владельца ещё до отправки. Хранитель не может их прочитать и не знает, чьи это файлы и как они называются.';
+
+  @override
+  String get keeperFolder => 'Папка для фрагментов';
+
+  @override
+  String keeperFree(String size) {
+    return 'Свободно на диске: $size';
+  }
+
+  @override
+  String get keeperQuotaLabel => 'Сколько места отдать, ГБ';
+
+  @override
+  String get keeperQuotaInvalid => 'Введите число гигабайт';
+
+  @override
+  String get keeperQuotaTooBig => 'Больше, чем свободно на диске';
+
+  @override
+  String get keeperQuotaMin => 'Сервер обычно принимает хранителей от 100 ГБ';
+
+  @override
+  String get keeperUpload => 'Отдача';
+
+  @override
+  String get keeperDownload => 'Приём';
+
+  @override
+  String get keeperWorkHours => 'В рабочие часы (пн–пт, 9–18)';
+
+  @override
+  String get keeperBackgroundNote =>
+      'Хранитель работает в фоне и без открытого окна.';
+
+  @override
+  String get keeperEnable => 'Стать хранителем';
+
+  @override
+  String get keeperEnabled => 'Роль хранителя включена';
+
+  @override
+  String get keeperNoBinary =>
+      'Настройки сохранены, но программа хранителя не найдена рядом с приложением. Запустите службу хранителя вручную.';
+
+  @override
+  String get keeperNoCoordinator =>
+      'Учётная запись без сервера: хранителю негде зарегистрироваться.';
+
+  @override
+  String get keeperNotRunning =>
+      'Роль включена, но служба хранителя не запущена.';
+
+  @override
+  String get keeperStart => 'Запустить';
+
+  @override
+  String get keeperStats => 'Статистика';
+
+  @override
+  String get keeperFreeQuota => 'Свободно из отданного';
+
+  @override
+  String get keeperDisk => 'Свободно на диске';
+
+  @override
+  String get keeperTraffic => 'Трафик с запуска';
+
+  @override
+  String keeperTrafficValue(String sent, String received) {
+    return 'отдано $sent, принято $received';
+  }
+
+  @override
+  String get keeperUdp => 'по UDP после сведения';
+
+  @override
+  String get keeperRelay => 'через relay';
+
+  @override
+  String get keeperNoIncoming => 'входящих соединений нет';
+
+  @override
+  String keeperPortHint(int port) {
+    return 'Чтобы к этому компьютеру подключались напрямую и быстрее, откройте на роутере порт $port (TCP и UDP) или включите на нём UPnP.';
+  }
+
+  @override
+  String keeperPortMappingError(String error) {
+    return 'Автоматически открыть порт не получилось: $error';
+  }
+
+  @override
+  String get keeperCoordinator => 'Как вас видит сервер';
+
+  @override
+  String get keeperNoCoordinatorShort => 'сервер не задан';
+
+  @override
+  String get keeperRegistered => 'зарегистрирован';
+
+  @override
+  String keeperNotRegistered(String error) {
+    return 'не зарегистрирован: $error';
+  }
+
+  @override
+  String get keeperWaitingCoordinator => 'ждём ответа сервера';
+
+  @override
+  String get keeperAvailability => 'Доступность за 30 дней';
+
+  @override
+  String get keeperReputation => 'Репутация';
+
+  @override
+  String keeperProbation(String date) {
+    return 'испытательный срок до $date';
+  }
+
+  @override
+  String get keeperAudits => 'Проверки хранения';
+
+  @override
+  String keeperAuditsValue(int passed, int failed) {
+    return 'пройдено $passed, провалено $failed';
+  }
+
+  @override
+  String get keeperExcluded =>
+      'Сервер исключил этого хранителя: новых фрагментов не будет.';
+
+  @override
+  String get keeperStandingSoon =>
+      'Сведения появятся после следующей связи с сервером.';
+
+  @override
+  String get keeperBarter => 'Баланс';
+
+  @override
+  String get keeperBarterSoon =>
+      'Здесь появится баланс бартера: сколько места вы отдали и сколько можете хранить сами.';
+
+  @override
+  String get keeperRole => 'Роль хранителя';
+
+  @override
+  String get keeperChange => 'Изменить';
+
+  @override
+  String get keeperStop => 'Выключить хранителя';
+
+  @override
+  String get keeperStopConfirm =>
+      'Хранитель остановится, фрагменты останутся на диске. Если он долго не вернётся, сервер восстановит эти фрагменты у других хранителей. Включить снова можно в любой момент.';
+
+  @override
+  String get keeperLeave => 'Выйти из роли';
+
+  @override
+  String get keeperLeaveSoon =>
+      'Выход с переносом фрагментов к другим хранителям и освобождением места появится в следующих версиях. Пока хранителя можно выключить.';
 }

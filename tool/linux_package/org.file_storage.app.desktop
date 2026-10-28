@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=File Storage
+Name[ru]=File Storage
+GenericName=Encrypted backup
+GenericName[ru]=Зашифрованный бэкап
+Comment=Encrypted backups on other people's computers
+Comment[ru]=Зашифрованные бэкапы на компьютерах других людей
+Exec=file-storage %U
+TryExec=file-storage
+Icon=file-storage
+Terminal=false
+Categories=Utility;Archiving;
+Keywords=backup;restore;encryption;
+Keywords[ru]=бэкап;резервная копия;восстановление;шифрование;
+StartupWMClass=org.file_storage.app
+SingleMainWindow=true

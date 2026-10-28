@@ -1,0 +1,12 @@
+#!/bin/sh
+# Пакет .deb (задача 5.7.3). При обновлении — перезапустить службы
+# пользователей (агент и хранитель), чтобы они работали на новой версии.
+# Службы ставит приложение у каждого пользователя (~/.config/systemd/user).
+set -e
+units="file-storage-agent.service file-storage-node.service"
+if [ "$1" = configure ] && [ -n "$2" ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl list-users --no-legend 2>/dev/null | while read -r uid user rest; do
+    systemctl --user -M "$user@" try-restart $units >/dev/null 2>&1 || true
+  done
+fi
+exit 0

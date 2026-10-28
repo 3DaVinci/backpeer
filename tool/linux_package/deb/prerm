@@ -1,0 +1,25 @@
+#!/bin/sh
+# Пакет .deb (задача 5.7.3). При удалении — у пользователей с запущенным
+# менеджером служб (вошли или включён linger) остановить и убрать службы,
+# запуск значка при входе и linger, включённый приложением: `agent
+# uninstall` от имени пользователя. Данные и ключи остаются; полное
+# удаление — `file-storage-agent uninstall --purge` до удаления пакета
+# (docs/ops/linux-packages.md).
+# У остальных юниты остаются, но с ConditionPathExists не запускаются.
+set -e
+agent=/opt/file-storage/daemons/agent/bin/agent
+case "$1" in
+  remove|deconfigure)
+    if command -v loginctl >/dev/null 2>&1 && [ -x "$agent" ]; then
+      loginctl list-users --no-legend 2>/dev/null | while read -r uid user rest; do
+        [ -d "/run/user/$uid" ] || continue
+        home="$(getent passwd "$user" | cut -d: -f6)"
+        runuser -u "$user" -- env HOME="$home" USER="$user" LOGNAME="$user" \
+          XDG_RUNTIME_DIR="/run/user/$uid" \
+          DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+          "$agent" uninstall >/dev/null 2>&1 || true
+      done
+    fi
+    ;;
+esac
+exit 0

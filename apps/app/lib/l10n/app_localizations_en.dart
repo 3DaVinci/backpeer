@@ -1473,4 +1473,72 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get keeperLeaveSoon =>
       'Leaving with fragments moved to other keepers and the space freed is coming in a later version. For now you can turn the keeper off.';
+
+  @override
+  String get trayBackupNow => 'Back up now';
+
+  @override
+  String get trayPause => 'Pause';
+
+  @override
+  String get trayResume => 'Resume';
+
+  @override
+  String get trayOpen => 'Open window';
+
+  @override
+  String get trayQuit => 'Close icon';
+
+  @override
+  String get backgroundTitle => 'Background work';
+
+  @override
+  String get backgroundExplain =>
+      'Scheduled backups and the keeper keep working after the window is closed: they are system services that start when you sign in.';
+
+  @override
+  String get backgroundService => 'Backup agent service';
+
+  @override
+  String get serviceRunning => 'running';
+
+  @override
+  String get serviceStopped => 'stopped';
+
+  @override
+  String get serviceNotInstalled => 'not installed';
+
+  @override
+  String get serviceInstall => 'Install service';
+
+  @override
+  String get serviceRemove => 'Remove service';
+
+  @override
+  String get serviceRemoveConfirm =>
+      'Without the service, scheduled backups will not run unless the agent is started manually. Remove the service?';
+
+  @override
+  String get backgroundUnavailable =>
+      'System services are unavailable or the agent program was not found: the backup agent has to be started manually.';
+
+  @override
+  String get trayAtLogin => 'Tray icon at sign-in';
+
+  @override
+  String get trayUnavailable =>
+      'The tray icon is not available in this environment (GNOME needs the AppIndicator extension). Backups still run in the background.';
+
+  @override
+  String get keeperLingerTitle => 'Keeper without signing in';
+
+  @override
+  String get keeperLingerOff =>
+      'Right now the keeper only works while you are signed in. To keep it available after a reboot without signing in, run this command in a terminal (administrator rights required):';
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get copied => 'Copied';
 }

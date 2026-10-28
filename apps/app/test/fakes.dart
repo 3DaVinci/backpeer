@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:app/src/app.dart';
 import 'package:app/src/app_scope.dart';
+import 'package:app/src/services/background.dart';
 import 'package:app/src/services/folder_picker.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
+import 'package:app/src/services/tray.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
 
@@ -111,11 +113,89 @@ Widget testApp(
   BackgroundProcess node, {
   Preferences? preferences,
   FolderPicker? pickFolder,
+  TrayHost? tray,
+  BackgroundControl? background,
 }) => App(
   services: AppServices(
     agent: agent,
     node: node,
     preferences: preferences ?? Preferences(),
     pickFolder: pickFolder ?? ({initialDirectory}) async => null,
+    tray: tray,
+    background: background,
   ),
 );
+
+/// Значок в трее для тестов: последнее меню и команды от теста.
+final class FakeTray implements TrayHost {
+  new({this.isAvailable = true});
+
+  bool isAvailable;
+  String? status;
+  List<TrayItem> items = const [];
+  int menus = 0;
+  final _actions = StreamController<String>.broadcast();
+
+  void tap(String id) => _actions.add(id);
+
+  TrayItem item(String id) => items.firstWhere((i) => i.id == id);
+
+  @override
+  Stream<String> get actions => _actions.stream;
+
+  @override
+  Future<bool> available() async => isAvailable;
+
+  @override
+  Future<void> setMenu(String status, List<TrayItem> items) async {
+    this.status = status;
+    this.items = items;
+    menus++;
+  }
+}
+
+/// Службы ОС для тестов.
+final class FakeBackground extends ChangeNotifier implements BackgroundControl {
+  new({this.available = true, this.agentState = ServiceState.running});
+
+  @override
+  bool available;
+
+  @override
+  ServiceState? agentState;
+
+  @override
+  bool autostart = false;
+
+  @override
+  String? problem;
+
+  final calls = <String>[];
+
+  @override
+  String get kind => 'fake';
+
+  @override
+  Future<void> refresh() async => notifyListeners();
+
+  @override
+  Future<void> installAgent() async {
+    calls.add('install');
+    agentState = ServiceState.running;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> uninstallAgent() async {
+    calls.add('uninstall');
+    agentState = ServiceState.notInstalled;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> setAutostart({required bool enabled}) async {
+    calls.add('autostart $enabled');
+    autostart = enabled;
+    notifyListeners();
+  }
+}

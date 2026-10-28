@@ -9,6 +9,7 @@ import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 /// Хранитель (задачи 5.5.1, 5.5.2): включение роли через агента (ключи
@@ -220,6 +221,10 @@ class _KeeperScreenState extends State<KeeperScreen> {
               _KeeperStats(status: node.status!, stats: _stats),
               _Standing(status: node.status!),
             ],
+            if (info?['linger']
+                case {'enabled': false, 'command': final String command}
+                when enabled)
+              _LingerCard(command: command),
             Section(
               title: l10n.keeperBarter,
               children: [Text(l10n.keeperBarterSoon)],
@@ -392,6 +397,46 @@ class _Standing extends StatelessWidget {
             ),
         ] else if (link?['registered'] == true)
           Text(l10n.keeperStandingSoon),
+      ],
+    );
+  }
+}
+
+/// Хранитель работает только при входе пользователя: `loginctl
+/// enable-linger` не разрешён политикой (задача 5.6.4) — команда для
+/// администратора.
+class _LingerCard extends StatelessWidget {
+  const new({required this.command});
+
+  final String command;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Section(
+      title: l10n.keeperLingerTitle,
+      children: [
+        Text(l10n.keeperLingerOff),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: SelectableText(
+                command,
+                style: const TextStyle(fontFamily: 'monospace'),
+              ),
+            ),
+            IconButton(
+              tooltip: l10n.copy,
+              icon: const Icon(Icons.copy),
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await Clipboard.setData(ClipboardData(text: command));
+                messenger.showSnackBar(SnackBar(content: Text(l10n.copied)));
+              },
+            ),
+          ],
+        ),
       ],
     );
   }

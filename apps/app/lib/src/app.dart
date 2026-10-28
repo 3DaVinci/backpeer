@@ -2,6 +2,7 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/theme/app_theme.dart';
 import 'package:app/src/ui/account/account_gate.dart';
+import 'package:app/src/ui/tray_binding.dart';
 import 'package:flutter/material.dart';
 
 /// Приложение — только интерфейс (задача 5.1.1): вся работа в фоновых
@@ -25,6 +26,7 @@ class App extends StatelessWidget {
         locale: services.preferences.locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => TrayBinding(child: child!),
         home: const AccountGate(),
       ),
     ),

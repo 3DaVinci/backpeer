@@ -1,6 +1,8 @@
+import 'package:app/src/services/background.dart';
 import 'package:app/src/services/folder_picker.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
+import 'package:app/src/services/tray.dart';
 import 'package:flutter/widgets.dart';
 
 /// Что приложение получает снаружи: связи с двумя фоновыми процессами
@@ -12,6 +14,8 @@ final class AppServices {
     required this.preferences,
     this.coordinator = '',
     this.pickFolder = pickFolderWithDialog,
+    this.tray,
+    this.background,
   });
 
   /// Агент бэкапа.
@@ -27,6 +31,12 @@ final class AppServices {
 
   /// Выбор папки диалогом ОС.
   final FolderPicker pickFolder;
+
+  /// Значок в трее (5.6.2); `null` — без значка (тесты).
+  final TrayHost? tray;
+
+  /// Службы ОС и запуск при входе (5.6.1); `null` — раздел не показывается.
+  final BackgroundControl? background;
 }
 
 /// Доступ к [AppServices] из любого экрана.

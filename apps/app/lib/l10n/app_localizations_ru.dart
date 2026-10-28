@@ -1493,4 +1493,72 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get keeperLeaveSoon =>
       'Выход с переносом фрагментов к другим хранителям и освобождением места появится в следующих версиях. Пока хранителя можно выключить.';
+
+  @override
+  String get trayBackupNow => 'Сделать бэкап сейчас';
+
+  @override
+  String get trayPause => 'Приостановить';
+
+  @override
+  String get trayResume => 'Продолжить';
+
+  @override
+  String get trayOpen => 'Открыть окно';
+
+  @override
+  String get trayQuit => 'Закрыть значок';
+
+  @override
+  String get backgroundTitle => 'Фоновая работа';
+
+  @override
+  String get backgroundExplain =>
+      'Бэкап по расписанию и хранитель работают в фоне и после закрытия окна: это службы системы, они запускаются при входе в систему.';
+
+  @override
+  String get backgroundService => 'Служба агента бэкапа';
+
+  @override
+  String get serviceRunning => 'работает';
+
+  @override
+  String get serviceStopped => 'остановлена';
+
+  @override
+  String get serviceNotInstalled => 'не установлена';
+
+  @override
+  String get serviceInstall => 'Установить службу';
+
+  @override
+  String get serviceRemove => 'Удалить службу';
+
+  @override
+  String get serviceRemoveConfirm =>
+      'Без службы бэкап по расписанию не будет идти, пока агент не запущен вручную. Удалить службу?';
+
+  @override
+  String get backgroundUnavailable =>
+      'Службы системы недоступны или программа агента не найдена: агента бэкапа нужно запускать вручную.';
+
+  @override
+  String get trayAtLogin => 'Значок в трее при входе в систему';
+
+  @override
+  String get trayUnavailable =>
+      'Значок в трее недоступен в этой среде (в GNOME нужно расширение AppIndicator). Бэкап всё равно идёт в фоне.';
+
+  @override
+  String get keeperLingerTitle => 'Хранитель без входа в систему';
+
+  @override
+  String get keeperLingerOff =>
+      'Сейчас хранитель работает, только пока вы вошли в систему. Чтобы он был доступен и после перезагрузки без входа, выполните в терминале команду (нужны права администратора):';
+
+  @override
+  String get copy => 'Копировать';
+
+  @override
+  String get copied => 'Скопировано';
 }

@@ -4,10 +4,12 @@ project(runner LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "app")
+# Название продукта ещё не выбрано (С.1.2): имя файла и идентификатор
+# временные, общие с пакетами Linux (tool/linux_package).
+set(BINARY_NAME "file-storage")
 # The unique GTK application identifier for this application. See:
 # https://wiki.gnome.org/HowDoI/ChooseApplicationID
-set(APPLICATION_ID "com.example.app")
+set(APPLICATION_ID "org.file_storage.app")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -120,6 +122,12 @@ install(CODE "
   " COMPONENT Runtime)
 install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
+
+# Значки трея и окна (runner/tray.cc, my_application.cc ищут их в
+# data/icons).
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/icons/file-storage-tray.png"
+  "${CMAKE_CURRENT_SOURCE_DIR}/icons/file-storage-256.png"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}/icons" COMPONENT Runtime)
 
 # Install the AOT library on non-Debug builds only.
 if(NOT CMAKE_BUILD_TYPE MATCHES "Debug")

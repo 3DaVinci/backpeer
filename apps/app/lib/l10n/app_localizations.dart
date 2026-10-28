@@ -2533,6 +2533,132 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Выход с переносом фрагментов к другим хранителям и освобождением места появится в следующих версиях. Пока хранителя можно выключить.'**
   String get keeperLeaveSoon;
+
+  /// No description provided for @trayBackupNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сделать бэкап сейчас'**
+  String get trayBackupNow;
+
+  /// No description provided for @trayPause.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приостановить'**
+  String get trayPause;
+
+  /// No description provided for @trayResume.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить'**
+  String get trayResume;
+
+  /// No description provided for @trayOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть окно'**
+  String get trayOpen;
+
+  /// No description provided for @trayQuit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть значок'**
+  String get trayQuit;
+
+  /// No description provided for @backgroundTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фоновая работа'**
+  String get backgroundTitle;
+
+  /// No description provided for @backgroundExplain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкап по расписанию и хранитель работают в фоне и после закрытия окна: это службы системы, они запускаются при входе в систему.'**
+  String get backgroundExplain;
+
+  /// No description provided for @backgroundService.
+  ///
+  /// In ru, this message translates to:
+  /// **'Служба агента бэкапа'**
+  String get backgroundService;
+
+  /// No description provided for @serviceRunning.
+  ///
+  /// In ru, this message translates to:
+  /// **'работает'**
+  String get serviceRunning;
+
+  /// No description provided for @serviceStopped.
+  ///
+  /// In ru, this message translates to:
+  /// **'остановлена'**
+  String get serviceStopped;
+
+  /// No description provided for @serviceNotInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'не установлена'**
+  String get serviceNotInstalled;
+
+  /// No description provided for @serviceInstall.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установить службу'**
+  String get serviceInstall;
+
+  /// No description provided for @serviceRemove.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить службу'**
+  String get serviceRemove;
+
+  /// No description provided for @serviceRemoveConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без службы бэкап по расписанию не будет идти, пока агент не запущен вручную. Удалить службу?'**
+  String get serviceRemoveConfirm;
+
+  /// No description provided for @backgroundUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Службы системы недоступны или программа агента не найдена: агента бэкапа нужно запускать вручную.'**
+  String get backgroundUnavailable;
+
+  /// No description provided for @trayAtLogin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Значок в трее при входе в систему'**
+  String get trayAtLogin;
+
+  /// No description provided for @trayUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Значок в трее недоступен в этой среде (в GNOME нужно расширение AppIndicator). Бэкап всё равно идёт в фоне.'**
+  String get trayUnavailable;
+
+  /// No description provided for @keeperLingerTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранитель без входа в систему'**
+  String get keeperLingerTitle;
+
+  /// No description provided for @keeperLingerOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас хранитель работает, только пока вы вошли в систему. Чтобы он был доступен и после перезагрузки без входа, выполните в терминале команду (нужны права администратора):'**
+  String get keeperLingerOff;
+
+  /// No description provided for @copy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Копировать'**
+  String get copy;
+
+  /// No description provided for @copied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировано'**
+  String get copied;
 }
 
 class _AppLocalizationsDelegate

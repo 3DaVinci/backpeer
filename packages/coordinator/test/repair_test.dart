@@ -1,8 +1,8 @@
 // Ремонт (группа 4.3; protocol.md, раздел 4.14): учёт живых фрагментов
 // (4.3.1), очередь (4.3.2), задания: выбор исполнителя и новых узлов,
-// талоны, отчёт, сроки (4.3.4). Исполнителя изображает тест поверх
-// FakeNodes; сквозной ремонт с демонами — repair_network_test.dart. Нужен
-// FS_TEST_POSTGRES.
+// талоны, отчёт, сроки (4.3.4), проверка результата аудитом (4.3.5).
+// Исполнителя изображает тест поверх FakeNodes; сквозной ремонт с
+// демонами — repair_network_test.dart. Нужен FS_TEST_POSTGRES.
 
 import 'dart:math';
 import 'dart:typed_data';
@@ -357,6 +357,7 @@ void main() {
     Future<void> execute(
       (String, pb.RepairCommand) job, {
       Set<int> skip = const {},
+      bool lie = false,
     }) async {
       final (executor, c) = job;
       final sources = [
@@ -372,7 +373,8 @@ void main() {
         final p = c.targets[i];
         expect(rebuilt[i].header.fragmentId(h.crypto), ticketOf(p).fragmentId);
         if (skip.contains(p.index)) continue;
-        channels.add(Uint8List.fromList(p.node.nodeId), rebuilt[i]);
+        // Обманщик отчитывается, ничего не загрузив.
+        if (!lie) channels.add(Uint8List.fromList(p.node.nodeId), rebuilt[i]);
         stored.add(p.index);
       }
       await h.call(
@@ -586,6 +588,89 @@ void main() {
         e,
       );
       expect((await segment(s.id)).live, 17);
+    });
+
+    test('исполнитель, отчитавшийся без работы, обнаруживается аудитом и '
+        'отстраняется (4.3.5)', () async {
+      final s = await storeSegment(26, stored: List.generate(15, (i) => i));
+      await healthy();
+      final repair = repairService()..channels = channels;
+      await repair.runOnce();
+      final liar = channels.repairs.single.$1;
+      final audits = channels.sent;
+      await execute(channels.repairs.single, lie: true);
+      await repair.runOnce();
+      expect(channels.sent - audits, greaterThanOrEqualTo(5), reason: 'аудиты');
+      expect((await segment(s.id)).live, 15, reason: 'ничего не засчитано');
+      final [state as int, reason as String?] = (await h.db.run(
+        (x) => x.execute('SELECT state, reason FROM repair_jobs'),
+      )).single;
+      expect(state, RepairJobState.failed.index);
+      expect(reason, 'нет проверенных');
+      final targets = await h.db.run(
+        (x) => x.execute('SELECT DISTINCT state, reason FROM repair_targets'),
+      );
+      expect(targets.single, [3, 'аудит: error:NOT_FOUND']);
+      final suspended = (await h.db.run(
+        (x) => x.execute(
+          Sql.named('''
+            SELECT repair_suspended_until FROM nodes
+              WHERE node_id = @n:bytea'''),
+          parameters: {'n': hexToBytes(liar)},
+        ),
+      )).single.single;
+      expect(suspended, isA<DateTime>());
+      expect(await assignedTotal(), 15 * s.fragments.first.bytes.length);
+
+      // Повтор после паузы — другим исполнителем, и он честен.
+      h.clock.advance(const RepairPolicy().retryDelay);
+      await beatAll();
+      await healthy();
+      expect(await repair.runOnce(), 1);
+      expect(channels.repairs.last.$1, isNot(liar));
+      await execute(channels.repairs.last);
+      await repair.runOnce();
+      expect((await segment(s.id)).live, 20);
+    });
+
+    test('новый узел не на связи — проверка ждёт, потом номер провален без '
+        'вины исполнителя (4.3.5)', () async {
+      final s = await storeSegment(27, stored: List.generate(16, (i) => i));
+      await healthy();
+      final repair = repairService(
+        policy: const RepairPolicy(lazyDelay: Duration.zero),
+      )..channels = channels;
+      await repair.runOnce();
+      final (executor, c) = channels.repairs.single;
+      await execute(channels.repairs.single);
+      final offline = bytesToHex(c.targets.first.node.nodeId);
+      channels.online.remove(offline);
+      await repair.runOnce();
+      expect((await segment(s.id)).live, 19, reason: 'три проверены');
+      h.clock.advance(const RepairPolicy().verifyTimeout);
+      await beatAll();
+      await healthy();
+      await repair.settle(channels);
+      final targets = await h.db.run(
+        (x) => x.execute('''
+          SELECT state, reason FROM repair_targets WHERE state = 3'''),
+      );
+      expect(targets.single[1], startsWith('не проверен'));
+      final rows = await h.db.run(
+        (x) => x.execute(
+          Sql.named('''
+            SELECT repair_suspended_until FROM nodes
+              WHERE node_id = @n:bytea'''),
+          parameters: {'n': hexToBytes(executor)},
+        ),
+      );
+      expect(rows.single.single, isNull);
+      expect(
+        (await h.db.run((x) => x.execute('SELECT state FROM repair_jobs')))
+            .single
+            .single,
+        RepairJobState.done.index,
+      );
     });
 
     test('удаление сегмента во время ремонта освобождает место', () async {

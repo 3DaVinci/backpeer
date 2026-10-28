@@ -31,6 +31,8 @@ final class RepairPolicy {
     this.retryDelay = const Duration(minutes: 10),
     this.jobTimeout = const Duration(minutes: 30),
     this.executorMinReputation = 0.5,
+    this.verifyTimeout = const Duration(hours: 2),
+    this.suspend = const Duration(hours: 24),
     this.tick = const Duration(seconds: 30),
   });
 
@@ -68,6 +70,15 @@ final class RepairPolicy {
 
   /// Порог репутации исполнителя (`docs/spec/reputation.md`).
   final double executorMinReputation;
+
+  /// Сколько после отчёта ждать, пока новый узел выйдет на связь для
+  /// проверки фрагмента аудитом; потом номер провален без вины
+  /// исполнителя.
+  final Duration verifyTimeout;
+
+  /// На сколько отстраняется от ремонта исполнитель, чей новый фрагмент
+  /// не прошёл проверку.
+  final Duration suspend;
 
   /// Как часто планировщик ищет работу.
   final Duration tick;
@@ -122,9 +133,10 @@ final class RepairCandidate {
 /// (у PUT — `owner_account`). Задание записывается с местом на новых
 /// узлах и уходит командой канала `repair`; отказ или молчание
 /// исполнителя — задание провалено, сегмент пробует другой исполнитель.
-/// Отчёт [report] (`ReportRepair`) отмечает загруженные номера, новые
-/// фрагменты становятся живыми ([RepairJobs.acceptTarget]); нет отчёта к
-/// сроку — задание провалено.
+/// Отчёт [report] (`ReportRepair`) отмечает загруженные номера; новый
+/// фрагмент становится живым ([RepairJobs.acceptTarget]) только после
+/// аудита на своём узле ([settle], задача 4.3.5). Нет отчёта к сроку —
+/// задание провалено.
 final class RepairService {
   new(
     this._db, {
@@ -136,6 +148,7 @@ final class RepairService {
     DateTime Function()? clock,
     Random? random,
   }) : _clock = clock ?? DateTime.now,
+       _random = random ?? Random.secure(),
        _placement = Placement(
          minAvailability: placementPolicy.minAvailability,
          minReputation: placementPolicy.minReputation,
@@ -149,6 +162,7 @@ final class RepairService {
   final RepairPolicy policy;
   final PlacementPolicy placementPolicy;
   final DateTime Function() _clock;
+  final Random _random;
   final Placement _placement;
 
   /// Каналы команд; без них задания не создаются. Передаёт сервер.
@@ -701,12 +715,25 @@ final class RepairService {
     return pb.ReportRepairResponse();
   }
 
-  /// Принимает новые фрагменты, о которых отчитался исполнитель.
+  /// Проверка результата (задача 4.3.5): каждый новый фрагмент, о
+  /// котором отчитался исполнитель, проверяется аудитом на своём узле
+  /// (случайный блок, `body_root` размещения) и только тогда становится
+  /// живым. Провал — номер провален, место освобождено, исполнитель
+  /// отстранён от ремонта на [RepairPolicy.suspend]: он отчитался о
+  /// работе, которой нет. Узел без канала проверяется, когда подключится,
+  /// но не дольше [RepairPolicy.verifyTimeout] после отчёта. Возвращает
+  /// число засчитанных фрагментов.
   Future<int> settle(NodeCommands commands) async {
     final rows = await _db.run(
       (s) => s.execute('''
-        SELECT t.job_id, t.idx, t.node_id, j.account_id, j.segment_id
-          FROM repair_targets t JOIN repair_jobs j USING (job_id)
+        SELECT t.job_id, t.idx, t.node_id, t.fragment_id, f.body_root,
+               g.fragment_size, j.account_id, j.segment_id, j.executor,
+               j.reported_at
+          FROM repair_targets t
+            JOIN repair_jobs j USING (job_id)
+            JOIN segments g USING (account_id, segment_id)
+            JOIN fragments f ON f.account_id = j.account_id
+              AND f.segment_id = j.segment_id AND f.idx = t.idx
           WHERE t.state = 1
           ORDER BY j.reported_at
           LIMIT 100'''),
@@ -716,12 +743,89 @@ final class RepairService {
           job as List<int>,
           idx as int,
           node as List<int>,
+          fid as List<int>,
+          root as List<int>,
+          size as int,
           account as List<int>,
           segment as List<int>,
+          executor as List<int>,
+          reported as DateTime,
         ]
         in rows) {
+      if (_closed) break;
       final jobId = Uint8List.fromList(job);
+      final nodeId = Uint8List.fromList(node);
+      final fields = {
+        'job': bytesToHex(jobId),
+        'index': idx,
+        'node_id': bytesToHex(nodeId),
+      };
+      AuditOutcome? outcome;
+      if (commands.isConnected(nodeId)) {
+        final target = AuditTarget(
+          nodeId: nodeId,
+          fragmentId: Uint8List.fromList(fid),
+          bodyRoot: Uint8List.fromList(root),
+          fragmentSize: size,
+          recheck: false,
+        );
+        final block = _random.nextInt(merkleLeafCount(target.bodyLength));
+        try {
+          final reply = await commands.send(
+            nodeId,
+            pb.CoordinatorChannelMessage(
+              audit: pb.AuditCommand(fragmentId: fid, blockIndex: block),
+            ),
+          );
+          if (reply != null) {
+            outcome = checkAuditReply(crypto, target, block, reply);
+          }
+        } on TimeoutException {
+          outcome = const AuditOutcome.failed('timeout');
+        }
+      }
       final now = _clock();
+      if (outcome == null) {
+        // Узел не на связи: ждём, но не дольше verifyTimeout.
+        if (now.difference(reported) < policy.verifyTimeout) continue;
+        await _db.transaction((tx) async {
+          await RepairJobs.failTargets(
+            tx,
+            jobId,
+            'не проверен: узел не на связи',
+            indexes: [idx],
+          );
+          await _finish(tx, jobId, now);
+        });
+        _log.warning(LogEvent('repair_fragment_unverified', fields));
+        continue;
+      }
+      if (!outcome.passed) {
+        final reason = outcome.reason;
+        await _db.transaction((tx) async {
+          await RepairJobs.failTargets(
+            tx,
+            jobId,
+            'аудит: $reason',
+            indexes: [idx],
+          );
+          await tx.execute(
+            Sql.named('''
+              UPDATE nodes SET repair_suspended_until = @t:timestamptz
+                WHERE node_id = @n:bytea'''),
+            parameters: {'n': executor, 't': now.add(policy.suspend)},
+          );
+          await _finish(tx, jobId, now);
+        });
+        _log.warning(
+          LogEvent('repair_report_false', {
+            ...fields,
+            'executor': bytesToHex(executor),
+            'reason': reason,
+          }),
+        );
+        continue;
+      }
       await _db.transaction((tx) async {
         await RepairJobs.acceptTarget(
           tx,
@@ -729,27 +833,27 @@ final class RepairService {
           accountId: Uint8List.fromList(account),
           segmentId: Uint8List.fromList(segment),
           index: idx,
-          nodeId: Uint8List.fromList(node),
+          nodeId: nodeId,
           now: now,
         );
-        await RepairJobs.finishIfDone(
-          tx,
-          jobId,
-          now: now,
-          retryAt: now.add(policy.retryDelay),
-        );
+        await _finish(tx, jobId, now);
       });
       accepted++;
-      _log.info(
-        LogEvent('repair_fragment_restored', {
-          'job': bytesToHex(jobId),
-          'index': idx,
-          'node_id': bytesToHex(node),
-        }),
-      );
+      _log.info(LogEvent('repair_fragment_restored', fields));
     }
     return accepted;
   }
+
+  Future<RepairJobState?> _finish(
+    TxSession tx,
+    Uint8List jobId,
+    DateTime now,
+  ) => RepairJobs.finishIfDone(
+    tx,
+    jobId,
+    now: now,
+    retryAt: now.add(policy.retryDelay),
+  );
 
   /// Задания без отчёта к сроку проваливаются; сегмент ждёт повтора.
   Future<int> expire() async {

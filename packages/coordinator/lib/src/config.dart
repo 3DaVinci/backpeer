@@ -209,6 +209,8 @@ final class CoordinatorConfig {
     'repair.retry_minutes',
     'repair.job_minutes',
     'repair.executor_min_reputation',
+    'repair.verify_hours',
+    'repair.suspend_hours',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -500,6 +502,13 @@ final class _Reader {
       ),
       executorMinReputation:
           _double('repair.executor_min_reputation') ?? rp.executorMinReputation,
+      verifyTimeout: Duration(
+        hours:
+            _int('repair.verify_hours', 1, 24 * 7) ?? rp.verifyTimeout.inHours,
+      ),
+      suspend: Duration(
+        hours: _int('repair.suspend_hours', 0, 24 * 365) ?? rp.suspend.inHours,
+      ),
     );
   }
 

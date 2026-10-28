@@ -1,6 +1,6 @@
 name: coordinator
 description: Центральный координатор (метаданные, аудиты, репутация узлов). Без Flutter.
-version: 0.0.1
+version: 0.0.2
 publish_to: none
 resolution: workspace
 
@@ -11,7 +11,7 @@ environment:
 dependencies:
   # Команды serve и migrate (BSD-3-Clause), как в cli.
   args: ^2.7.0
-  core: any
+  core: ^0.0.2
   # Int64 полей Protobuf (BSD-3-Clause, уже в core).
   fixnum: ^1.1.1
   # Журнал; формат JSON Lines — свой (BSD-3-Clause).
@@ -19,7 +19,7 @@ dependencies:
   # PostgreSQL: пул, транзакции (BSD-3-Clause).
   postgres: ^3.5.20
   protobuf: ^6.1.0
-  protocol: any
+  protocol: ^0.0.2
   # HTTP-сервер (BSD-3-Clause).
   shelf: ^1.4.3
   # Файл настроек (MIT).
@@ -29,9 +29,8 @@ dev_dependencies:
   # Агент бэкапа по сети против настоящего координатора (5.1.3).
   agent: any
   # Сквозные тесты CLI и узлов-заглушек против настоящего координатора.
-  cli: any
-  daemon_kit: any
-  node: any
+  cli: ^0.0.2
+  node: ^0.0.2
   # Сквозные тесты relay (задача 3.8.2).
-  relay: any
+  relay: ^0.0.2
   test: ^1.31.1

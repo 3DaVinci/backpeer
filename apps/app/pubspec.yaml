@@ -1,6 +1,6 @@
 name: app
-description: Настольное приложение (Flutter) для клиентов и хранителей — интерфейс к фоновым процессам node и агенту бэкапа.
-version: 0.0.1
+description: Настольное приложение (Flutter) для клиентов и хранителей.
+version: 0.0.2
 publish_to: none
 resolution: workspace
 

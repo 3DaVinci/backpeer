@@ -279,6 +279,17 @@ void main() {
         pb.ListRevocationsRequest(afterSequence: Int64.ZERO, limit: 5),
         node,
       ),
+      // Задания нет: NOT_FOUND после проверки полей.
+      'ReportRepair': (
+        pb.ReportRepairRequest(
+          jobId: List.filled(16, 7),
+          storedIndexes: [1, 2],
+          failures: [pb.RepairFailure(index: 3, reason: 'нет связи')],
+          bytesDownloaded: Int64(1000),
+          bytesUploaded: Int64(200),
+        ),
+        node,
+      ),
       // Адрес запросов фаззера — для документации: координатор не
       // подключается, итог NOT_CHECKED.
       'CheckReachability': (pb.CheckReachabilityRequest(ports: [7340]), node),

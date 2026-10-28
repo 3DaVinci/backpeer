@@ -172,12 +172,6 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.ReportDamagedFragmentsRequest.fromBuffer,
     handle: s.reportDamagedFragments,
   ),
-  RpcMethod<pb.ReportRepairRequest, pb.ReportRepairResponse>(
-    name: 'ReportRepair',
-    auth: AuthRequirement.node,
-    parse: pb.ReportRepairRequest.fromBuffer,
-    handle: s.reportRepair,
-  ),
   RpcMethod<pb.CheckReachabilityRequest, pb.CheckReachabilityResponse>(
     name: 'CheckReachability',
     auth: AuthRequirement.node,
@@ -195,6 +189,12 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     auth: AuthRequirement.deviceOrNode,
     parse: pb.RendezvousRequest.fromBuffer,
     handle: s.rendezvous,
+  ),
+  RpcMethod<pb.ReportRepairRequest, pb.ReportRepairResponse>(
+    name: 'ReportRepair',
+    auth: AuthRequirement.node,
+    parse: pb.ReportRepairRequest.fromBuffer,
+    handle: s.reportRepair,
   ),
   RpcMethod<pb.GetRelayPassRequest, pb.GetRelayPassResponse>(
     name: 'GetRelayPass',

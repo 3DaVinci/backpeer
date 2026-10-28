@@ -55,7 +55,7 @@ void main() {
     final names = coordinatorMethods(const UnimplementedCoordinatorService())
         .map((m) => m.name)
         .toList();
-    expect(fromProto, hasLength(25));
+    expect(fromProto, hasLength(26));
     expect(names, fromProto);
   });
 

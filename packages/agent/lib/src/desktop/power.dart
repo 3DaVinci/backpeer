@@ -1,20 +1,23 @@
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:agent/src/desktop/gdbus.dart';
+import 'package:ffi/ffi.dart';
 
 /// Источник питания компьютера (задача 5.3.2: бэкап только от сети).
 abstract interface class PowerSource {
-  /// Для текущей ОС: Linux — UPower, иначе пока неизвестно (macOS и
-  /// Windows — 5.1.5, 5.6). `FS_AGENT_POWER=none` — не проверять.
+  /// Для текущей ОС: Linux — UPower, macOS — `pmset`, Windows —
+  /// `GetSystemPowerStatus` (5.6.3). `FS_AGENT_POWER=none` — не проверять.
   factory forPlatform([Map<String, String>? environment]) {
     final env = environment ?? Platform.environment;
-    if (env['FS_AGENT_POWER'] == 'none' || !Platform.isLinux) {
-      return const NoPowerSource();
-    }
-    return const UPowerSource();
+    if (env['FS_AGENT_POWER'] == 'none') return const NoPowerSource();
+    if (Platform.isLinux) return const UPowerSource();
+    if (Platform.isMacOS) return const PmsetPowerSource();
+    if (Platform.isWindows) return const WindowsPowerSource();
+    return const NoPowerSource();
   }
 
-  /// Для журнала: `upower`, `none`.
+  /// Для журнала: `upower`, `pmset`, `windows`, `none`.
   String get name;
 
   /// `true` — от батареи, `false` — от сети, `null` — неизвестно (агент
@@ -91,6 +94,67 @@ final class UPowerSource implements PowerSource {
       }
     }
     return battery ? true : null;
+  }
+}
+
+/// macOS: `pmset -g batt` — первая строка «Now drawing from 'AC Power'»
+/// или «'Battery Power'».
+final class PmsetPowerSource implements PowerSource {
+  const new();
+
+  @override
+  String get name => 'pmset';
+
+  @override
+  Future<bool?> onBattery() async {
+    try {
+      final result = await Process.run('pmset', ['-g', 'batt']);
+      if (result.exitCode != 0) return null;
+      return parsePmset('${result.stdout}');
+    } on ProcessException {
+      return null;
+    }
+  }
+
+  static bool? parsePmset(String out) {
+    if (out.contains("'Battery Power'")) return true;
+    if (out.contains("'AC Power'")) return false;
+    return null;
+  }
+}
+
+/// Windows: `GetSystemPowerStatus` из kernel32, поле `ACLineStatus`: 0 —
+/// от батареи, 1 — от сети, 255 — неизвестно.
+final class WindowsPowerSource implements PowerSource {
+  const new();
+
+  @override
+  String get name => 'windows';
+
+  @override
+  Future<bool?> onBattery() async {
+    try {
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      final get = kernel32
+          .lookupFunction<
+            Int32 Function(Pointer<Uint8>),
+            int Function(Pointer<Uint8>)
+          >('GetSystemPowerStatus');
+      // SYSTEM_POWER_STATUS: 4 байта флагов и два DWORD.
+      final status = calloc<Uint8>(12);
+      try {
+        if (get(status) == 0) return null;
+        return switch (status[0]) {
+          0 => true,
+          1 => false,
+          _ => null,
+        };
+      } finally {
+        calloc.free(status);
+      }
+    } on Object {
+      return null;
+    }
   }
 }
 

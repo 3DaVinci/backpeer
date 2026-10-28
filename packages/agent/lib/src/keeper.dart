@@ -25,6 +25,7 @@ final class KeeperSettings {
     this.downloadBytesPerSecond = 0,
     this.schedule = const [],
     this.enabledAt,
+    this.lingerByAgent = false,
   });
 
   factory fromJson(Map<String, Object?> json) => KeeperSettings(
@@ -41,6 +42,7 @@ final class KeeperSettings {
       final String s => DateTime.parse(s),
       _ => null,
     },
+    lingerByAgent: json['lingerByAgent'] == true,
   );
 
   /// Нет файла — роль не включалась; испорчен — тоже `null`, приложение
@@ -70,15 +72,21 @@ final class KeeperSettings {
   final List<String> schedule;
   final DateTime? enabledAt;
 
-  KeeperSettings copyWith({required bool enabled}) => KeeperSettings(
-    enabled: enabled,
-    storageDir: storageDir,
-    quotaBytes: quotaBytes,
-    uploadBytesPerSecond: uploadBytesPerSecond,
-    downloadBytesPerSecond: downloadBytesPerSecond,
-    schedule: schedule,
-    enabledAt: enabledAt,
-  );
+  /// Работу служб без входа (`loginctl enable-linger`, задача 5.6.4)
+  /// включил агент: при выключении роли он же её и выключит.
+  final bool lingerByAgent;
+
+  KeeperSettings copyWith({required bool enabled, bool? lingerByAgent}) =>
+      KeeperSettings(
+        enabled: enabled,
+        lingerByAgent: lingerByAgent ?? this.lingerByAgent,
+        storageDir: storageDir,
+        quotaBytes: quotaBytes,
+        uploadBytesPerSecond: uploadBytesPerSecond,
+        downloadBytesPerSecond: downloadBytesPerSecond,
+        schedule: schedule,
+        enabledAt: enabledAt,
+      );
 
   Map<String, Object?> toJson() => {
     'enabled': enabled,
@@ -88,6 +96,7 @@ final class KeeperSettings {
     'downloadBytesPerSecond': downloadBytesPerSecond,
     'schedule': schedule,
     'enabledAt': enabledAt?.toUtc().toIso8601String(),
+    'lingerByAgent': lingerByAgent,
   };
 
   void save(File file) {
@@ -101,27 +110,38 @@ final class KeeperSettings {
   }
 }
 
-/// Запуск демона `node` в фоне. Пока нет служб ОС (задачи 5.6.1, 5.6.4),
-/// хранителя запускает агент: при включении роли и при своём старте.
+/// Запуск демона `node` в фоне: службой ОС (`ServiceNodeLauncher`,
+/// задачи 5.6.1, 5.6.4) или, если служб нет, отдельным процессом
+/// ([ProcessNodeLauncher]).
 abstract interface class NodeLauncher {
   /// Исполняемый файл `node`; `null` — не найден.
   String? get executable;
 
+  /// Чем запускается: `process`, `systemd`, `launchd`, `task-scheduler`.
+  String get kind;
+
   /// Запускает `node run --data [dataDir]` отдельно от агента; `false` —
   /// запускать нечем.
   Future<bool> start(String dataDir);
+
+  /// Роль выключена: больше не запускать (служба удаляется). Сам демон
+  /// останавливает [KeeperApi] через его локальный API.
+  Future<void> disable();
 }
 
 /// [NodeLauncher] отдельным процессом: `FS_NODE_EXECUTABLE`, иначе `node`
-/// рядом с агентом (один бандл) или в соседнем бандле сборки
-/// (`build/bin/<ОС>-<арх>/node/bundle/bin/node`). Программу Node.js с тем
-/// же именем из `PATH` не ищет.
+/// рядом с агентом (один бандл), в соседнем бандле пакета приложения
+/// (`daemons/node/bin/node`) или сборки (`build/bin/<ОС>-<арх>/node/
+/// bundle/bin/node`). Программу Node.js с тем же именем из `PATH` не ищет.
 final class ProcessNodeLauncher implements NodeLauncher {
   new({Map<String, String>? environment})
     : executable = find(environment ?? Platform.environment);
 
   @override
   final String? executable;
+
+  @override
+  String get kind => 'process';
 
   static String? find(Map<String, String> env) {
     if (env['FS_NODE_EXECUTABLE'] case final path? when path.isNotEmpty) {
@@ -131,14 +151,19 @@ final class ProcessNodeLauncher implements NodeLauncher {
     final self = File(Platform.resolvedExecutable).parent;
     for (final candidate in [
       '${self.path}/$name',
+      '${self.path}/../../node/bin/$name',
       '${self.path}/../../../node/bundle/bin/$name',
     ]) {
       if (File(candidate).existsSync()) {
-        return File(candidate).absolute.path;
+        // Без `..`: путь попадёт в юнит службы.
+        return File(candidate).resolveSymbolicLinksSync();
       }
     }
     return null;
   }
+
+  @override
+  Future<void> disable() async {}
 
   @override
   Future<bool> start(String dataDir) async {
@@ -165,6 +190,7 @@ final class KeeperApi {
     required this.withKeys,
     required this.launcher,
     required this.dataDir,
+    this.linger,
     this.stopTimeout = const Duration(seconds: 45),
   });
 
@@ -181,6 +207,10 @@ final class KeeperApi {
 
   /// Папка данных узла: ключи, сертификат, `node.yaml`, сокет.
   final String dataDir;
+
+  /// Хранитель без входа пользователя (Linux, задача 5.6.4); `null` —
+  /// не нужно (нет служб systemd).
+  final Linger? linger;
   final Duration stopTimeout;
 
   static final _log = Logger('agent.keeper');
@@ -254,7 +284,20 @@ final class KeeperApi {
       'hasCertificate': File('$dataDir/${NodeIdentity.certificateFile}')
           .existsSync(),
       'nodeExecutable': launcher.executable,
+      'launcher': launcher.kind,
+      'linger': _lingerJson(),
       'minQuotaBytes': minQuotaBytes,
+    };
+  }
+
+  /// `null` — не применимо (не Linux, не служба systemd).
+  Map<String, Object?>? _lingerJson([String? problem]) {
+    final l = linger;
+    if (l == null) return null;
+    return {
+      'enabled': l.enabled,
+      'problem': ?problem,
+      if (!l.enabled) 'command': l.manualCommand,
     };
   }
 
@@ -314,7 +357,8 @@ final class KeeperApi {
       ca: config.coordinatorCa,
       keys: (keysParam as List<Object?>?)?.cast<String>(),
     );
-    next.save(file);
+    final lingerProblem = await _enableLinger();
+    next.copyWith(enabled: true, lingerByAgent: _lingerByAgent).save(file);
     _log.info(
       LogEvent('keeper_enabled', {
         'quotaBytes': next.quotaBytes,
@@ -332,6 +376,8 @@ final class KeeperApi {
         'restarted': restarted,
         'started': started,
         if (!started) 'reason': 'node_not_found',
+        'launcher': launcher.kind,
+        'linger': _lingerJson(lingerProblem),
         'settings': next.toJson(),
       };
     } finally {
@@ -344,10 +390,31 @@ final class KeeperApi {
   /// 4.4.1; до неё координатор восстановит их ремонтом (4.3).
   Future<Map<String, Object?>> _disable() async {
     final s = settings;
-    s?.copyWith(enabled: false).save(file);
     final stopped = await _stopNode();
+    await launcher.disable();
+    if (s != null && s.lingerByAgent && linger != null) {
+      final problem = await linger!.disable();
+      _log.info(LogEvent('linger_disabled', {'problem': ?problem}));
+    }
+    s?.copyWith(enabled: false, lingerByAgent: false).save(file);
     _log.info(LogEvent('keeper_disabled', {'stopped': stopped}));
     return {'enabled': false, 'stopped': stopped};
+  }
+
+  bool _lingerByAgent = false;
+
+  /// Хранитель без входа пользователя: `loginctl enable-linger`. Уже
+  /// включено (администратором или прежним включением роли) — не трогает;
+  /// политика polkit не разрешает — причина для приложения, роль всё
+  /// равно включается: узел работает, пока пользователь в системе.
+  Future<String?> _enableLinger() async {
+    _lingerByAgent = settings?.lingerByAgent ?? false;
+    final l = linger;
+    if (l == null || l.enabled) return null;
+    final problem = await l.enable();
+    if (problem == null) _lingerByAgent = true;
+    _log.info(LogEvent('linger_enabled', {'problem': ?problem}));
+    return problem;
   }
 
   /// Роль включена, а демон не запущен — запустить (старт агента).

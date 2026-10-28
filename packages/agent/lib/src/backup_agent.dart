@@ -8,6 +8,7 @@ import 'package:agent/src/account_api.dart';
 import 'package:agent/src/agent_keys.dart';
 import 'package:agent/src/desktop/notifier.dart';
 import 'package:agent/src/desktop/power.dart';
+import 'package:agent/src/desktop/system_events.dart';
 import 'package:agent/src/health.dart';
 import 'package:agent/src/keeper.dart';
 import 'package:agent/src/paths.dart';
@@ -64,6 +65,12 @@ final class RunningJob {
   /// Отменено переходом на батарею: продолжится от сети.
   bool onBattery = false;
 
+  /// Отменено сном компьютера: продолжится после пробуждения (5.6.3).
+  bool asleep = false;
+
+  /// Задержка сна, пока идёт бэкап: агент успевает его остановить.
+  SleepInhibit? inhibit;
+
   /// Оценка объёма бэкапа (обход в отдельном isolate) — для доли и
   /// оставшегося времени; `null` — ещё считается.
   BackupEstimate? estimate;
@@ -98,6 +105,8 @@ final class BackupAgent {
     required this.power,
     required this.notifier,
     required this.powerRetry,
+    required this.systemEvents,
+    required this.wakeDelay,
     required this._lock,
     required this._writer,
     required this._logFile,
@@ -128,6 +137,9 @@ final class BackupAgent {
     int? allowedUid,
     String? nodeDataDir,
     NodeLauncher? nodeLauncher,
+    Linger? linger,
+    SystemEvents? systemEvents,
+    Duration wakeDelay = const Duration(seconds: 15),
   }) async {
     final paths = AgentPaths(home);
     paths.dir.createSync(recursive: true);
@@ -164,6 +176,8 @@ final class BackupAgent {
         power: power ?? PowerSource.forPlatform(),
         notifier: notifier ?? Notifier.forPlatform(),
         powerRetry: powerRetry,
+        systemEvents: systemEvents ?? NoSystemEvents(),
+        wakeDelay: wakeDelay,
         lock: lock,
         writer: writer,
         logFile: rotating,
@@ -187,12 +201,14 @@ final class BackupAgent {
         withKeys: (body) => agent._withKeys((keys, _) => body(keys)),
         launcher: nodeLauncher ?? ProcessNodeLauncher(),
         dataDir: nodeDataDir ?? KeeperApi.defaultDataDir(),
+        linger: linger,
       );
       agent._control = await ControlServer.bind(
         paths.endpoint(socketPath: socketPath),
         agent._handle,
         allowedUid: allowedUid,
       );
+      agent._systemSub = agent.systemEvents.events.listen(agent._onSystem);
       if (handleSignals) {
         agent._signals.add(ProcessSignal.sigint.watch().listen(agent._signal));
         if (!Platform.isWindows) {
@@ -209,10 +225,13 @@ final class BackupAgent {
           'remembered': agent.vault.exists,
           'power': agent.power.name,
           'notifier': agent.notifier.name,
+          'systemEvents': agent.systemEvents.name,
+          'nodeLauncher': agent._keeper.launcher.kind,
         }),
       );
       agent._reschedule();
-      // Пока нет служб ОС (5.6.1), хранителя запускает агент.
+      // Роль включена — хранитель должен работать: служба ОС (5.6.1)
+      // или, без служб, процесс от агента.
       unawaited(
         agent._keeper.ensureRunning().catchError((Object e) {
           _log.warning(LogEvent('keeper_start_failed', {'reason': '$e'}));
@@ -246,6 +265,13 @@ final class BackupAgent {
 
   /// Как часто проверять питание, пока ждём сеть или идёт бэкап.
   final Duration powerRetry;
+
+  /// Сон, пробуждение и сеть (5.6.3).
+  final SystemEvents systemEvents;
+
+  /// Пауза после пробуждения или появления сети перед продолжением: сеть
+  /// поднимается не сразу.
+  final Duration wakeDelay;
   final DateTime startedAt;
   final DirLock _lock;
   final JsonLogWriter _writer;
@@ -275,6 +301,15 @@ final class BackupAgent {
   DateTime? _nextVerifyAt;
   bool _paused = false;
   bool _waitingForPower = false;
+
+  /// Компьютер засыпает: расписание стоит до пробуждения.
+  bool _asleep = false;
+
+  /// После пробуждения или появления сети повторить неудачный бэкап, не
+  /// дожидаясь `retryMinutes`: скорее всего, он упал из-за сети.
+  bool _retrySoon = false;
+  Timer? _wakeTimer;
+  StreamSubscription<SystemEvent>? _systemSub;
 
   /// Последнее опубликованное событием `health` состояние.
   String? _healthSignature;
@@ -321,6 +356,16 @@ final class BackupAgent {
       return;
     }
     _nextAt = nextScheduledBackup(settings, state);
+    if (_retrySoon &&
+        _nextAt != null &&
+        state.lastBackup?.outcome == JobOutcome.failed) {
+      _nextAt = DateTime.now();
+    }
+    if (_asleep) {
+      // Таймеры во сне не идут, а после пробуждения _onSystem пересчитает.
+      _publishStatus();
+      return;
+    }
     _nextVerifyAt = nextScheduledVerify(settings, state);
     if (_job == null) {
       final next = _earliest(_nextAt, _nextVerifyAt);
@@ -398,6 +443,40 @@ final class BackupAgent {
         ..onBattery = true
         ..cancel.cancel();
     });
+  }
+
+  // --- Сон, пробуждение, сеть (5.6.3) -------------------------------------
+
+  void _onSystem(SystemEvent event) {
+    if (_stopping != null) return;
+    switch (event) {
+      case SystemEvent.sleep:
+        _log.info(const LogEvent('sleep'));
+        _asleep = true;
+        _timer?.cancel();
+        _timer = null;
+        if (_job case final job?
+            when job.kind == JobKind.backup && !job.cancel.isCancelled) {
+          // Остановить с продолжением, пока logind ждёт (задержка сна).
+          job
+            ..asleep = true
+            ..cancel.cancel();
+          final inhibit = job.inhibit;
+          unawaited(
+            (_jobDone ?? Future<void>.value())
+                .timeout(const Duration(seconds: 4), onTimeout: () {})
+                .whenComplete(() => inhibit?.release()),
+          );
+        }
+      case SystemEvent.wake || SystemEvent.networkUp:
+        _log.info(LogEvent(event == SystemEvent.wake ? 'wake' : 'network_up'));
+        _asleep = false;
+        _retrySoon = true;
+        _wakeTimer?.cancel();
+        _wakeTimer = Timer(wakeDelay, () {
+          if (_job == null) _reschedule();
+        });
+    }
   }
 
   // --- Ключи --------------------------------------------------------------
@@ -560,11 +639,24 @@ final class BackupAgent {
     final completer = Completer<void>();
     _jobDone = completer.future;
     _watchPower(job);
+    if (kind == JobKind.backup) {
+      _retrySoon = false;
+      unawaited(
+        systemEvents.inhibitSleep('идёт бэкап').then((inhibit) {
+          if (identical(_job, job)) {
+            job.inhibit = inhibit;
+          } else {
+            unawaited(inhibit?.release());
+          }
+        }),
+      );
+    }
     _publishStatus();
     unawaited(
       _execute(job, keys, params).whenComplete(() {
         _powerWatch?.cancel();
         _powerWatch = null;
+        unawaited(job.inhibit?.release());
         if (!identical(keys, _memoryKeys)) keys.dispose();
         _job = null;
         _jobDone = null;
@@ -617,6 +709,7 @@ final class BackupAgent {
         result: {
           if (job.paused) 'reason': 'paused',
           if (job.onBattery) 'reason': 'on_battery',
+          if (job.asleep) 'reason': 'sleep',
           if (job.kind == JobKind.backup) 'continues': true,
         },
       );
@@ -1468,10 +1561,13 @@ final class BackupAgent {
   Future<void> _stop(String reason) async {
     _log.info(LogEvent('stopping', {'reason': reason}));
     _timer?.cancel();
+    _wakeTimer?.cancel();
     _powerWatch?.cancel();
     _job?.cancel.cancel();
     _publishStatus();
     await idle;
+    await _systemSub?.cancel();
+    await systemEvents.close();
     for (final s in _signals) {
       await s.cancel();
     }

@@ -25,6 +25,12 @@ final class _InProcessLauncher implements NodeLauncher {
   String? get executable => 'in-process';
 
   @override
+  String get kind => 'in-process';
+
+  @override
+  Future<void> disable() async {}
+
+  @override
   Future<bool> start(String dataDir) async {
     final yaml = File('$dataDir/node.yaml').readAsStringSync();
     daemon = await NodeDaemon.start(

@@ -123,6 +123,7 @@ final class CoordinatorLink {
   DateTime? _nextAttempt;
   String? _lastError;
   List<String> _unknownKeys = const [];
+  pb.NodeStanding? _standing;
   Completer<void>? _wake;
   Future<void>? _loop;
   Future<void>? _reporting;
@@ -138,7 +139,29 @@ final class CoordinatorLink {
     'lastError': _lastError,
     'unknownCoordinatorKeys': _unknownKeys,
     'channel': channel?.toJson(),
+    'standing': ?_standingJson(),
   };
+
+  /// Как координатор видел узел при последнем heartbeat (задача 5.5.2);
+  /// `null` — ещё не было ответа с этими сведениями.
+  Map<String, Object?>? _standingJson() {
+    final s = _standing;
+    if (s == null) return null;
+    String at(Int64 ms) => DateTime.fromMillisecondsSinceEpoch(
+      ms.toInt(),
+      isUtc: true,
+    ).toIso8601String();
+    return {
+      'availability': s.availability,
+      'reputation': s.reputation,
+      'onProbation': s.onProbation,
+      'probationEndsAt': at(s.probationEndsUnixMs),
+      'auditsPassed': s.auditsPassed.toInt(),
+      'auditsFailed': s.auditsFailed.toInt(),
+      'excluded': s.excluded,
+      'registeredAt': at(s.registeredUnixMs),
+    };
+  }
 
   /// Запускает цикл регистрации и heartbeat.
   void start() => _loop ??= _run();
@@ -335,6 +358,7 @@ final class CoordinatorLink {
     );
     final response = await _sendHeartbeat(request);
     _lastHeartbeat = _clock();
+    if (response.hasStanding()) _standing = response.standing;
     if (response.nextHeartbeatMs > 0) {
       _interval = Duration(milliseconds: response.nextHeartbeatMs);
     }

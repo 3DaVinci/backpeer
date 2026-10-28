@@ -93,8 +93,11 @@ final class NodeDaemon {
           'устройстве владельца и импортируйте (node import-cert)',
         );
       }
+      if (config.storageDir != config.dataDir) {
+        createPrivateDir(Directory(config.storageDir));
+      }
       storage = FragmentStorage.open(
-        config.dataDir,
+        config.storageDir,
         crypto: crypto,
         quotaBytes: config.quotaBytes,
         freeReserveBytes: config.freeReserveBytes,
@@ -463,6 +466,7 @@ final class NodeDaemon {
     'state': state.name,
     'startedAt': startedAt.toUtc().toIso8601String(),
     'dataDir': config.dataDir,
+    'storageDir': config.storageDir,
     'quotaBytes': config.quotaBytes,
     'usedBytes': storage.usedBytes,
     'freeBytes': storage.freeBytes,

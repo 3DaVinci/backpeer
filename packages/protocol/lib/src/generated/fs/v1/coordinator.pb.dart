@@ -2742,9 +2742,11 @@ class HeartbeatRequest extends $pb.GeneratedMessage {
 class HeartbeatResponse extends $pb.GeneratedMessage {
   factory HeartbeatResponse({
     $core.int? nextHeartbeatMs,
+    NodeStanding? standing,
   }) {
     final result = HeartbeatResponse._();
     if (nextHeartbeatMs != null) result.nextHeartbeatMs = nextHeartbeatMs;
+    if (standing != null) result.standing = standing;
     return result;
   }
 
@@ -2763,6 +2765,8 @@ class HeartbeatResponse extends $pb.GeneratedMessage {
       createEmptyInstance: HeartbeatResponse.$_createMessage)
     ..aI(1, _omitFieldNames ? '' : 'nextHeartbeatMs',
         fieldType: $pb.PbFieldType.OU3)
+    ..aOM<NodeStanding>(2, _omitFieldNames ? '' : 'standing',
+        subBuilder: NodeStanding.$_createMessage)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
@@ -2795,6 +2799,166 @@ class HeartbeatResponse extends $pb.GeneratedMessage {
   $core.bool hasNextHeartbeatMs() => $_has(0);
   @$pb.TagNumber(1)
   void clearNextHeartbeatMs() => $_clearField(1);
+
+  /// Как координатор видит узел сейчас — для статистики хранителя в
+  /// приложении (задача 5.5.2). Нет поля — старый координатор.
+  @$pb.TagNumber(2)
+  NodeStanding get standing => $_getN(1);
+  @$pb.TagNumber(2)
+  set standing(NodeStanding value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasStanding() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearStanding() => $_clearField(2);
+  @$pb.TagNumber(2)
+  NodeStanding ensureStanding() => $_ensure(1);
+}
+
+/// Положение узла у координатора (protocol.md, раздел 4.9).
+class NodeStanding extends $pb.GeneratedMessage {
+  factory NodeStanding({
+    $core.double? availability,
+    $core.double? reputation,
+    $core.bool? onProbation,
+    $fixnum.Int64? probationEndsUnixMs,
+    $fixnum.Int64? auditsPassed,
+    $fixnum.Int64? auditsFailed,
+    $core.bool? excluded,
+    $fixnum.Int64? registeredUnixMs,
+  }) {
+    final result = NodeStanding._();
+    if (availability != null) result.availability = availability;
+    if (reputation != null) result.reputation = reputation;
+    if (onProbation != null) result.onProbation = onProbation;
+    if (probationEndsUnixMs != null)
+      result.probationEndsUnixMs = probationEndsUnixMs;
+    if (auditsPassed != null) result.auditsPassed = auditsPassed;
+    if (auditsFailed != null) result.auditsFailed = auditsFailed;
+    if (excluded != null) result.excluded = excluded;
+    if (registeredUnixMs != null) result.registeredUnixMs = registeredUnixMs;
+    return result;
+  }
+
+  NodeStanding._();
+
+  factory NodeStanding.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodeStanding()..mergeFromBuffer(data, registry);
+  factory NodeStanding.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodeStanding()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodeStanding',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodeStanding.$_createMessage)
+    ..aD(1, _omitFieldNames ? '' : 'availability')
+    ..aD(2, _omitFieldNames ? '' : 'reputation')
+    ..aOB(3, _omitFieldNames ? '' : 'onProbation')
+    ..aInt64(4, _omitFieldNames ? '' : 'probationEndsUnixMs')
+    ..a<$fixnum.Int64>(
+        5, _omitFieldNames ? '' : 'auditsPassed', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        6, _omitFieldNames ? '' : 'auditsFailed', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aOB(7, _omitFieldNames ? '' : 'excluded')
+    ..aInt64(8, _omitFieldNames ? '' : 'registeredUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodeStanding clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodeStanding copyWith(void Function(NodeStanding) updates) =>
+      super.copyWith((message) => updates(message as NodeStanding))
+          as NodeStanding;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use NodeStanding() / NodeStanding.new instead')
+  static NodeStanding create() => NodeStanding._();
+  static $pb.GeneratedMessage $_createMessage() => NodeStanding._();
+  @$core.override
+  NodeStanding createEmptyInstance() => NodeStanding._();
+  @$core.pragma('dart2js:noInline')
+  static NodeStanding getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<NodeStanding>(
+          NodeStanding.$_createMessage);
+  static NodeStanding? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.double get availability => $_getN(0);
+  @$pb.TagNumber(1)
+  set availability($core.double value) => $_setDouble(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAvailability() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAvailability() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.double get reputation => $_getN(1);
+  @$pb.TagNumber(2)
+  set reputation($core.double value) => $_setDouble(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasReputation() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearReputation() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.bool get onProbation => $_getBF(2);
+  @$pb.TagNumber(3)
+  set onProbation($core.bool value) => $_setBool(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasOnProbation() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearOnProbation() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get probationEndsUnixMs => $_getI64(3);
+  @$pb.TagNumber(4)
+  set probationEndsUnixMs($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasProbationEndsUnixMs() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearProbationEndsUnixMs() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get auditsPassed => $_getI64(4);
+  @$pb.TagNumber(5)
+  set auditsPassed($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasAuditsPassed() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearAuditsPassed() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get auditsFailed => $_getI64(5);
+  @$pb.TagNumber(6)
+  set auditsFailed($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasAuditsFailed() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearAuditsFailed() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.bool get excluded => $_getBF(6);
+  @$pb.TagNumber(7)
+  set excluded($core.bool value) => $_setBool(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasExcluded() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearExcluded() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get registeredUnixMs => $_getI64(7);
+  @$pb.TagNumber(8)
+  set registeredUnixMs($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasRegisteredUnixMs() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearRegisteredUnixMs() => $_clearField(8);
 }
 
 /// Узел нашёл у себя фрагменты, не прошедшие проверку целостности или

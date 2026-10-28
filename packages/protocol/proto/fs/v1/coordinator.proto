@@ -215,6 +215,21 @@ message HeartbeatRequest {
 }
 message HeartbeatResponse {
   uint32 next_heartbeat_ms = 1;
+  // Как координатор видит узел сейчас — для статистики хранителя в
+  // приложении (задача 5.5.2). Нет поля — старый координатор.
+  NodeStanding standing = 2;
+}
+
+// Положение узла у координатора (protocol.md, раздел 4.9).
+message NodeStanding {
+  double availability = 1;            // доля времени в сети за 30 дней, 0..1
+  double reputation = 2;              // docs/spec/reputation.md, 0..1
+  bool on_probation = 3;              // испытательный срок (задача 4.2.2)
+  int64 probation_ends_unix_ms = 4;   // конец испытательного срока
+  uint64 audits_passed = 5;
+  uint64 audits_failed = 6;
+  bool excluded = 7;                  // исключён: аудиты или оператор
+  int64 registered_unix_ms = 8;
 }
 
 // Узел нашёл у себя фрагменты, не прошедшие проверку целостности или

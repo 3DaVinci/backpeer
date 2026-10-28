@@ -96,6 +96,7 @@ final class LogConfig {
 final class NodeConfig {
   const new({
     required this.dataDir,
+    String? storageDir,
     this.quotaBytes = 100000000000,
     this.freeReserveBytes = 2000000000,
     this.checkInterval = const Duration(days: 30),
@@ -116,7 +117,7 @@ final class NodeConfig {
     this.controlSocket,
     this.shutdownGrace = const Duration(seconds: 30),
     this.log = const LogConfig(),
-  });
+  }) : storageDir = storageDir ?? dataDir;
 
   /// Из YAML-текста [yaml] (может быть пустым) и окружения [environment];
   /// [dataDir] — папка данных, если её нет ни в файле, ни в окружении.
@@ -165,6 +166,7 @@ final class NodeConfig {
 
   static const _keys = {
     'data.dir',
+    'storage.dir',
     'storage.quota_bytes',
     'storage.free_reserve_bytes',
     'storage.check_interval_days',
@@ -198,6 +200,10 @@ final class NodeConfig {
 
   /// Папка данных: ключи, сертификат, фрагменты, журнал, сокет.
   final String dataDir;
+
+  /// Папка фрагментов и их индекса — например, на другом диске
+  /// (задача 5.5.1); по умолчанию — [dataDir].
+  final String storageDir;
 
   /// Сколько места узел отдаёт под чужие фрагменты; сообщается
   /// координатору как ёмкость.
@@ -300,8 +306,13 @@ final class _Reader {
     }
     final dir = _string('data.dir') ?? _dataDir;
     if (dir.isEmpty) throw const NodeConfigException('data.dir не задан');
+    final storageDir = _string('storage.dir');
+    if (storageDir != null && !Directory(storageDir).isAbsolute) {
+      throw const NodeConfigException('storage.dir: нужен абсолютный путь');
+    }
     return NodeConfig(
       dataDir: dir,
+      storageDir: storageDir,
       quotaBytes: _int('storage.quota_bytes', 1 << 20, 1 << 60) ?? d.quotaBytes,
       freeReserveBytes:
           _int('storage.free_reserve_bytes', 0, 1 << 50) ?? d.freeReserveBytes,

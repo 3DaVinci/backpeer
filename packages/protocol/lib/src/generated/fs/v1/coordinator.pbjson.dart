@@ -771,13 +771,58 @@ const HeartbeatResponse$json = {
       '5': 13,
       '10': 'nextHeartbeatMs'
     },
+    {
+      '1': 'standing',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.NodeStanding',
+      '10': 'standing'
+    },
   ],
 };
 
 /// Descriptor for `HeartbeatResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List heartbeatResponseDescriptor = $convert.base64Decode(
     'ChFIZWFydGJlYXRSZXNwb25zZRIqChFuZXh0X2hlYXJ0YmVhdF9tcxgBIAEoDVIPbmV4dEhlYX'
-    'J0YmVhdE1z');
+    'J0YmVhdE1zEi8KCHN0YW5kaW5nGAIgASgLMhMuZnMudjEuTm9kZVN0YW5kaW5nUghzdGFuZGlu'
+    'Zw==');
+
+@$core.Deprecated('Use nodeStandingDescriptor instead')
+const NodeStanding$json = {
+  '1': 'NodeStanding',
+  '2': [
+    {'1': 'availability', '3': 1, '4': 1, '5': 1, '10': 'availability'},
+    {'1': 'reputation', '3': 2, '4': 1, '5': 1, '10': 'reputation'},
+    {'1': 'on_probation', '3': 3, '4': 1, '5': 8, '10': 'onProbation'},
+    {
+      '1': 'probation_ends_unix_ms',
+      '3': 4,
+      '4': 1,
+      '5': 3,
+      '10': 'probationEndsUnixMs'
+    },
+    {'1': 'audits_passed', '3': 5, '4': 1, '5': 4, '10': 'auditsPassed'},
+    {'1': 'audits_failed', '3': 6, '4': 1, '5': 4, '10': 'auditsFailed'},
+    {'1': 'excluded', '3': 7, '4': 1, '5': 8, '10': 'excluded'},
+    {
+      '1': 'registered_unix_ms',
+      '3': 8,
+      '4': 1,
+      '5': 3,
+      '10': 'registeredUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `NodeStanding`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodeStandingDescriptor = $convert.base64Decode(
+    'CgxOb2RlU3RhbmRpbmcSIgoMYXZhaWxhYmlsaXR5GAEgASgBUgxhdmFpbGFiaWxpdHkSHgoKcm'
+    'VwdXRhdGlvbhgCIAEoAVIKcmVwdXRhdGlvbhIhCgxvbl9wcm9iYXRpb24YAyABKAhSC29uUHJv'
+    'YmF0aW9uEjMKFnByb2JhdGlvbl9lbmRzX3VuaXhfbXMYBCABKANSE3Byb2JhdGlvbkVuZHNVbm'
+    'l4TXMSIwoNYXVkaXRzX3Bhc3NlZBgFIAEoBFIMYXVkaXRzUGFzc2VkEiMKDWF1ZGl0c19mYWls'
+    'ZWQYBiABKARSDGF1ZGl0c0ZhaWxlZBIaCghleGNsdWRlZBgHIAEoCFIIZXhjbHVkZWQSLAoScm'
+    'VnaXN0ZXJlZF91bml4X21zGAggASgDUhByZWdpc3RlcmVkVW5peE1z');
 
 @$core.Deprecated('Use reportDamagedFragmentsRequestDescriptor instead')
 const ReportDamagedFragmentsRequest$json = {

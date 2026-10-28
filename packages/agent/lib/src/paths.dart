@@ -9,6 +9,8 @@ import 'package:daemon_kit/daemon_kit.dart';
 /// - `agent/settings.json` — что и когда бэкапить (`AgentSettings`);
 /// - `agent/state.json` — итоги заданий и незаконченный бэкап
 ///   (`AgentState`);
+/// - `agent/keeper.json` — включена ли роль хранителя и как
+///   (`KeeperSettings`, задача 5.5.1);
 /// - `agent/keys.agent` — ключи для работы без пароля, под ключом из
 ///   хранилища ОС (`AgentKeyVault`, ADR-010);
 /// - `agent/agent.lock` — один агент на каталог;
@@ -23,6 +25,7 @@ final class AgentPaths {
   File get settings => File('${dir.path}/settings.json');
   File get state => File('${dir.path}/state.json');
   File get keys => File('${dir.path}/keys.agent');
+  File get keeper => File('${dir.path}/keeper.json');
   File get lock => File('${dir.path}/agent.lock');
   String get log => '${dir.path}/logs/agent.log';
 

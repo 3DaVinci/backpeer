@@ -19,6 +19,9 @@ dependencies:
   ffi: ^2.1.0
   # Журнал JSON Lines (BSD-3-Clause, как у node).
   logging: ^1.3.0
+  # Ключи и сертификат узла, настройки и свободное место — при включении
+  # роли хранителя из приложения (5.5.1). Свой пакет.
+  node: any
   protocol: any
 
 dev_dependencies:

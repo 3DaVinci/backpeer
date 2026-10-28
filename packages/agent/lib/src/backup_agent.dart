@@ -9,6 +9,7 @@ import 'package:agent/src/agent_keys.dart';
 import 'package:agent/src/desktop/notifier.dart';
 import 'package:agent/src/desktop/power.dart';
 import 'package:agent/src/health.dart';
+import 'package:agent/src/keeper.dart';
 import 'package:agent/src/paths.dart';
 import 'package:agent/src/schedule.dart';
 import 'package:agent/src/secrets/secret_store.dart';
@@ -125,6 +126,8 @@ final class BackupAgent {
     Notifier? notifier,
     Duration powerRetry = const Duration(minutes: 1),
     int? allowedUid,
+    String? nodeDataDir,
+    NodeLauncher? nodeLauncher,
   }) async {
     final paths = AgentPaths(home);
     paths.dir.createSync(recursive: true);
@@ -177,6 +180,14 @@ final class BackupAgent {
         adopt: agent._adoptKeys,
         withKeys: agent._withKeys,
       );
+      agent._keeper = KeeperApi(
+        home: home,
+        file: paths.keeper,
+        crypto: crypto,
+        withKeys: (body) => agent._withKeys((keys, _) => body(keys)),
+        launcher: nodeLauncher ?? ProcessNodeLauncher(),
+        dataDir: nodeDataDir ?? KeeperApi.defaultDataDir(),
+      );
       agent._control = await ControlServer.bind(
         paths.endpoint(socketPath: socketPath),
         agent._handle,
@@ -201,6 +212,12 @@ final class BackupAgent {
         }),
       );
       agent._reschedule();
+      // Пока нет служб ОС (5.6.1), хранителя запускает агент.
+      unawaited(
+        agent._keeper.ensureRunning().catchError((Object e) {
+          _log.warning(LogEvent('keeper_start_failed', {'reason': '$e'}));
+        }),
+      );
       return agent;
     } on Object catch (e, st) {
       _log.severe(LogEvent('start_failed', {'reason': '$e'}), null, st);
@@ -239,6 +256,7 @@ final class BackupAgent {
 
   late final ControlServer _control;
   late final AccountApi _account;
+  late final KeeperApi _keeper;
   final _signals = <StreamSubscription<ProcessSignal>>[];
   final _done = Completer<void>();
   Future<void>? _stopping;
@@ -853,7 +871,8 @@ final class BackupAgent {
     Map<String, Object?> params,
   ) async {
     final id = await _snapshotId(session, params['snapshot']);
-    final target = params['target']! as String;
+    final originalLocation = params['originalLocation'] == true;
+    final target = params['target'] as String?;
     final paths = (params['paths'] as List<Object?>? ?? const [])
         .cast<String>();
     final waitMinutes = params['waitMinutes'] as int? ?? 0;
@@ -865,9 +884,11 @@ final class BackupAgent {
       objects: session.objects,
       locator: session.locator,
       snapshotId: id,
-      target: Directory(target),
+      target: originalLocation ? null : Directory(target!),
+      originalLocation: originalLocation,
       paths: paths,
-      overwrite: params['overwrite'] == true,
+      existing: _existingFiles(params),
+      renameSuffix: params['renameSuffix'] as String? ?? 'restored',
       cancel: job.cancel,
       wait: RestoreWait(
         maxWait: Duration(minutes: waitMinutes),
@@ -879,6 +900,11 @@ final class BackupAgent {
         'bytes': p.bytes,
         'totalBytes': p.totalBytes,
         'waitingFiles': p.waitingFiles,
+        'waitingPaths': p.waitingPaths,
+        'waitingReason': p.waitingReason,
+        'nextRetryMs': p.nextRetry?.inMilliseconds,
+        'waitLeftMs': p.waitLeft?.inMilliseconds,
+        'segmentsFetched': p.segmentsFetched,
         'etaMs': p.eta?.inMilliseconds,
         'elapsedMs': p.elapsed.inMilliseconds,
       }),
@@ -888,16 +914,71 @@ final class BackupAgent {
       <String, Object?>{
         'snapshotId': bytesToHex(id),
         'target': target,
+        'originalLocation': originalLocation,
         'files': result.files,
         'directories': result.directories,
         'bytes': result.bytes,
         'skippedExisting': result.skippedExisting.length,
+        'skippedPaths': result.skippedExisting.take(100).toList(),
+        'renamed': [
+          for (final (from, to) in result.renamed.take(100))
+            {'path': from, 'restoredAs': to},
+        ],
+        'renamedCount': result.renamed.length,
         'errors': [
           for (final (path, reason) in result.errors.take(100))
             {'path': path, 'reason': reason},
         ],
       },
     );
+  }
+
+  /// Что делать с существующими файлами: `existing` (`skip`,
+  /// `overwrite`, `keepBoth`), иначе прежний флаг `overwrite`.
+  static ExistingFiles _existingFiles(Map<String, Object?> params) =>
+      switch (params['existing']) {
+        'skip' => ExistingFiles.skip,
+        'overwrite' => ExistingFiles.overwrite,
+        'keepBoth' => ExistingFiles.keepBoth,
+        _ when params['overwrite'] == true => ExistingFiles.overwrite,
+        _ => ExistingFiles.skip,
+      };
+
+  /// Проверка параметров `restore` до запуска задания.
+  static void _checkRestore(Map<String, Object?> params) {
+    final target = params['target'];
+    if (params['originalLocation'] != true &&
+        (target is! String || !Directory(target).isAbsolute)) {
+      throw const ControlException(
+        'bad_request',
+        'target — абсолютный путь папки назначения, '
+            'или originalLocation: true',
+      );
+    }
+    final existing = params['existing'];
+    if (existing != null &&
+        !const {'skip', 'overwrite', 'keepBoth'}.contains(existing)) {
+      throw const ControlException(
+        'bad_request',
+        'existing — skip, overwrite или keepBoth',
+      );
+    }
+    final suffix = params['renameSuffix'];
+    if (suffix != null &&
+        (suffix is! String ||
+            suffix.isEmpty ||
+            suffix.length > 40 ||
+            suffix.contains(RegExp(r'[/\\\x00-\x1f]')))) {
+      throw const ControlException(
+        'bad_request',
+        'renameSuffix — до 40 символов без разделителей пути',
+      );
+    }
+    final paths = params['paths'];
+    if (paths != null &&
+        (paths is! List<Object?> || paths.any((p) => p is! String))) {
+      throw const ControlException('bad_request', 'paths — список строк');
+    }
   }
 
   /// Снимок по идентификатору или его началу (не короче 4 hex-символов).
@@ -975,15 +1056,19 @@ final class BackupAgent {
     };
   });
 
+  /// Прочитанные каталоги снимков для постраничного `tree`: каталог на
+  /// миллион файлов не перечитывается на каждой странице. Снимки не
+  /// меняются, поэтому кеш не устаревает; `lock` его очищает.
+  final _dirCache = <String, List<pb.Node>>{};
+  static const _dirCacheSize = 16;
+
   /// Каталог снимка: `path` — имена от корня, `offset` и `limit` — для
   /// ленивой загрузки больших каталогов (5.4.1).
   Future<Map<String, Object?>> _tree(Map<String, Object?> params) {
-    final path = params['path'] ?? const <Object?>[];
+    final path = _namePath(params['path'] ?? const <Object?>[]);
     final offset = params['offset'] ?? 0;
     final limit = params['limit'] ?? 1000;
-    if (path is! List<Object?> ||
-        path.any((p) => p is! String) ||
-        offset is! int ||
+    if (offset is! int ||
         limit is! int ||
         offset < 0 ||
         limit < 1 ||
@@ -995,36 +1080,117 @@ final class BackupAgent {
     }
     return _query((session) async {
       final id = await _snapshotId(session, params['snapshot']);
-      final nodes = await SnapshotBrowser(
-        crypto: crypto,
-        keys: session.keys,
-        index: session.index,
-        fragments: session.fragments,
-        objects: session.objects,
-        locator: session.locator,
-      ).list(id, path.cast<String>());
+      final key = '${bytesToHex(id)}\u0000${path.join('\u0000')}';
+      var nodes = _dirCache.remove(key);
+      if (nodes == null) {
+        nodes = await _browser(session).list(id, path);
+        if (_dirCache.length >= _dirCacheSize) {
+          _dirCache.remove(_dirCache.keys.first);
+        }
+      }
+      _dirCache[key] = nodes;
       return {
         'total': nodes.length,
         'entries': [
-          for (final n in nodes.skip(offset).take(limit))
-            {
-              'name': utf8.decode(n.name, allowMalformed: true),
-              'type': switch (n.type) {
-                pb.NodeType.NODE_TYPE_FILE => 'file',
-                pb.NodeType.NODE_TYPE_DIRECTORY => 'directory',
-                pb.NodeType.NODE_TYPE_SYMLINK => 'symlink',
-                _ => 'unknown',
-              },
-              'size': n.size.toInt(),
-              'mtime': DateTime.fromMicrosecondsSinceEpoch(
-                n.mtimeNs.toInt() ~/ 1000,
-                isUtc: true,
-              ).toIso8601String(),
-            },
+          for (final n in nodes.skip(offset).take(limit)) _nodeJson(n),
         ],
       };
     });
   }
+
+  /// Поиск по имени в снимке (5.4.1): `query` — часть имени или шаблон
+  /// с `*` и `?`, `under` — каталог, `limit` — до 1000.
+  Future<Map<String, Object?>> _search(Map<String, Object?> params) {
+    final query = params['query'];
+    final under = _namePath(params['under'] ?? const <Object?>[]);
+    final limit = params['limit'] ?? 200;
+    if (query is! String ||
+        query.trim().isEmpty ||
+        query.length > 200 ||
+        limit is! int ||
+        limit < 1 ||
+        limit > 1000) {
+      throw const ControlException(
+        'bad_request',
+        'query — от 1 до 200 символов, 1 ≤ limit ≤ 1000',
+      );
+    }
+    return _query((session) async {
+      final id = await _snapshotId(session, params['snapshot']);
+      final watch = Stopwatch()..start();
+      final found = await _browser(session)
+          .search(id, query.trim(), under: under, limit: limit);
+      return {
+        'matches': [
+          for (final m in found.matches) {'path': m.path, ..._nodeJson(m.node)},
+        ],
+        'truncated': found.truncated,
+        'scanned': found.scanned,
+        'elapsedMs': watch.elapsedMilliseconds,
+      };
+    });
+  }
+
+  /// Версии пути во всех снимках (5.4.1), от старых к новым.
+  Future<Map<String, Object?>> _versions(Map<String, Object?> params) {
+    final path = _namePath(params['path']);
+    if (path.isEmpty) {
+      throw const ControlException('bad_request', 'path — не пустой');
+    }
+    return _query((session) async {
+      final listing = await _catalog(session).list();
+      final versions = await _browser(session)
+          .versions(listing.snapshots, path);
+      return {
+        'versions': [
+          for (final v in versions)
+            {
+              'snapshot': bytesToHex(v.snapshot.snapshotId),
+              'createdAt': DateTime.fromMillisecondsSinceEpoch(
+                v.snapshot.createdAtUnixMs.toInt(),
+                isUtc: true,
+              ).toIso8601String(),
+              'hostname': v.snapshot.hostname,
+              'present': v.node != null,
+              'changed': v.changed,
+              if (v.node case final n?) ..._nodeJson(n),
+            },
+        ],
+        'warnings': [for (final w in listing.warnings) w.name],
+      };
+    });
+  }
+
+  SnapshotBrowser _browser(Session session) => SnapshotBrowser(
+    crypto: crypto,
+    keys: session.keys,
+    index: session.index,
+    fragments: session.fragments,
+    objects: session.objects,
+    locator: session.locator,
+  );
+
+  static List<String> _namePath(Object? path) {
+    if (path is! List<Object?> || path.any((p) => p is! String)) {
+      throw const ControlException('bad_request', 'path — список имён');
+    }
+    return path.cast<String>();
+  }
+
+  static Map<String, Object?> _nodeJson(pb.Node n) => {
+    'name': utf8.decode(n.name, allowMalformed: true),
+    'type': switch (n.type) {
+      pb.NodeType.NODE_TYPE_FILE => 'file',
+      pb.NodeType.NODE_TYPE_DIRECTORY => 'directory',
+      pb.NodeType.NODE_TYPE_SYMLINK => 'symlink',
+      _ => 'unknown',
+    },
+    'size': n.size.toInt(),
+    'mtime': DateTime.fromMicrosecondsSinceEpoch(
+      n.mtimeNs.toInt() ~/ 1000,
+      isUtc: true,
+    ).toIso8601String(),
+  };
 
   // --- Локальный API ------------------------------------------------------
 
@@ -1172,13 +1338,7 @@ final class BackupAgent {
       case 'verify':
         return {'started': await _run(JobKind.verify, 'manual', params)};
       case 'restore':
-        if (params['target'] is! String ||
-            !Directory(params['target']! as String).isAbsolute) {
-          throw const ControlException(
-            'bad_request',
-            'target — абсолютный путь папки назначения',
-          );
-        }
+        _checkRestore(params);
         return {'started': await _run(JobKind.restore, 'manual', params)};
       case 'cancel':
         _job?.cancel.cancel();
@@ -1204,15 +1364,21 @@ final class BackupAgent {
         return await _snapshots();
       case 'tree':
         return await _tree(params);
+      case 'search':
+        return await _search(params);
+      case 'versions':
+        return await _versions(params);
       case 'health':
         return health.toJson();
       case 'unlock':
         return await _unlock(params);
       case 'lock':
+        _dirCache.clear();
         _memoryKeys?.dispose();
         _memoryKeys = null;
         return {'keys': _keysJson()};
       case 'forget_keys':
+        _dirCache.clear();
         _memoryKeys?.dispose();
         _memoryKeys = null;
         try {
@@ -1229,6 +1395,9 @@ final class BackupAgent {
       default:
         if (method.startsWith('account.')) {
           return await _account.handle(method, params);
+        }
+        if (method.startsWith('keeper.')) {
+          return await _keeper.handle(method, params);
         }
         throw ControlException('unknown_method', 'неизвестный метод $method');
     }

@@ -7,6 +7,8 @@
 ///   хранилище ОС (ADR-010);
 /// - `AgentSettings`, `AgentState` — настройки и состояние в каталоге
 ///   программы (`AgentPaths`);
+/// - `KeeperApi`, `NodeLauncher` — включение роли хранителя из приложения
+///   (задача 5.5.1);
 /// - `assessHealth` — здоровье бэкапа; `PowerSource`, `Notifier` — питание
 ///   и уведомления ОС.
 library;
@@ -17,6 +19,7 @@ export 'src/backup_agent.dart';
 export 'src/desktop/notifier.dart';
 export 'src/desktop/power.dart';
 export 'src/health.dart';
+export 'src/keeper.dart';
 export 'src/paths.dart';
 export 'src/schedule.dart';
 export 'src/secrets/libsecret_store.dart';

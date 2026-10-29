@@ -142,7 +142,9 @@ void main() {
     expect(result['retention'], {'kept': 1, 'forgotten': 0});
 
     // Все данные новые — новые сегменты; третий бэкап удаляет первый снимок
-    // и его сегменты.
+    // и его сегменты. locked.txt удаляется: если он прочитался (root в CI),
+    // он лежит в одном сегменте с прежними a.txt и b.txt и держал бы его.
+    locked.deleteSync();
     final rnd = Random(3);
     final nodes = Directory('${home.dir.path}/nodes');
     int nodeBytes() => nodes

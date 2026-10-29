@@ -38,6 +38,43 @@ Future<Map<String, Object?>?> showKeeperSetup(
   builder: (context) => _KeeperSetup(agent: agent, info: info),
 );
 
+/// `keeper.enable`: ключи и сертификат узла, `node.yaml`, запуск. Итог —
+/// в полосе снизу; `false` — агент отказал, роль не включена.
+Future<bool> enableKeeper(
+  BuildContext context,
+  BackgroundProcess agent,
+  Map<String, Object?> params,
+) async {
+  final l10n = AppLocalizations.of(context);
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    final result = await agent.call(
+      'keeper.enable',
+      params,
+      const Duration(minutes: 3),
+    );
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          result['started'] == true ? l10n.keeperEnabled : l10n.keeperNoBinary,
+        ),
+      ),
+    );
+    return true;
+  } on ControlException catch (e) {
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          e.code == 'no_coordinator'
+              ? l10n.keeperNoCoordinator
+              : l10n.failed(e.message),
+        ),
+      ),
+    );
+    return false;
+  }
+}
+
 class _KeeperSetup extends StatefulWidget {
   const new({required this.agent, required this.info});
 

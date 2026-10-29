@@ -527,13 +527,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createdBody =>
-      'The keys are saved in the system keychain, so scheduled backups run without the password. Next, choose the folders to back up.';
+      'The keys are saved in the system keychain, so scheduled backups run without the password.';
 
   @override
   String get toBackup => 'Go to backup';
 
   @override
   String get next => 'Next';
+
+  @override
+  String get later => 'Later';
+
+  @override
+  String get onboardKeeperTitle => 'Become a keeper';
+
+  @override
+  String get onboardKeeperBody =>
+      'Backpeer stores backups on participants’ computers. Share some free space on this computer: choose a folder and how much to share — the keeper does the rest in the background.';
+
+  @override
+  String get onboardKeeperLater =>
+      'You can also do it later on the Keeper screen. Folders to back up are chosen next, on the Backup screen.';
 
   @override
   String get back => 'Back';

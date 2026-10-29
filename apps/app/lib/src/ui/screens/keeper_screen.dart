@@ -102,36 +102,10 @@ class _KeeperScreenState extends State<KeeperScreen> {
     await _enable(params);
   }
 
-  /// `keeper.enable`: ключи и сертификат узла, `node.yaml`, запуск.
   Future<void> _enable(Map<String, Object?> params) async {
-    final l10n = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
-      final result = await _agent!.call(
-        'keeper.enable',
-        params,
-        const Duration(minutes: 3),
-      );
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            result['started'] == true
-                ? l10n.keeperEnabled
-                : l10n.keeperNoBinary,
-          ),
-        ),
-      );
-    } on ControlException catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e.code == 'no_coordinator'
-                ? l10n.keeperNoCoordinator
-                : l10n.failed(e.message),
-          ),
-        ),
-      );
+      await enableKeeper(context, _agent!, params);
     } finally {
       if (mounted) setState(() => _busy = false);
       await _loadInfo();

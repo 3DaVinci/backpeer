@@ -2,6 +2,7 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/ui/account/create_account.dart';
 import 'package:app/src/ui/account/sign_in.dart';
+import 'package:app/src/ui/keeper/keeper_onboarding.dart';
 import 'package:app/src/ui/widgets/process_banner.dart';
 import 'package:flutter/material.dart';
 
@@ -10,9 +11,9 @@ enum WelcomeChoice { create, login, recover }
 
 /// Первый запуск — учётной записи на устройстве нет (задачи 5.2.1, 5.2.2):
 /// создать новую, войти по паролю или восстановить по фразе. Остаётся на
-/// экране, пока пользователь не закончит (после входа — предложение
-/// восстановить данные), даже когда агент уже сообщил о новой учётной
-/// записи.
+/// экране, пока пользователь не закончит (после создания с сервером —
+/// предложение стать хранителем, после входа — восстановить данные), даже
+/// когда агент уже сообщил о новой учётной записи.
 class WelcomeFlow extends StatefulWidget {
   const new({required this.onDone, super.key});
 
@@ -24,6 +25,9 @@ class WelcomeFlow extends StatefulWidget {
 
 class _WelcomeFlowState extends State<WelcomeFlow> {
   WelcomeChoice? _choice;
+
+  /// Учётная запись создана — следующий шаг: роль хранителя.
+  var _keeper = false;
   late final _server = TextEditingController(
     text: AppScope.of(context).coordinator,
   );
@@ -55,6 +59,7 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 720),
                   child: switch (_choice) {
+                    _ when _keeper => KeeperOnboarding(onDone: widget.onDone),
                     null => _Choose(
                       server: _server,
                       onChoice: (c) => setState(() => _choice = c),
@@ -62,7 +67,10 @@ class _WelcomeFlowState extends State<WelcomeFlow> {
                     WelcomeChoice.create => CreateAccountFlow(
                       server: _serverParams,
                       onBack: back!,
-                      onDone: widget.onDone,
+                      // Без сервера хранителю негде регистрироваться.
+                      onDone: _serverParams.isEmpty
+                          ? widget.onDone
+                          : () => setState(() => _keeper = true),
                     ),
                     WelcomeChoice.login => SignInFlow(
                       server: _serverParams,

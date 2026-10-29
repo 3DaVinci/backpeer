@@ -1145,7 +1145,9 @@ void peerServiceTests({bool udp = false, bool relay = false}) {
     });
   });
 
-  group('3.4.3: пределы', () {
+  // Тег serial: замеры скорости с допуском 10% идут отдельным прогоном
+  // с -j 1, чтобы на них не влияли параллельные тестовые файлы.
+  group('3.4.3: пределы', tags: 'serial', () {
     test('скорость отдачи — в пределах 10% на длинной передаче', () async {
       const rate = 4000000;
       service = makeService(upload: rate);

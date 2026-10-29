@@ -2,6 +2,8 @@
 //
 // Перед запуском каждый пакет пишет `coverage/lcov.info`:
 //   dart test --coverage-path=coverage/lcov.info   (Dart-пакеты)
+//   dart test -t serial --coverage-path=coverage/serial.lcov.info
+//                                                  (тесты с тегом serial)
 //   flutter test --coverage                        (Flutter-приложение)
 //
 // Результат:
@@ -21,9 +23,13 @@ void main() {
     final parent = Directory(dir);
     if (!parent.existsSync()) continue;
     for (final package in parent.listSync().whereType<Directory>()) {
-      final lcov = File('${package.path}/coverage/lcov.info');
-      if (!lcov.existsSync()) continue;
-      _parseLcov(lcov, package.absolute.uri, root, files);
+      // serial.lcov.info — отдельный прогон тестов с тегом serial
+      // (скрипт coverage-serial).
+      for (final name in ['lcov.info', 'serial.lcov.info']) {
+        final lcov = File('${package.path}/coverage/$name');
+        if (!lcov.existsSync()) continue;
+        _parseLcov(lcov, package.absolute.uri, root, files);
+      }
     }
   }
   if (files.isEmpty) {

@@ -53,14 +53,26 @@ melos:
         - lint
         - dart run melos:melos test
 
+    # Число одновременно идущих тестовых файлов — FS_TEST_JOBS (по умолчанию
+    # 4). Без -j dart test берёт число ядер машины: в поде Kubernetes это
+    # ядра всего узла, а не лимит пода, и тесты мешают друг другу
+    # (docs/ci.md, раздел «Параллельность тестов»).
     coverage-dart:
-      description: Тесты Dart-пакетов с покрытием (coverage/lcov.info).
+      description: Тесты Dart-пакетов с покрытием (coverage/lcov.info), кроме тега serial.
       exec:
-        command: dart test --coverage-path=coverage/lcov.info
+        command: dart test -j "${FS_TEST_JOBS:-4}" -x serial --coverage-path=coverage/lcov.info
         concurrency: 1
       packageFilters:
         flutter: false
         dirExists: test
+
+    coverage-serial:
+      description: Тесты с тегом serial (замеры памяти и времени) по одному файлу (coverage/serial.lcov.info).
+      exec:
+        command: dart test -j 1 -t serial --coverage-path=coverage/serial.lcov.info
+        concurrency: 1
+      packageFilters:
+        scope: [core, node]
 
     coverage-flutter:
       description: Тесты Flutter-пакетов с покрытием (coverage/lcov.info).
@@ -75,6 +87,7 @@ melos:
       description: Тесты с покрытием и сводный отчёт в coverage/ (lcov и Cobertura).
       steps:
         - coverage-dart
+        - coverage-serial
         - coverage-flutter
         - dart run tool/coverage_report.dart
 

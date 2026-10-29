@@ -10,8 +10,10 @@ import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/objects/object_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/relay/relay_service.dart';
+import 'package:coordinator/src/repair/repair_service.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/service.dart';
+import 'package:coordinator/src/segments/backup_health.dart';
 import 'package:coordinator/src/segments/segment_service.dart';
 import 'package:coordinator/src/signer/ticket_signer.dart';
 import 'package:core/core.dart';
@@ -92,7 +94,8 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         crypto: crypto,
         policy: config.audits,
         clock: clock,
-      ) {
+      ),
+      health = BackupHealthService(db, nodes: config.nodes, clock: clock) {
     rendezvousService = RendezvousService(
       crypto: crypto,
       keys: PostgresKeyDirectory(db),
@@ -106,6 +109,15 @@ final class DatabaseCoordinatorService extends CoordinatorService {
       signer: signer,
       policy: config.placement,
       placement: placement,
+      clock: clock,
+    );
+    repair = RepairService(
+      db,
+      crypto: crypto,
+      nodes: nodes,
+      signer: signer,
+      policy: config.repair,
+      placementPolicy: config.placement,
       clock: clock,
     );
   }
@@ -125,6 +137,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
 
   /// Аудиты хранения; каналы команд ему передаёт сервер.
   final AuditService audits;
+
+  /// Ремонт сегментов; каналы команд ему передаёт сервер.
+  late final RepairService repair;
+
+  /// Здоровье бэкапа для клиента (`GetBackupHealth`).
+  final BackupHealthService health;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(
@@ -215,6 +233,30 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.ReportDamagedFragmentsRequest request,
   ) => nodes.reportDamaged(context, request);
+
+  @override
+  Future<pb.ReportRepairResponse> reportRepair(
+    CallContext context,
+    pb.ReportRepairRequest request,
+  ) => repair.report(context, request);
+
+  @override
+  Future<pb.LeaveNetworkResponse> leaveNetwork(
+    CallContext context,
+    pb.LeaveNetworkRequest request,
+  ) => repair.leave(context, request);
+
+  @override
+  Future<pb.ReconcileFragmentsResponse> reconcileFragments(
+    CallContext context,
+    pb.ReconcileFragmentsRequest request,
+  ) => repair.reconcile(context, request);
+
+  @override
+  Future<pb.GetBackupHealthResponse> getBackupHealth(
+    CallContext context,
+    pb.GetBackupHealthRequest request,
+  ) => health.health(context, request);
 
   @override
   Future<pb.CheckReachabilityResponse> checkReachability(

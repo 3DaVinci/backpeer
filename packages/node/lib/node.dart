@@ -3,7 +3,10 @@
 /// - `daemon/` — настройки, журнал, ключи узла, связь с координатором,
 ///   жизненный цикл демона (задачи 3.1.1, 3.1.2);
 /// - `storage/` — файлы фрагментов, индекс в SQLite, квота и место,
-///   фоновая проверка целостности (3.2), ответ на аудит (4.1.2);
+///   фоновая проверка целостности (3.2), ответ на аудит (4.1.2), сверка
+///   фрагментов с координатором (4.4.3);
+/// - `repair/` — исполнитель ремонта (4.3.4) и перенос своих фрагментов
+///   (4.4.1, 4.4.2);
 /// - `control/` — клиент локального API управления для CLI и приложения
 ///   (3.1.3); сервер, кадры и журнал — в общем пакете `daemon_kit`;
 /// - `net/` — приём TCP, проверка достижимости, проброс порта на роутере
@@ -43,10 +46,13 @@ export 'src/net/udp_peers.dart';
 export 'src/peers/peer_service.dart';
 export 'src/peers/revocations.dart';
 export 'src/peers/speed_schedule.dart';
+export 'src/repair/relocator.dart';
+export 'src/repair/repair_executor.dart';
 export 'src/storage/audits.dart';
 export 'src/storage/fragment_files.dart';
 export 'src/storage/fragment_index.dart';
 export 'src/storage/fragment_storage.dart';
 export 'src/storage/integrity_checker.dart';
 export 'src/storage/native_fs.dart';
+export 'src/storage/reconciler.dart';
 export 'src/stub_nodes.dart';

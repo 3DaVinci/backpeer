@@ -24,6 +24,7 @@ final class LiveCoordinator {
     RelayPolicy relay = const RelayPolicy(),
     Ed25519KeyPair? relayPassKey,
     bool checkPrivateAddresses = true,
+    RepairPolicy repair = const RepairPolicy(),
   }) async {
     final crypto = await SodiumCryptoProvider.load();
     final db = await TestDatabase.create();
@@ -49,6 +50,7 @@ final class LiveCoordinator {
         port: 0,
       ),
       relay: relay,
+      repair: repair,
     );
     final signerKey = await crypto.ed25519FromSeed(
       SecretBytes(Uint8List(32)..fillRange(0, 32, 0xC0)),

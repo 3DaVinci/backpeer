@@ -30,6 +30,7 @@ dev_dependencies:
   agent: any
   # Сквозные тесты CLI и узлов-заглушек против настоящего координатора.
   cli: ^0.0.2
+  daemon_kit: any
   node: ^0.0.2
   # Сквозные тесты relay (задача 3.8.2).
   relay: ^0.0.2

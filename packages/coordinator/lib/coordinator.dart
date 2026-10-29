@@ -12,6 +12,7 @@
 /// - `relay/` — пропуска relay, учёт трафика через relay, метрики;
 /// - `audits/` — аудиты хранения: планировщик, проверка ответа, реакция
 ///   на провалы;
+/// - `repair/` — учёт живых фрагментов, очередь и задания ремонта;
 /// - `auth/` — проверка подписи `FS-Auth`, защита от повтора, справочник
 ///   ключей;
 /// - `signer/` — процесс-подписант талонов и клиент к нему для веб-сервера;
@@ -48,6 +49,9 @@ export 'src/placement/placement.dart';
 export 'src/placement/placement_policy.dart';
 export 'src/relay/relay_policy.dart';
 export 'src/relay/relay_service.dart';
+export 'src/repair/live_fragments.dart';
+export 'src/repair/repair_jobs.dart';
+export 'src/repair/repair_service.dart';
 export 'src/reputation/reputation.dart';
 export 'src/rpc/api_handler.dart';
 export 'src/rpc/call_context.dart';
@@ -55,6 +59,7 @@ export 'src/rpc/database_service.dart';
 export 'src/rpc/errors.dart';
 export 'src/rpc/methods.dart';
 export 'src/rpc/service.dart';
+export 'src/segments/backup_health.dart';
 export 'src/segments/segment_service.dart';
 export 'src/server.dart';
 export 'src/signer/signer_key.dart';

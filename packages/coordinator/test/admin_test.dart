@@ -174,6 +174,15 @@ void main() {
     expect(await AdminAccess.grant(h.db, 'fs_no_such_role'), isFalse);
   });
 
+  adminTest('метрики ремонта читаются ролью администратора (4.3.6)', () async {
+    final stats = await admin.repairStats(hours: 6);
+    expect(stats['hours'], 6);
+    expect(stats['segments'], 0);
+    expect(stats['minLive'], isNull);
+    expect(stats['nodesLost'], 0);
+    expect((stats['traffic']! as Map)['bytesPerTbPerDay'], isNull);
+  });
+
   adminTest('поиск и сводка учётной записи', () async {
     final byLogin = await admin.findAccounts('Alice');
     expect(byLogin.single['accountId'], bytesToHex(alice.accountId));

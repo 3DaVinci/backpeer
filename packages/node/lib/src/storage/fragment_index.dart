@@ -59,7 +59,7 @@ final class FragmentRecord {
 
 /// Индекс хранителя в SQLite (задача 3.2.2): фрагменты (кто загрузил,
 /// размер, `body_root`, хэши листьев дерева тела, время приёма,
-/// состояние), использованные талоны
+/// состояние, отметка сверки с координатором), использованные талоны
 /// до их истечения (protocol.md, раздел 5) и отозванные устройства
 /// (раздел 4.7). Файлы фрагментов —
 /// `FragmentFiles`; индекс — источник правды о том, что узел хранит.
@@ -255,6 +255,97 @@ final class FragmentIndex {
         }
       });
 
+  // --- сверка с координатором (задача 4.4.3) --------------------------------
+
+  /// До [limit] фрагментов (сохранённых и повреждённых) с `fragment_id`
+  /// больше [after], по возрастанию: пачки сверки.
+  List<Uint8List> idsAfter(List<int>? after, {int limit = 1000}) => [
+    for (final row in _db.select(
+      'SELECT fragment_id FROM fragments WHERE state IN (?, ?) '
+      'AND fragment_id > ? ORDER BY fragment_id LIMIT ?',
+      [
+        FragmentState.stored.index,
+        FragmentState.damaged.index,
+        after ?? Uint8List(0),
+        limit,
+      ],
+    ))
+      row['fragment_id'] as Uint8List,
+  ];
+
+  /// Отмечает [unknown] фрагментами, которые координатор не учитывает (с
+  /// [at], если отметки ещё нет), и снимает отметку с [known].
+  void markOrphaned({
+    required List<List<int>> unknown,
+    required List<List<int>> known,
+    required DateTime at,
+  }) => _transaction(() {
+    final mark = _db.prepare(
+      'UPDATE fragments SET orphaned_at = coalesce(orphaned_at, ?) '
+      'WHERE fragment_id = ?',
+    );
+    final clear = _db.prepare(
+      'UPDATE fragments SET orphaned_at = NULL '
+      'WHERE fragment_id = ? AND orphaned_at IS NOT NULL',
+    );
+    try {
+      for (final id in unknown) {
+        mark.execute([at.millisecondsSinceEpoch, id]);
+      }
+      for (final id in known) {
+        clear.execute([id]);
+      }
+    } finally {
+      mark.close();
+      clear.close();
+    }
+  });
+
+  /// Когда фрагмент [fragmentId] отмечен неучтённым; `null` — не отмечен.
+  DateTime? orphanedAt(List<int> fragmentId) {
+    final rows = _db.select(
+      'SELECT orphaned_at FROM fragments WHERE fragment_id = ?',
+      [fragmentId],
+    );
+    if (rows.isEmpty) return null;
+    return switch (rows.single['orphaned_at']) {
+      final int ms => _time(ms),
+      _ => null,
+    };
+  }
+
+  /// Отмеченных неучтёнными: сколько, их объём и самая ранняя отметка.
+  ({int count, int bytes, DateTime? oldest}) orphans() {
+    final row = _db.select(
+      'SELECT count(*) AS c, coalesce(sum(size), 0) AS b, '
+      'min(orphaned_at) AS o FROM fragments '
+      'WHERE orphaned_at IS NOT NULL AND state <> ?',
+      [FragmentState.deleting.index],
+    ).single;
+    return (
+      count: row['c'] as int,
+      bytes: row['b'] as int,
+      oldest: switch (row['o']) {
+        final int ms => _time(ms),
+        _ => null,
+      },
+    );
+  }
+
+  /// Значение [name] из `sync_state`; `null` — нет.
+  int? syncValue(String name) {
+    final rows = _db.select('SELECT value FROM sync_state WHERE name = ?', [
+      name,
+    ]);
+    return rows.isEmpty ? null : rows.single['value'] as int;
+  }
+
+  void setSyncValue(String name, int value) => _db.execute(
+    'INSERT INTO sync_state (name, value) VALUES (?, ?) '
+    'ON CONFLICT (name) DO UPDATE SET value = excluded.value',
+    [name, value],
+  );
+
   // --- талоны --------------------------------------------------------------
 
   /// Запоминает талон [ticketId] со сроком [expiresAt]. Талон уже
@@ -429,5 +520,10 @@ const _migrations = [
   '''
   ALTER TABLE fragments ADD COLUMN leaves BLOB
     CHECK (leaves IS NULL OR (length(leaves) > 0 AND length(leaves) % 32 = 0));
+  ''',
+  // 4: когда координатор впервые не признал фрагмент своим при сверке
+  // (задача 4.4.3); фрагмент удаляется, если и через карантин не признан.
+  '''
+  ALTER TABLE fragments ADD COLUMN orphaned_at INTEGER;
   ''',
 ];

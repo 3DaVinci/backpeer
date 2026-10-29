@@ -308,6 +308,80 @@ Uint8List decodeFragments(
   return blob;
 }
 
+/// Ремонт (protocol.md, раздел 4.14): из любых k (или больше) фрагментов
+/// одного сегмента — фрагменты с номерами [indexes], байт в байт те же,
+/// что дал бы [encodeFragments]: недостающие тела восстанавливает
+/// [ErasureCoder.reconstruct], заголовок — тот же, кроме номера и корня
+/// дерева тела. Исходные фрагменты проверяются, как у [decodeFragments]
+/// ([expectedFragmentIds] — по номерам; [verified] — уже проверены
+/// вызывающим). Чужой сегмент или другие параметры — [IntegrityException];
+/// нехватка — [InsufficientShardsException]; номер не меньше n —
+/// [ArgumentError].
+List<Fragment> rebuildFragments(
+  CryptoProvider crypto,
+  List<Fragment> fragments,
+  Iterable<int> indexes, {
+  Map<int, Uint8List>? expectedFragmentIds,
+  ErasureCoder? coder,
+  bool verified = false,
+}) {
+  if (fragments.isEmpty) {
+    throw const InsufficientShardsException(available: 0, required: 1);
+  }
+  final first = fragments.first.header;
+  final wanted = indexes.toList();
+  for (final i in wanted) {
+    RangeError.checkValueInInterval(i, 0, first.n - 1, 'index');
+  }
+  final shards = List<Uint8List?>.filled(first.n, null);
+  var present = 0;
+  for (final f in fragments) {
+    final h = f.header;
+    if (!h.sameSegment(first)) {
+      throw IntegrityException(
+        object: 'fragment',
+        check: IntegrityCheck.objectId,
+        objectId: h.segmentId,
+      );
+    }
+    if (!verified) {
+      f.verify(crypto, expectedFragmentId: expectedFragmentIds?[h.index]);
+    }
+    if (shards[h.index] == null) {
+      shards[h.index] = f.body;
+      present++;
+    }
+  }
+  if (present < first.k) {
+    throw InsufficientShardsException(
+      available: present,
+      required: first.k,
+      segmentId: first.segmentId,
+    );
+  }
+  if (wanted.any((i) => shards[i] == null)) {
+    (coder ?? ReedSolomon(first.k, first.n - first.k)).reconstruct(shards);
+  }
+  return [
+    for (final i in wanted)
+      () {
+        final body = Uint8List.fromList(shards[i]!);
+        return Fragment(
+          FragmentHeader(
+            k: first.k,
+            n: first.n,
+            index: i,
+            blobLength: first.blobLength,
+            shardSize: first.shardSize,
+            segmentId: Uint8List.fromList(first.segmentId),
+            bodyRoot: merkleRoot(crypto, body),
+          ),
+          body,
+        );
+      }(),
+  ];
+}
+
 DataFormatException _error(
   FormatProblem problem, [
   String? detail,

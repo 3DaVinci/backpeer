@@ -292,6 +292,7 @@ def ticket_body(t: dict) -> bytes:
         + pb_varint(5, t["fragment_size"])
         + pb_varint(6, t["expires_at_unix_ms"])
         + pb_bytes(7, t["ticket_id"])
+        + pb_bytes(8, t.get("owner_account", b""))
     )
 
 
@@ -308,6 +309,9 @@ def ticket_check(t: dict, body: bytes, now_ms: int):
     if not FRAGMENT_HEADER < t["fragment_size"] <= MAX_FRAGMENT:
         return "format"
     if t["expires_at_unix_ms"] <= 0:
+        return "format"
+    owner = t.get("owner_account", b"")
+    if owner and (t["operation"] != 1 or len(owner) != 32):
         return "format"
     expires = t["expires_at_unix_ms"]
     if expires + TICKET_SKEW_MS <= now_ms:
@@ -352,6 +356,7 @@ def ticket_cases() -> list:
                 "fragmentSize": t["fragment_size"],
                 "expiresAtUnixMs": t["expires_at_unix_ms"],
                 "ticketId": t["ticket_id"],
+                "ownerAccount": t.get("owner_account", b""),
             }
         return {
             "name": name,
@@ -386,7 +391,11 @@ def ticket_cases() -> list:
         case("short-ticket-id", {"ticket_id": bytes(15)}),
         case("short-node-id", {"node_id": bytes(31)}),
         case("non-canonical-order", body=reordered),
-        case("unknown-field", body=ticket_body(base) + pb_varint(8, 1)),
+        case("unknown-field", body=ticket_body(base) + pb_varint(9, 1)),
+        case("put-repair-owner", {"device_sign": bytes([0x44] * 32),
+                                  "owner_account": bytes([0x55] * 32)}),
+        case("owner-on-get", {"operation": 2, "owner_account": bytes([0x55] * 32)}),
+        case("short-owner", {"owner_account": bytes(31)}),
     ]
 
 
@@ -401,7 +410,8 @@ def main() -> None:
         "ключей координатора (раздел 5.1). error: untrusted — подписант не из "
         "списка, signature — подпись не сходится, format — поля или "
         "сериализация, expired, too-long — срок. fragmentSize — заголовок и "
-        "тело, от 97 до 16 781 312 байт.",
+        "тело, от 97 до 16 781 312 байт. ownerAccount — только у PUT узла-"
+        "исполнителя ремонта (раздел 4.14), 32 байта; пустой — нет поля.",
         ticket_cases(),
     )
     write(

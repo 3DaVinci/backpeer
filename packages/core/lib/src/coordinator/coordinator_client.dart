@@ -424,6 +424,44 @@ final class CoordinatorClient {
     key: nodeKey,
   );
 
+  /// Отчёт исполнителя ремонта (protocol.md, раздел 4.14).
+  Future<pb.ReportRepairResponse> reportRepair(
+    pb.ReportRepairRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'ReportRepair',
+    request,
+    pb.ReportRepairResponse.fromBuffer,
+    key: nodeKey,
+  );
+
+  /// Выход узла из сети или ход переноса (protocol.md, раздел 4.15).
+  Future<pb.LeaveNetworkResponse> leaveNetwork(
+    pb.LeaveNetworkRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'LeaveNetwork',
+    request,
+    pb.LeaveNetworkResponse.fromBuffer,
+    key: nodeKey,
+  );
+
+  /// Сверка фрагментов узла (protocol.md, раздел 4.15).
+  Future<pb.ReconcileFragmentsResponse> reconcileFragments(
+    pb.ReconcileFragmentsRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'ReconcileFragments',
+    request,
+    pb.ReconcileFragmentsResponse.fromBuffer,
+    key: nodeKey,
+  );
+
+  /// Здоровье бэкапа учётной записи (protocol.md, раздел 4.16).
+  Future<pb.GetBackupHealthResponse> getBackupHealth(
+    pb.GetBackupHealthRequest request,
+  ) => call('GetBackupHealth', request, pb.GetBackupHealthResponse.fromBuffer);
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     pb.CheckReachabilityRequest request, {
     required Ed25519KeyPair nodeKey,

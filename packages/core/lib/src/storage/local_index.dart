@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -5,6 +6,65 @@ import 'package:core/src/chunking/chunk_id.dart';
 import 'package:core/src/errors.dart';
 import 'package:core/src/snapshot/fs_entry.dart';
 import 'package:sqlite3/sqlite3.dart';
+
+/// Вид проверки бэкапа (`cli verify`, задачи 1.6.4, 4.5.2).
+enum VerifyMode {
+  /// Есть ли фрагменты на узлах (`HasFragments`).
+  exists,
+
+  /// Прочитать и проверить все фрагменты и сегменты.
+  full,
+
+  /// По данным координатора: живые фрагменты и аудиты, без узлов.
+  audits,
+
+  /// Тестовое восстановление случайной выборки сегментов.
+  sample,
+}
+
+/// Итог проверки бэкапа, который хранит локальный индекс: дата и
+/// результат последней проверки каждого вида.
+final class VerifyRecord {
+  const new({
+    required this.mode,
+    required this.at,
+    required this.segments,
+    required this.atRisk,
+    required this.unrecoverable,
+    required this.problems,
+  });
+
+  factory fromJson(Map<String, Object?> json) => VerifyRecord(
+    mode: VerifyMode.values.byName(json['mode']! as String),
+    at: DateTime.fromMillisecondsSinceEpoch(json['at']! as int, isUtc: true),
+    segments: json['segments']! as int,
+    atRisk: json['atRisk']! as int,
+    unrecoverable: json['unrecoverable']! as int,
+    problems: json['problems']! as int,
+  );
+
+  final VerifyMode mode;
+  final DateTime at;
+
+  /// Проверено сегментов.
+  final int segments;
+  final int atRisk;
+  final int unrecoverable;
+
+  /// Недостающие или испорченные фрагменты.
+  final int problems;
+
+  bool get isHealthy => atRisk == 0 && unrecoverable == 0 && problems == 0;
+
+  Map<String, Object?> toJson() => {
+    'mode': mode.name,
+    'at': at.millisecondsSinceEpoch,
+    'segments': segments,
+    'atRisk': atRisk,
+    'unrecoverable': unrecoverable,
+    'problems': problems,
+  };
+}
 
 /// Размер, время и inode файла для кеша файлов: если совпадают с
 /// записанными, файл не читается повторно.
@@ -453,6 +513,33 @@ final class LocalIndex {
       [sequence],
     );
   }
+
+  // --- проверки бэкапа ------------------------------------------------------
+
+  /// Последняя проверка вида [mode] на этом устройстве (задача 4.5.2).
+  VerifyRecord? lastVerify(VerifyMode mode) {
+    final value = _db.select('SELECT value FROM state WHERE key = ?', [
+      'verify.${mode.name}',
+    ]).firstOrNull?['value'];
+    if (value is! String) return null;
+    try {
+      return VerifyRecord.fromJson(jsonDecode(value) as Map<String, Object?>);
+    } on Object {
+      // Запись другой версии программы — как будто проверки не было.
+      return null;
+    }
+  }
+
+  /// Последние проверки всех видов, от новых к старым.
+  List<VerifyRecord> verifyHistory() =>
+      [for (final mode in VerifyMode.values) ?lastVerify(mode)]
+        ..sort((a, b) => b.at.compareTo(a.at));
+
+  /// Запоминает итог проверки вместо прежнего того же вида.
+  void recordVerify(VerifyRecord record) => _db.execute(
+    'INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)',
+    ['verify.${record.mode.name}', jsonEncode(record.toJson())],
+  );
 
   // --- служебное ----------------------------------------------------------
 

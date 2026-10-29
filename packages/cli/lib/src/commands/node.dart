@@ -14,6 +14,7 @@ final class NodeCommand extends CliCommand {
     addSubcommand(_NodeStateCommand(ctx, 'pause'));
     addSubcommand(_NodeStateCommand(ctx, 'resume'));
     addSubcommand(_NodeStateCommand(ctx, 'stop'));
+    addSubcommand(_NodeExitCommand(ctx));
   }
 
   @override
@@ -110,8 +111,16 @@ final class _NodeStatusCommand extends _NodeSubcommand {
           s['reachability'] as Map<String, Object?>?,
         ),
       )
-      ..info(_coordinator(coordinator))
-      ..result(s);
+      ..info(_coordinator(coordinator));
+    if (_exit(coordinator?['exit'] as Map<String, Object?>?)
+        case final String line) {
+      ctx.report.info(line);
+    }
+    if (_reconcile(coordinator?['reconcile'] as Map<String, Object?>?)
+        case final String line) {
+      ctx.report.info(line);
+    }
+    ctx.report.result(s);
     if (s['damagedFragments'] case final int damaged when damaged > 0) {
       ctx.report.warn(
         'Повреждённых фрагментов: $damaged — проверьте диск; координатор '
@@ -184,6 +193,27 @@ final class _NodeStatusCommand extends _NodeSubcommand {
     return 'Координатор ${c['url']}: $registered'
         '${beat == null ? '' : ', связь $beat'}$channel'
         '${error == null ? '' : '; ошибка: $error'}';
+  }
+
+  /// Выход из сети (4.4.1): сколько ещё перенести.
+  static String? _exit(Map<String, Object?>? e) {
+    if (e == null) return null;
+    final left = e['remainingFragments'];
+    return left == null
+        ? 'Выход из сети: объявлен, ход переноса ещё не известен'
+        : 'Выход из сети: осталось перенести фрагментов: $left '
+              '(${_size(e['remainingBytes'])})';
+  }
+
+  /// Сверка фрагментов с координатором (4.4.3).
+  static String? _reconcile(Map<String, Object?>? r) {
+    if (r == null) return null;
+    final last = r['lastPassAt'] ?? 'не было';
+    final orphans = r['orphans'];
+    return 'Сверка с координатором: последняя $last; '
+        'не учтённых координатором фрагментов: $orphans'
+        '${orphans == 0 ? '' : ' (${_size(r['orphanBytes'])}, удаляются '
+                  'после карантина)'}';
   }
 
   static const _state = {
@@ -295,6 +325,45 @@ final class _NodeStateCommand extends _NodeSubcommand {
         'pause' => 'Узел на паузе.',
         'resume' => 'Узел работает.',
         _ => 'Узел останавливается.',
+      })
+      ..result(s);
+    return ExitCode.ok;
+  }
+}
+
+/// `exit`: выход узла из сети (задача 4.4.1).
+final class _NodeExitCommand extends _NodeSubcommand {
+  new(super.ctx) {
+    argParser.addFlag(
+      'cancel',
+      negatable: false,
+      help: 'Отменить выход: перенесённые фрагменты остаются на новых узлах',
+    );
+  }
+
+  @override
+  String get name => 'exit';
+
+  @override
+  String get description =>
+      'Выйти из сети: координатор перестаёт размещать на узле фрагменты и '
+      'переносит его фрагменты на другие узлы; когда переносить нечего, '
+      'узел удаляет их и останавливается. Повторный вызов показывает ход.';
+
+  @override
+  Future<int> run() async {
+    final cancel = argResults!.flag('cancel');
+    final s = await callNode('exit', {'cancel': cancel});
+    ctx.report
+      ..info(switch (s) {
+        _ when cancel => 'Выход отменён.',
+        {'done': true} =>
+          'Перенос закончен: узел удалён из сети, удаляет фрагменты и '
+              'останавливается.',
+        _ =>
+          'Выход объявлен: осталось перенести фрагментов: '
+              '${s['remainingFragments']} (${_size(s['remainingBytes'])}). '
+              'Не выключайте узел до конца переноса; ход — cli node status.',
       })
       ..result(s);
     return ExitCode.ok;

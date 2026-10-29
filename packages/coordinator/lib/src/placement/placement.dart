@@ -108,8 +108,10 @@ final class Placement {
   /// предела), и при [parityFrom] они стоят на номерах не меньше его —
   /// фрагментах чётности (у Reed–Solomon первые k фрагментов — данные);
   /// без [distinctSubnets] подсети могут повторяться (только локальный
-  /// стенд, `PlacementPolicy.distinctSubnets`). Не хватает подходящих —
-  /// [PlacementException].
+  /// стенд, `PlacementPolicy.distinctSubnets`). При ремонте (задача 4.3.4)
+  /// часть фрагментов сегмента уже на узлах: [takenOwners] (hex) и
+  /// [takenSubnets] заняты, узлы [excludedNodes] (hex) не выбираются. Не
+  /// хватает подходящих — [PlacementException].
   List<NodeCandidate> choose(
     List<NodeCandidate> candidates, {
     required int n,
@@ -118,6 +120,9 @@ final class Placement {
     int? maxProbation,
     int? parityFrom,
     bool distinctSubnets = true,
+    Set<String> takenOwners = const {},
+    Set<String> takenSubnets = const {},
+    Set<String> excludedNodes = const {},
   }) {
     RangeError.checkValueInInterval(n, 1, 255, 'n');
     var probationLimit = maxProbation;
@@ -145,9 +150,9 @@ final class Placement {
     }
     keyed.sort((a, b) => b.$1.compareTo(a.$1));
     final chosen = <NodeCandidate>[];
-    final nodes = <String>{};
-    final owners = <String>{};
-    final subnets = <String>{};
+    final nodes = <String>{...excludedNodes};
+    final owners = <String>{...takenOwners};
+    final subnets = <String>{...takenSubnets};
     var probation = 0;
     for (final (_, node) in keyed) {
       if (!nodes.add(bytesToHex(node.nodeId))) continue;

@@ -10,6 +10,20 @@ import 'package:core/core.dart';
 import 'package:test/test.dart';
 import 'package:test_vectors/test_vectors.dart';
 
+/// Опрашивает [probe] каждые 50 мс, пока он не вернёт значение или не
+/// пройдёт [timeout] (с запасом для медленного CI; ожидание в тестах — 30 с).
+Future<T?> _eventually<T extends Object>(
+  T? Function() probe, {
+  Duration timeout = const Duration(seconds: 15),
+}) async {
+  final watch = Stopwatch()..start();
+  while (true) {
+    final value = probe();
+    if (value != null || watch.elapsed >= timeout) return value;
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+  }
+}
+
 /// Узлы, которые не в сети или отвечают с задержкой.
 final class _Flaky implements FragmentStore {
   new(this.inner);
@@ -154,10 +168,14 @@ void main() {
       ),
       onProgress: progress.add,
     );
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    expect(progress.last.nextRetry, isNotNull, reason: 'ждёт узлы');
-    expect(progress.last.waitLeft, isNotNull);
-    expect(progress.last.eta, isNull);
+    // Ждём состояния, а не фиксированное время: под нагрузкой (CI) первая
+    // попытка может идти дольше.
+    final waiting = await _eventually(
+      () => progress.where((p) => p.nextRetry != null).firstOrNull,
+    );
+    expect(waiting, isNotNull, reason: 'ждёт узлы');
+    expect(waiting!.waitLeft, isNotNull);
+    expect(waiting.eta, isNull);
     nodes.offline.clear();
     final result = await pending;
     expect(result.isComplete, isTrue, reason: '${result.errors}');
@@ -189,9 +207,7 @@ void main() {
         }
       },
     );
-    for (var i = 0; i < 100 && !sawPartial; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-    }
+    await _eventually(() => sawPartial ? true : null);
     expect(sawPartial, isTrue, reason: 'маленький файл не ждёт большой');
     expect(restored(target, 'sub/small.txt').readAsStringSync(), 'маленький');
     expect(restored(target, 'big.bin').existsSync(), isFalse);

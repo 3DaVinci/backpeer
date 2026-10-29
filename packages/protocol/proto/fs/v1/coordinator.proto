@@ -215,9 +215,13 @@ message HeartbeatRequest {
 }
 message HeartbeatResponse {
   uint32 next_heartbeat_ms = 1;
+  // Пора сверить фрагменты узла (ReconcileFragments, задача 4.4.3):
+  // координатор перестал учитывать какие-то из них — ремонт перенёс их на
+  // другие узлы, сегмент удалён, загрузка не засчитана.
+  bool reconcile = 2;
   // Как координатор видит узел сейчас — для статистики хранителя в
   // приложении (задача 5.5.2). Нет поля — старый координатор.
-  NodeStanding standing = 2;
+  NodeStanding standing = 3;
 }
 
 // Положение узла у координатора (protocol.md, раздел 4.9).
@@ -305,6 +309,8 @@ message CoordinatorChannelMessage {
     SyncRevocationsCommand sync_revocations = 6;
     RendezvousCommand rendezvous = 7;
     AuditCommand audit = 8;
+    RepairCommand repair = 9;
+    RelocateCommand relocate = 10;
   }
 }
 
@@ -383,6 +389,138 @@ message AuditCommand {
 message AuditReply {
   bytes block = 1;                   // блок тела: 65 536 байт, последний короче
   repeated bytes path = 2;           // путь от листа к корню, по 32 байта (RFC 6962)
+}
+
+// --- Ремонт (задачи 4.3.3–4.3.5) --------------------------------------------
+//
+// protocol.md, раздел 4.14. Координатор поручает узлу-исполнителю
+// пересоздать недостающие фрагменты сегмента: скачать k живых (талоны GET
+// на исполнителя), проверить, восстановить Reed–Solomon недостающие и
+// разослать их новым узлам (талоны PUT на исполнителя с owner_account).
+// Фрагменты — шифротекст: ключи пользователя не нужны. Узел принимает
+// команду ответом CommandDone и отчитывается ReportRepair по HTTP;
+// координатор засчитывает новые фрагменты живыми только после аудита
+// каждого на его узле.
+
+// Команда исполнителю. Размер — до 64 КиБ, как любое сообщение
+// координатора в канале.
+message RepairCommand {
+  bytes job_id = 1;                  // 16 байт
+  uint32 k = 2;
+  uint32 n = 3;
+  uint32 fragment_size = 4;          // заголовок + тело, байт
+  // Живые фрагменты, сначала узлы в сети и с большей доступностью;
+  // талоны GET с device_sign = node_id исполнителя. Не меньше k.
+  repeated Placement sources = 5;
+  // Недостающие фрагменты по номерам: узел и талон PUT с device_sign =
+  // node_id исполнителя и owner_account. fragment_id — в талоне.
+  repeated Placement targets = 6;
+  int64 deadline_unix_ms = 7;        // отчёт не позже; талоны действуют до него
+}
+
+// Отчёт исполнителя. Подписан ключом узла-исполнителя.
+message ReportRepairRequest {
+  bytes job_id = 1;
+  repeated uint32 stored_indexes = 2; // номера, которые новые узлы приняли
+  repeated RepairFailure failures = 3; // номера, которые разослать не удалось
+  string error = 4;                  // задание не выполнено целиком: почему
+  uint64 bytes_downloaded = 5;       // трафик ремонта исполнителя
+  uint64 bytes_uploaded = 6;
+}
+message RepairFailure {
+  uint32 index = 1;
+  string reason = 2;                 // до 200 символов, для журнала
+}
+message ReportRepairResponse {}
+
+// --- Выход узла и уборка фрагментов (задачи 4.4.1–4.4.3) ---------------------
+//
+// protocol.md, раздел 4.15. Узел, который уходит из сети (LeaveNetwork) или
+// хранит больше, чем готов (ёмкость в heartbeat меньше выданного),
+// переносит свои фрагменты на другие узлы сам: координатор выбирает новый
+// узел по правилам размещения и поручает уходящему узлу загрузить туда
+// фрагмент (RelocateCommand). Отчёт — ReportRepair, новый фрагмент
+// засчитывается после аудита, как при ремонте. Фрагменты, которые
+// координатор больше не учитывает на узле, узел находит сверкой
+// (ReconcileFragments) и удаляет после карантина.
+
+// Перенос одного фрагмента: узел-исполнитель — тот, кто его хранит.
+message RelocateCommand {
+  bytes job_id = 1;                  // 16 байт
+  // Новый узел и талон PUT с device_sign = node_id исполнителя и
+  // owner_account. fragment_id и fragment_size — в талоне.
+  Placement target = 2;
+  int64 deadline_unix_ms = 3;        // отчёт не позже; талон действует до него
+}
+
+// Узел объявляет выход из сети или проверяет, как идёт перенос. Подписан
+// ключом узла.
+message LeaveNetworkRequest {
+  bool cancel = 1;                   // отменить выход
+}
+message LeaveNetworkResponse {
+  // Сохранённых фрагментов подтверждённых сегментов ещё на узле.
+  uint64 remaining_fragments = 1;
+  uint64 remaining_bytes = 2;
+  // Переносить нечего: узел удалён из сети, фрагменты можно удалить.
+  bool done = 3;
+}
+
+// Сверка: какие из фрагментов узла координатор больше не учитывает на
+// нём. Подписан ключом узла.
+message ReconcileFragmentsRequest {
+  repeated bytes fragment_ids = 1;   // от 1 до 1000, по 32 байта, без повторов
+  bool first = 2;                    // первая пачка прохода: снять отметку reconcile
+}
+message ReconcileFragmentsResponse {
+  repeated bytes unknown = 1;        // подмножество fragment_ids запроса
+}
+
+// --- Здоровье бэкапа (задачи 4.5.1, 4.5.2) -----------------------------------
+//
+// protocol.md, раздел 4.16. Клиент узнаёт, сколько живых фрагментов у его
+// сегментов и когда их проверяли аудиты, не скачивая фрагменты. Ответ —
+// только о сегментах учётной записи запроса и только числа: ни узлов, ни
+// чужих учётных записей.
+
+// Подписан ключом устройства.
+message GetBackupHealthRequest {
+  // До 1000 сегментов по 32 байта, без повторов; пусто — только сводка.
+  repeated bytes segment_ids = 1;
+  // Фрагмент считается проверенным, если прошёл аудит не раньше этого
+  // времени; 0 — за 30 суток до запроса.
+  int64 audited_since_unix_ms = 2;
+}
+message GetBackupHealthResponse {
+  BackupHealthSummary summary = 1;   // по всем сохранённым сегментам
+  // По запрошенным сегментам, которые координатор знает как сохранённые,
+  // в порядке запроса; отсутствующего в ответе сегмента у координатора нет.
+  repeated SegmentHealth segments = 2;
+  int64 audited_since_unix_ms = 3;   // действующая граница проверки
+}
+message BackupHealthSummary {
+  uint64 segments = 1;               // сохранённых (подтверждённых)
+  uint64 healthy = 2;                // живых фрагментов не меньше n
+  uint64 reduced = 3;                // больше t, но меньше n
+  uint64 at_risk = 4;                // от k до t: в очереди ремонта
+  uint64 lost = 5;                   // меньше k
+  uint64 repairing = 6;              // идёт задание ремонта
+  uint64 readable_now = 7;           // не меньше k живых на узлах в сети
+  uint64 live_fragments = 8;
+  uint64 audited_fragments = 9;      // живые, прошедшие аудит с границы
+  int64 last_audit_unix_ms = 10;     // последний пройденный аудит; 0 — не было
+  uint64 fragment_bytes = 11;        // место фрагментов учётной записи
+}
+message SegmentHealth {
+  bytes segment_id = 1;
+  uint32 k = 2;
+  uint32 n = 3;
+  uint32 repair_threshold = 4;
+  uint32 live = 5;
+  uint32 online = 6;                 // живые на узлах в сети
+  uint32 audited = 7;                // живые, прошедшие аудит с границы
+  int64 last_audit_unix_ms = 8;      // 0 — аудитов не было
+  bool repairing = 9;
 }
 
 // --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------

@@ -10,6 +10,7 @@ import 'package:cli/src/commands/account.dart';
 import 'package:cli/src/commands/data.dart';
 import 'package:cli/src/commands/devices.dart';
 import 'package:cli/src/commands/node.dart';
+import 'package:cli/src/commands/status.dart';
 import 'package:cli/src/console.dart';
 import 'package:cli/src/context.dart';
 import 'package:cli/src/session.dart';
@@ -70,6 +71,7 @@ Future<int> runCli(
         ..addCommand(RevokeCommand(ctx))
         ..addCommand(PasswdCommand(ctx))
         ..addCommand(KeyCopyCommand(ctx))
+        ..addCommand(StatusCommand(ctx))
         ..addCommand(BackupCommand(ctx))
         ..addCommand(SnapshotsCommand(ctx))
         ..addCommand(RestoreCommand(ctx))

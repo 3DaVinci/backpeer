@@ -328,6 +328,132 @@ const List<Migration> schemaMigrations = [
       ADD COLUMN audit_window_failures integer NOT NULL DEFAULT 0
         CHECK (audit_window_failures >= 0)''',
   ]),
+  Migration(12, 'живые фрагменты', [
+    // Узел не в сети дольше repair.offline_hours (задача 4.3.1): его
+    // фрагменты не считаются живыми; heartbeat снимает отметку.
+    'ALTER TABLE nodes ADD COLUMN lost_at timestamptz',
+    // Живые фрагменты сохранённого сегмента: сохранены, не повреждены, на
+    // неудалённом узле без lost_at. Пересчитывается по событиям
+    // (LiveFragments). Состояние 2 теперь значит live ≤ repair_threshold,
+    // repair_since — с какого времени сегмент в очереди ремонта.
+    '''
+    ALTER TABLE segments
+      ADD COLUMN live smallint NOT NULL DEFAULT 0 CHECK (live >= 0),
+      ADD COLUMN repair_since timestamptz''',
+    '''
+    UPDATE segments g SET live = c.live
+      FROM (SELECT f.account_id, f.segment_id,
+                   count(*) FILTER (WHERE f.stored AND f.damaged_at IS NULL
+                                      AND n.removed_at IS NULL) AS live
+              FROM fragments f JOIN nodes n USING (node_id)
+              GROUP BY f.account_id, f.segment_id) c
+      WHERE g.account_id = c.account_id AND g.segment_id = c.segment_id
+        AND g.state <> 0''',
+    '''
+    UPDATE segments
+      SET state = CASE WHEN live <= repair_threshold THEN 2 ELSE 1 END,
+          repair_since = CASE WHEN live <= repair_threshold
+                              THEN coalesce(committed_at, allocated_at) END
+      WHERE state <> 0''',
+    // Очередь ремонта — по возрастанию живых; минимум по сети — первая
+    // строка индекса.
+    'DROP INDEX segments_repair',
+    '''
+    CREATE INDEX segments_live ON segments (live, repair_since)
+      WHERE state <> 0''',
+    '''
+    CREATE INDEX nodes_lost ON nodes (lost_at)
+      WHERE lost_at IS NOT NULL''',
+  ]),
+  Migration(13, 'задания ремонта', [
+    // Сегмент, для которого задание не удалось создать или оно провалилось,
+    // ждёт до repair_retry_at (задача 4.3.2).
+    'ALTER TABLE segments ADD COLUMN repair_retry_at timestamptz',
+    // Исполнитель, отчитавшийся о непроверенной работе, не получает
+    // заданий до этого времени (задача 4.3.5).
+    'ALTER TABLE nodes ADD COLUMN repair_suspended_until timestamptz',
+    // Задание ремонта (задачи 4.3.3–4.3.5). Состояние: 0 — выполняется,
+    // 1 — исполнитель отчитался, новые фрагменты проверяются аудитом,
+    // 2 — завершено, 3 — провалено (reason). planned_bytes — оценка
+    // трафика: k фрагментов скачать и новые разослать; bytes_* — по
+    // отчёту исполнителя (трафик ремонта узла, этап 7).
+    '''
+    CREATE TABLE repair_jobs (
+      job_id bytea PRIMARY KEY CHECK (length(job_id) = 16),
+      account_id bytea NOT NULL,
+      segment_id bytea NOT NULL,
+      executor bytea NOT NULL REFERENCES nodes (node_id),
+      live smallint NOT NULL,
+      planned_bytes bigint NOT NULL CHECK (planned_bytes >= 0),
+      state smallint NOT NULL CHECK (state IN (0, 1, 2, 3)),
+      reason text,
+      created_at timestamptz NOT NULL,
+      deadline timestamptz NOT NULL,
+      reported_at timestamptz,
+      finished_at timestamptz,
+      bytes_downloaded bigint NOT NULL DEFAULT 0
+        CHECK (bytes_downloaded >= 0),
+      bytes_uploaded bigint NOT NULL DEFAULT 0 CHECK (bytes_uploaded >= 0),
+      FOREIGN KEY (account_id, segment_id)
+        REFERENCES segments (account_id, segment_id) ON DELETE CASCADE
+    )''',
+    '''
+    CREATE UNIQUE INDEX repair_jobs_active ON repair_jobs
+      (account_id, segment_id) WHERE state IN (0, 1)''',
+    '''
+    CREATE INDEX repair_jobs_open ON repair_jobs (deadline)
+      WHERE state IN (0, 1)''',
+    'CREATE INDEX repair_jobs_created ON repair_jobs (created_at)',
+    'CREATE INDEX repair_jobs_executor ON repair_jobs (executor, created_at)',
+    // Новые фрагменты задания: 0 — ждут отчёта, 1 — загружены по отчёту и
+    // ждут проверки аудитом, 2 — проверены и стали живыми, 3 — не
+    // загружены или не прошли проверку. Место на узле занято с создания
+    // задания до провала или до замены фрагмента сегмента.
+    '''
+    CREATE TABLE repair_targets (
+      job_id bytea NOT NULL
+        REFERENCES repair_jobs (job_id) ON DELETE CASCADE,
+      idx smallint NOT NULL,
+      node_id bytea NOT NULL REFERENCES nodes (node_id),
+      fragment_id bytea NOT NULL CHECK (length(fragment_id) = 32),
+      state smallint NOT NULL CHECK (state IN (0, 1, 2, 3)),
+      reason text,
+      PRIMARY KEY (job_id, idx)
+    )''',
+    '''
+    CREATE INDEX repair_targets_verify ON repair_targets (node_id)
+      WHERE state = 1''',
+  ]),
+  Migration(14, 'выход узла и уборка фрагментов', [
+    // Вид задания (задачи 4.4.1, 4.4.2): 0 — ремонт, 1 — перенос фрагмента
+    // с узла, который его хранит, на новый узел.
+    '''
+    ALTER TABLE repair_jobs
+      ADD COLUMN kind smallint NOT NULL DEFAULT 0 CHECK (kind IN (0, 1))''',
+    // Узел объявил выход из сети (LeaveNetwork): новых фрагментов не
+    // получает, его фрагменты переносятся.
+    'ALTER TABLE nodes ADD COLUMN leaving_at timestamptz',
+    // Координатор перестал учитывать фрагменты на узле (задача 4.4.3):
+    // heartbeat попросит узел сверить фрагменты (ReconcileFragments).
+    'ALTER TABLE nodes ADD COLUMN reconcile_at timestamptz',
+    '''
+    CREATE INDEX nodes_leaving ON nodes (leaving_at)
+      WHERE leaving_at IS NOT NULL AND removed_at IS NULL''',
+    // Новые фрагменты действующих заданий на узле: сверка их не удаляет,
+    // выход узла их ждёт.
+    '''
+    CREATE INDEX repair_targets_open ON repair_targets (node_id, fragment_id)
+      WHERE state IN (0, 1)''',
+    '''
+    CREATE INDEX repair_jobs_running ON repair_jobs (executor, kind)
+      WHERE state IN (0, 1)''',
+  ]),
+  Migration(15, 'здоровье бэкапа', [
+    // Последний пройденный аудит фрагмента на его узле, в том числе
+    // проверка нового фрагмента ремонта или переноса (задача 4.5.1):
+    // сколько фрагментов клиента недавно проверено (GetBackupHealth).
+    'ALTER TABLE fragments ADD COLUMN audited_at timestamptz',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

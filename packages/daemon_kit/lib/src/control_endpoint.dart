@@ -8,7 +8,8 @@ final class ControlException implements Exception {
   const new(this.code, this.message);
 
   /// `unavailable` (демон не запущен), `bad_request`, `unknown_method`,
-  /// `forbidden`, `internal`.
+  /// `forbidden`, `coordinator` (отказ или недоступность координатора),
+  /// `internal`.
   final String code;
   final String message;
 

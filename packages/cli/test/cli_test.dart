@@ -92,6 +92,7 @@ void main() {
       'revoke',
       'passwd',
       'key-copy',
+      'status',
       'backup',
       'snapshots',
       'restore',
@@ -265,6 +266,81 @@ void main() {
       expect(errors, contains('Оценка стойкости: стойкий'));
       expect(asked.where((p) => p.startsWith('Новый пароль')), hasLength(3));
       expect(asked.where((p) => p.startsWith('Оставить')), hasLength(1));
+    },
+  );
+
+  test(
+    'тестовое восстановление выборки, расписание и история (4.5.2)',
+    () async {
+      await init();
+      final data = Directory('${dir.path}/data')..createSync();
+      File('${data.path}/a.bin')
+          .writeAsBytesSync(List.generate(200000, (i) => i * 7 % 253));
+      expect((await cli(['backup', data.path])).$1, ExitCode.ok);
+
+      Future<(int, Map<String, Object?>)> json(List<String> args) async {
+        final (code, console) = await cli(['--json', ...args]);
+        return (code, jsonDecode(console.lines.last) as Map<String, Object?>);
+      }
+
+      var (code, console) = await cli(['status']);
+      expect(code, ExitCode.ok, reason: console.errors.join('\n'));
+      var text = console.lines.join('\n');
+      expect(text, contains('без координатора'));
+      expect(text, contains('Проверок на этом устройстве ещё не было'));
+      expect(text, contains('Тестового восстановления ещё не было'));
+
+      var (jsonCode, result) = await json(['verify', '--sample', '1']);
+      expect(jsonCode, ExitCode.ok);
+      expect(result['mode'], 'sample');
+      expect(result['sampled'], 1);
+      expect(result['segments'], 1);
+      expect(result['healthy'], isTrue);
+      // По расписанию: прошло меньше 7 суток — пропуск.
+      (jsonCode, result) = await json([
+        'verify',
+        '--sample',
+        '1',
+        '--every',
+        '7',
+      ]);
+      expect(jsonCode, ExitCode.ok);
+      expect(result['skipped'], isTrue);
+      expect(result['lastAt'], isNotNull);
+
+      // Пропавший фрагмент: выборка больше числа сегментов проверяет все.
+      Directory('${dir.path}/home/nodes')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .first
+          .deleteSync();
+      (jsonCode, result) = await json(['verify', '--sample', '1000']);
+      expect(jsonCode, ExitCode.partial);
+      expect(result['problems'], 1);
+      expect(result['sampled'], result['segments']);
+
+      (jsonCode, result) = await json(['status']);
+      expect(jsonCode, ExitCode.ok);
+      expect(result['health'], isNull);
+      final history = (result['verifications']! as List)
+          .cast<Map<String, Object?>>();
+      expect(history, hasLength(1), reason: 'одна запись на вид проверки');
+      expect(history.single['mode'], 'sample');
+      expect(history.single['problems'], 1);
+      (code, console) = await cli(['status']);
+      text = console.lines.join('\n');
+      expect(text, contains('тестовое восстановление выборки: есть проблемы'));
+      expect(text, isNot(contains('Тестового восстановления')));
+
+      // Быстрая проверка записывается отдельно.
+      expect((await cli(['verify'])).$1, ExitCode.partial);
+      (_, result) = await json(['status']);
+      expect(result['verifications'], hasLength(2));
+
+      expect((await cli(['verify', '--audits'])).$1, ExitCode.error);
+      expect((await cli(['verify', '--full', '--audits'])).$1, ExitCode.usage);
+      expect((await cli(['verify', '--sample', '0'])).$1, ExitCode.usage);
+      expect((await cli(['verify', '--every', 'x'])).$1, ExitCode.usage);
     },
   );
 

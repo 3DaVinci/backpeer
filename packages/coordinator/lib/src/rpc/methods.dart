@@ -190,6 +190,30 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.RendezvousRequest.fromBuffer,
     handle: s.rendezvous,
   ),
+  RpcMethod<pb.ReportRepairRequest, pb.ReportRepairResponse>(
+    name: 'ReportRepair',
+    auth: AuthRequirement.node,
+    parse: pb.ReportRepairRequest.fromBuffer,
+    handle: s.reportRepair,
+  ),
+  RpcMethod<pb.LeaveNetworkRequest, pb.LeaveNetworkResponse>(
+    name: 'LeaveNetwork',
+    auth: AuthRequirement.node,
+    parse: pb.LeaveNetworkRequest.fromBuffer,
+    handle: s.leaveNetwork,
+  ),
+  RpcMethod<pb.ReconcileFragmentsRequest, pb.ReconcileFragmentsResponse>(
+    name: 'ReconcileFragments',
+    auth: AuthRequirement.node,
+    parse: pb.ReconcileFragmentsRequest.fromBuffer,
+    handle: s.reconcileFragments,
+  ),
+  RpcMethod<pb.GetBackupHealthRequest, pb.GetBackupHealthResponse>(
+    name: 'GetBackupHealth',
+    auth: AuthRequirement.device,
+    parse: pb.GetBackupHealthRequest.fromBuffer,
+    handle: s.getBackupHealth,
+  ),
   RpcMethod<pb.GetRelayPassRequest, pb.GetRelayPassResponse>(
     name: 'GetRelayPass',
     auth: AuthRequirement.deviceOrNode,

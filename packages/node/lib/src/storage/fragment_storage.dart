@@ -145,6 +145,18 @@ final class FragmentStorage implements DamagedFragments {
     return max(free, 0);
   }
 
+  /// Сколько места узел готов отдавать под фрагменты сейчас (ёмкость в
+  /// heartbeat): квота, а если на диске свободно меньше запаса — занятое
+  /// за вычетом нехватки. Тогда координатор перенесёт лишние фрагменты на
+  /// другие узлы, а сверка удалит их здесь (задачи 4.4.2, 4.4.3).
+  int get capacityBytes {
+    final disk = diskAvailable;
+    if (disk == null) return quotaBytes;
+    final short = freeReserveBytes - disk;
+    if (short <= 0) return quotaBytes;
+    return max(0, min(quotaBytes, _usedBytes - short));
+  }
+
   void _recover() {
     final temp = files.prepare();
     var completed = 0;
@@ -429,6 +441,22 @@ final class FragmentStorage implements DamagedFragments {
     _count--;
     if (r.state == FragmentState.damaged) _damaged--;
     return true;
+  }
+
+  /// Удаляет все фрагменты, кроме принимаемых: узел вышел из сети и
+  /// координатор их больше не учитывает (задача 4.4.1). Возвращает число
+  /// удалённых.
+  int deleteAll() {
+    var deleted = 0;
+    List<int>? after;
+    while (true) {
+      final ids = index.idsAfter(after);
+      if (ids.isEmpty) return deleted;
+      for (final id in ids) {
+        if (delete(id)) deleted++;
+      }
+      after = ids.last;
+    }
   }
 
   /// Запоминает талон (protocol.md, раздел 5). Уже использован — `false`.

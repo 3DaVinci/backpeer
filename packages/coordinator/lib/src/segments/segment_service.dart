@@ -5,6 +5,8 @@ import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
+import 'package:coordinator/src/repair/live_fragments.dart';
+import 'package:coordinator/src/repair/repair_jobs.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/signer/ticket_signer.dart';
@@ -22,8 +24,8 @@ enum SegmentState {
   /// Сохранён: загружено больше t фрагментов.
   stored,
 
-  /// Сохранён, но фрагментов не больше порога ремонта t — помечен для
-  /// ремонта (этап 4).
+  /// Сохранён, но живых фрагментов не больше порога ремонта t — в
+  /// очереди ремонта (`LiveFragments`, задача 4.3.1).
   needsRepair,
 }
 
@@ -130,8 +132,12 @@ final class SegmentService {
         if (state != null) {
           if (state != SegmentState.allocated) throw _committed;
           // Повторное размещение неподтверждённого сегмента (например,
-          // после сбоя загрузки): прежние узлы освобождаются.
-          await _release(tx, accountId, segmentId);
+          // после сбоя загрузки): прежние узлы освобождаются и сверят
+          // фрагменты — клиент мог успеть загрузить на них (4.4.3).
+          await RepairJobs.requestReconcile(
+            tx,
+            await _release(tx, accountId, segmentId),
+          );
           await _delete(tx, accountId, segmentId);
         }
         await tx.execute(
@@ -246,23 +252,26 @@ final class SegmentService {
                 AND idx = ANY(@idx:_int4)'''),
           parameters: {'a': accountId, 'g': segmentId, 'idx': stored.toList()},
         );
-        final next = stored.length <= t
-            ? SegmentState.needsRepair
-            : SegmentState.stored;
+        final now = _clock();
         await tx.execute(
           Sql.named('''
             UPDATE segments
-              SET state = @s:int2,
+              SET state = greatest(state, 1),
                   committed_at = coalesce(committed_at, @now:timestamptz)
               WHERE account_id = @a:bytea AND segment_id = @g:bytea'''),
-          parameters: {
-            'a': accountId,
-            'g': segmentId,
-            's': next.index,
-            'now': _clock(),
-          },
+          parameters: {'a': accountId, 'g': segmentId, 'now': now},
         );
-        return next;
+        // Живые — сохранённые на узлах в сети (4.3.1); не больше t —
+        // сегмент в очереди ремонта.
+        final live = await LiveFragments.recountSegment(
+          tx,
+          accountId,
+          segmentId,
+          now,
+        );
+        return live != null && live.live <= t
+            ? SegmentState.needsRepair
+            : SegmentState.stored;
       }),
     );
     _log.info(
@@ -374,7 +383,15 @@ final class SegmentService {
       () => _db.transaction((tx) async {
         await _lockAccount(tx, accountId);
         if (await _state(tx, accountId, segmentId) == null) return false;
-        await _release(tx, accountId, segmentId);
+        // Место новых фрагментов незавершённого ремонта (4.3.4).
+        await RepairJobs.releaseSegment(tx, accountId, segmentId);
+        // Узлы, до которых клиент не дотянется с талонами DELETE (не в
+        // сети), удалят фрагменты после сверки (4.4.3). Только уже
+        // заблокированные _release: другие узлы — сверка по расписанию.
+        await RepairJobs.requestReconcile(
+          tx,
+          await _release(tx, accountId, segmentId),
+        );
         await _delete(tx, accountId, segmentId);
         return true;
       }),
@@ -509,8 +526,9 @@ final class SegmentService {
     );
   }
 
-  /// Освобождает место, которое занимает сегмент.
-  static Future<void> _release(
+  /// Освобождает место, которое занимает сегмент. Возвращает узлы, на
+  /// которых оно было.
+  static Future<List<Uint8List>> _release(
     TxSession tx,
     Uint8List accountId,
     Uint8List segmentId,
@@ -523,10 +541,12 @@ final class SegmentService {
             AND (f.stored OR g.state = 0)'''),
       parameters: {'a': accountId, 'g': segmentId},
     );
-    if (rows.isEmpty) return;
-    await _addAssigned(tx, accountId, [
+    if (rows.isEmpty) return const [];
+    final nodes = [
       for (final [node as List<int>, _] in rows) Uint8List.fromList(node),
-    ], -(rows.first[1]! as int));
+    ];
+    await _addAssigned(tx, accountId, nodes, -(rows.first[1]! as int));
+    return nodes;
   }
 
   static Future<void> _delete(

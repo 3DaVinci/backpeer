@@ -6,12 +6,25 @@ import 'package:protocol/protocol.dart' as pb;
 /// Дата и время для человека, местные: `2026-10-29 12:30`.
 String formatTime(DateTime t) => t.toLocal().toString().substring(0, 16);
 
+/// Вид проверки `cli verify` для человека.
+String verifyModeName(VerifyMode mode) => switch (mode) {
+  VerifyMode.exists => 'проверка наличия фрагментов',
+  VerifyMode.full => 'полная проверка',
+  VerifyMode.audits => 'проверка по аудитам',
+  VerifyMode.sample => 'тестовое восстановление выборки',
+};
+
+/// Тестовое восстановление старше этого — напоминание в `status`.
+const sampleReminder = Duration(days: 30);
+
 /// Доля в процентах, округлённая вниз: 99,9 % — не «100 %».
 int percent(int part, int whole) => part * 100 ~/ whole;
 
 /// Сводка состояния бэкапа (задача 4.5.1): учётная запись, локальный
 /// индекс и здоровье сегментов по данным координатора (`GetBackupHealth`,
-/// protocol.md, раздел 4.16). Узлы не опрашиваются, ничего не скачивается.
+/// protocol.md, раздел 4.16), дата и итог последних проверок этого
+/// устройства (`cli verify`, задача 4.5.2). Узлы не опрашиваются, ничего
+/// не скачивается.
 final class StatusCommand extends CliCommand {
   new(super.ctx);
 
@@ -50,6 +63,8 @@ final class StatusCommand extends CliCommand {
         }
         _printHealth(health);
       }
+      final history = session.index.verifyHistory();
+      _printHistory(session.index, history);
       final s = health?.summary;
       final troubled = s != null && (s.atRisk > 0 || s.lost > 0);
       final code = troubled ? ExitCode.partial : ExitCode.ok;
@@ -58,6 +73,10 @@ final class StatusCommand extends CliCommand {
         'coordinator': config.coordinator,
         'localSegments': local,
         'health': health == null ? null : _healthJson(health),
+        'verifications': [
+          for (final r in history)
+            {...r.toJson(), 'at': r.at.toIso8601String()},
+        ],
       }, exitCode: code);
       return code;
     } finally {
@@ -98,13 +117,41 @@ final class StatusCommand extends CliCommand {
     if (s.lost > 0) {
       ctx.report.warn(
         'Потеряно сегментов: ${s.lost} — их данные не восстановить. '
-        'Сделайте новый бэкап; какие снимки затронуты — cli verify --audits.',
+        'Сделайте новый бэкап; какие сегменты — cli verify --audits.',
         {'lost': s.lost.toInt()},
       );
     } else if (s.atRisk > 0) {
       ctx.report.warn(
         'В риске сегментов: ${s.atRisk}: координатор их ремонтирует.',
         {'atRisk': s.atRisk.toInt()},
+      );
+    }
+  }
+
+  void _printHistory(LocalIndex index, List<VerifyRecord> history) {
+    if (history.isEmpty) {
+      ctx.report.info('Проверок на этом устройстве ещё не было (cli verify).');
+    } else {
+      ctx.report.info('Последние проверки на этом устройстве:');
+      for (final r in history) {
+        final result = r.isHealthy
+            ? 'всё в порядке'
+            : 'есть проблемы — в риске ${r.atRisk}, не восстановить '
+                  '${r.unrecoverable}, фрагментов с ошибками ${r.problems}';
+        ctx.report.info(
+          '  ${formatTime(r.at)} ${verifyModeName(r.mode)}: $result '
+          '(сегментов ${r.segments})',
+        );
+      }
+    }
+    final sample = index.lastVerify(VerifyMode.sample);
+    const hint = 'cli verify --sample 10 (по расписанию — с --every 7)';
+    if (sample == null) {
+      ctx.report.info('Тестового восстановления ещё не было: $hint.');
+    } else if (DateTime.now().difference(sample.at) > sampleReminder) {
+      ctx.report.info(
+        'Тестового восстановления не было больше '
+        '${sampleReminder.inDays} суток: $hint.',
       );
     }
   }

@@ -91,6 +91,36 @@ void main() {
     );
   });
 
+  test('история проверок: последняя каждого вида переживает перезапуск', () {
+    final index = LocalIndex.open(dbPath());
+    expect(index.verifyHistory(), isEmpty);
+    VerifyRecord record(VerifyMode mode, int day, {int atRisk = 0}) =>
+        VerifyRecord(
+          mode: mode,
+          at: DateTime.utc(2026, 10, day),
+          segments: 5,
+          atRisk: atRisk,
+          unrecoverable: 0,
+          problems: 0,
+        );
+    index
+      ..recordVerify(record(VerifyMode.audits, 1, atRisk: 2))
+      ..recordVerify(record(VerifyMode.sample, 3))
+      ..recordVerify(record(VerifyMode.audits, 5))
+      ..close();
+    final again = LocalIndex.open(dbPath());
+    final history = again.verifyHistory();
+    expect(
+      [for (final r in history) r.mode],
+      [VerifyMode.audits, VerifyMode.sample],
+    );
+    expect(history.first.at, DateTime.utc(2026, 10, 5));
+    expect(history.first.isHealthy, isTrue);
+    expect(again.lastVerify(VerifyMode.full), isNull);
+    expect(again.lastVerify(VerifyMode.sample)!.segments, 5);
+    again.close();
+  });
+
   test('транзакция откатывается при исключении', () {
     final index = LocalIndex.inMemory();
     expect(

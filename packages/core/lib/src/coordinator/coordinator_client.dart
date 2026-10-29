@@ -457,6 +457,11 @@ final class CoordinatorClient {
     key: nodeKey,
   );
 
+  /// Здоровье бэкапа учётной записи (protocol.md, раздел 4.16).
+  Future<pb.GetBackupHealthResponse> getBackupHealth(
+    pb.GetBackupHealthRequest request,
+  ) => call('GetBackupHealth', request, pb.GetBackupHealthResponse.fromBuffer);
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     pb.CheckReachabilityRequest request, {
     required Ed25519KeyPair nodeKey,

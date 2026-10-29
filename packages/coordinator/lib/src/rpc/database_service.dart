@@ -13,6 +13,7 @@ import 'package:coordinator/src/relay/relay_service.dart';
 import 'package:coordinator/src/repair/repair_service.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/service.dart';
+import 'package:coordinator/src/segments/backup_health.dart';
 import 'package:coordinator/src/segments/segment_service.dart';
 import 'package:coordinator/src/signer/ticket_signer.dart';
 import 'package:core/core.dart';
@@ -92,7 +93,8 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         crypto: crypto,
         policy: config.audits,
         clock: clock,
-      ) {
+      ),
+      health = BackupHealthService(db, nodes: config.nodes, clock: clock) {
     rendezvousService = RendezvousService(
       crypto: crypto,
       keys: PostgresKeyDirectory(db),
@@ -137,6 +139,9 @@ final class DatabaseCoordinatorService extends CoordinatorService {
 
   /// Ремонт сегментов; каналы команд ему передаёт сервер.
   late final RepairService repair;
+
+  /// Здоровье бэкапа для клиента (`GetBackupHealth`).
+  final BackupHealthService health;
 
   @override
   Future<pb.RegisterAccountResponse> registerAccount(
@@ -245,6 +250,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.ReconcileFragmentsRequest request,
   ) => repair.reconcile(context, request);
+
+  @override
+  Future<pb.GetBackupHealthResponse> getBackupHealth(
+    CallContext context,
+    pb.GetBackupHealthRequest request,
+  ) => health.health(context, request);
 
   @override
   Future<pb.CheckReachabilityResponse> checkReachability(

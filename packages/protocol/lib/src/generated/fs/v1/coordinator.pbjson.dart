@@ -1374,6 +1374,133 @@ final $typed_data.Uint8List reconcileFragmentsResponseDescriptor =
     $convert.base64Decode(
         'ChpSZWNvbmNpbGVGcmFnbWVudHNSZXNwb25zZRIYCgd1bmtub3duGAEgAygMUgd1bmtub3du');
 
+@$core.Deprecated('Use getBackupHealthRequestDescriptor instead')
+const GetBackupHealthRequest$json = {
+  '1': 'GetBackupHealthRequest',
+  '2': [
+    {'1': 'segment_ids', '3': 1, '4': 3, '5': 12, '10': 'segmentIds'},
+    {
+      '1': 'audited_since_unix_ms',
+      '3': 2,
+      '4': 1,
+      '5': 3,
+      '10': 'auditedSinceUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `GetBackupHealthRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBackupHealthRequestDescriptor = $convert.base64Decode(
+    'ChZHZXRCYWNrdXBIZWFsdGhSZXF1ZXN0Eh8KC3NlZ21lbnRfaWRzGAEgAygMUgpzZWdtZW50SW'
+    'RzEjEKFWF1ZGl0ZWRfc2luY2VfdW5peF9tcxgCIAEoA1ISYXVkaXRlZFNpbmNlVW5peE1z');
+
+@$core.Deprecated('Use getBackupHealthResponseDescriptor instead')
+const GetBackupHealthResponse$json = {
+  '1': 'GetBackupHealthResponse',
+  '2': [
+    {
+      '1': 'summary',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.BackupHealthSummary',
+      '10': 'summary'
+    },
+    {
+      '1': 'segments',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.SegmentHealth',
+      '10': 'segments'
+    },
+    {
+      '1': 'audited_since_unix_ms',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'auditedSinceUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `GetBackupHealthResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getBackupHealthResponseDescriptor = $convert.base64Decode(
+    'ChdHZXRCYWNrdXBIZWFsdGhSZXNwb25zZRI0CgdzdW1tYXJ5GAEgASgLMhouZnMudjEuQmFja3'
+    'VwSGVhbHRoU3VtbWFyeVIHc3VtbWFyeRIwCghzZWdtZW50cxgCIAMoCzIULmZzLnYxLlNlZ21l'
+    'bnRIZWFsdGhSCHNlZ21lbnRzEjEKFWF1ZGl0ZWRfc2luY2VfdW5peF9tcxgDIAEoA1ISYXVkaX'
+    'RlZFNpbmNlVW5peE1z');
+
+@$core.Deprecated('Use backupHealthSummaryDescriptor instead')
+const BackupHealthSummary$json = {
+  '1': 'BackupHealthSummary',
+  '2': [
+    {'1': 'segments', '3': 1, '4': 1, '5': 4, '10': 'segments'},
+    {'1': 'healthy', '3': 2, '4': 1, '5': 4, '10': 'healthy'},
+    {'1': 'reduced', '3': 3, '4': 1, '5': 4, '10': 'reduced'},
+    {'1': 'at_risk', '3': 4, '4': 1, '5': 4, '10': 'atRisk'},
+    {'1': 'lost', '3': 5, '4': 1, '5': 4, '10': 'lost'},
+    {'1': 'repairing', '3': 6, '4': 1, '5': 4, '10': 'repairing'},
+    {'1': 'readable_now', '3': 7, '4': 1, '5': 4, '10': 'readableNow'},
+    {'1': 'live_fragments', '3': 8, '4': 1, '5': 4, '10': 'liveFragments'},
+    {
+      '1': 'audited_fragments',
+      '3': 9,
+      '4': 1,
+      '5': 4,
+      '10': 'auditedFragments'
+    },
+    {
+      '1': 'last_audit_unix_ms',
+      '3': 10,
+      '4': 1,
+      '5': 3,
+      '10': 'lastAuditUnixMs'
+    },
+    {'1': 'fragment_bytes', '3': 11, '4': 1, '5': 4, '10': 'fragmentBytes'},
+  ],
+};
+
+/// Descriptor for `BackupHealthSummary`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List backupHealthSummaryDescriptor = $convert.base64Decode(
+    'ChNCYWNrdXBIZWFsdGhTdW1tYXJ5EhoKCHNlZ21lbnRzGAEgASgEUghzZWdtZW50cxIYCgdoZW'
+    'FsdGh5GAIgASgEUgdoZWFsdGh5EhgKB3JlZHVjZWQYAyABKARSB3JlZHVjZWQSFwoHYXRfcmlz'
+    'axgEIAEoBFIGYXRSaXNrEhIKBGxvc3QYBSABKARSBGxvc3QSHAoJcmVwYWlyaW5nGAYgASgEUg'
+    'lyZXBhaXJpbmcSIQoMcmVhZGFibGVfbm93GAcgASgEUgtyZWFkYWJsZU5vdxIlCg5saXZlX2Zy'
+    'YWdtZW50cxgIIAEoBFINbGl2ZUZyYWdtZW50cxIrChFhdWRpdGVkX2ZyYWdtZW50cxgJIAEoBF'
+    'IQYXVkaXRlZEZyYWdtZW50cxIrChJsYXN0X2F1ZGl0X3VuaXhfbXMYCiABKANSD2xhc3RBdWRp'
+    'dFVuaXhNcxIlCg5mcmFnbWVudF9ieXRlcxgLIAEoBFINZnJhZ21lbnRCeXRlcw==');
+
+@$core.Deprecated('Use segmentHealthDescriptor instead')
+const SegmentHealth$json = {
+  '1': 'SegmentHealth',
+  '2': [
+    {'1': 'segment_id', '3': 1, '4': 1, '5': 12, '10': 'segmentId'},
+    {'1': 'k', '3': 2, '4': 1, '5': 13, '10': 'k'},
+    {'1': 'n', '3': 3, '4': 1, '5': 13, '10': 'n'},
+    {'1': 'repair_threshold', '3': 4, '4': 1, '5': 13, '10': 'repairThreshold'},
+    {'1': 'live', '3': 5, '4': 1, '5': 13, '10': 'live'},
+    {'1': 'online', '3': 6, '4': 1, '5': 13, '10': 'online'},
+    {'1': 'audited', '3': 7, '4': 1, '5': 13, '10': 'audited'},
+    {
+      '1': 'last_audit_unix_ms',
+      '3': 8,
+      '4': 1,
+      '5': 3,
+      '10': 'lastAuditUnixMs'
+    },
+    {'1': 'repairing', '3': 9, '4': 1, '5': 8, '10': 'repairing'},
+  ],
+};
+
+/// Descriptor for `SegmentHealth`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List segmentHealthDescriptor = $convert.base64Decode(
+    'Cg1TZWdtZW50SGVhbHRoEh0KCnNlZ21lbnRfaWQYASABKAxSCXNlZ21lbnRJZBIMCgFrGAIgAS'
+    'gNUgFrEgwKAW4YAyABKA1SAW4SKQoQcmVwYWlyX3RocmVzaG9sZBgEIAEoDVIPcmVwYWlyVGhy'
+    'ZXNob2xkEhIKBGxpdmUYBSABKA1SBGxpdmUSFgoGb25saW5lGAYgASgNUgZvbmxpbmUSGAoHYX'
+    'VkaXRlZBgHIAEoDVIHYXVkaXRlZBIrChJsYXN0X2F1ZGl0X3VuaXhfbXMYCCABKANSD2xhc3RB'
+    'dWRpdFVuaXhNcxIcCglyZXBhaXJpbmcYCSABKAhSCXJlcGFpcmluZw==');
+
 @$core.Deprecated('Use getRelayPassRequestDescriptor instead')
 const GetRelayPassRequest$json = {
   '1': 'GetRelayPassRequest',

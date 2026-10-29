@@ -189,10 +189,16 @@ abstract final class RepairJobs {
       Sql.named('''
         UPDATE fragments
           SET node_id = @n:bytea, stored = true, damaged_at = NULL,
-              audit_failed_at = NULL
+              audit_failed_at = NULL, audited_at = @t:timestamptz
           WHERE account_id = @a:bytea AND segment_id = @g:bytea
             AND idx = @i:int2'''),
-      parameters: {'a': accountId, 'g': segmentId, 'i': index, 'n': nodeId},
+      parameters: {
+        'a': accountId,
+        'g': segmentId,
+        'i': index,
+        'n': nodeId,
+        't': now,
+      },
     );
     if (stored) {
       await addNodeBytes(tx, [old], -size);

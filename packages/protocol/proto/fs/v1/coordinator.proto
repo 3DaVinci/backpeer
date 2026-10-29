@@ -461,6 +461,53 @@ message ReconcileFragmentsResponse {
   repeated bytes unknown = 1;        // подмножество fragment_ids запроса
 }
 
+// --- Здоровье бэкапа (задачи 4.5.1, 4.5.2) -----------------------------------
+//
+// protocol.md, раздел 4.16. Клиент узнаёт, сколько живых фрагментов у его
+// сегментов и когда их проверяли аудиты, не скачивая фрагменты. Ответ —
+// только о сегментах учётной записи запроса и только числа: ни узлов, ни
+// чужих учётных записей.
+
+// Подписан ключом устройства.
+message GetBackupHealthRequest {
+  // До 1000 сегментов по 32 байта, без повторов; пусто — только сводка.
+  repeated bytes segment_ids = 1;
+  // Фрагмент считается проверенным, если прошёл аудит не раньше этого
+  // времени; 0 — за 30 суток до запроса.
+  int64 audited_since_unix_ms = 2;
+}
+message GetBackupHealthResponse {
+  BackupHealthSummary summary = 1;   // по всем сохранённым сегментам
+  // По запрошенным сегментам, которые координатор знает как сохранённые,
+  // в порядке запроса; отсутствующего в ответе сегмента у координатора нет.
+  repeated SegmentHealth segments = 2;
+  int64 audited_since_unix_ms = 3;   // действующая граница проверки
+}
+message BackupHealthSummary {
+  uint64 segments = 1;               // сохранённых (подтверждённых)
+  uint64 healthy = 2;                // живых фрагментов не меньше n
+  uint64 reduced = 3;                // больше t, но меньше n
+  uint64 at_risk = 4;                // от k до t: в очереди ремонта
+  uint64 lost = 5;                   // меньше k
+  uint64 repairing = 6;              // идёт задание ремонта
+  uint64 readable_now = 7;           // не меньше k живых на узлах в сети
+  uint64 live_fragments = 8;
+  uint64 audited_fragments = 9;      // живые, прошедшие аудит с границы
+  int64 last_audit_unix_ms = 10;     // последний пройденный аудит; 0 — не было
+  uint64 fragment_bytes = 11;        // место фрагментов учётной записи
+}
+message SegmentHealth {
+  bytes segment_id = 1;
+  uint32 k = 2;
+  uint32 n = 3;
+  uint32 repair_threshold = 4;
+  uint32 live = 5;
+  uint32 online = 6;                 // живые на узлах в сети
+  uint32 audited = 7;                // живые, прошедшие аудит с границы
+  int64 last_audit_unix_ms = 8;      // 0 — аудитов не было
+  bool repairing = 9;
+}
+
 // --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------
 //
 // protocol.md, раздел 4.12. Relay — отдельный сервер; координатор выдаёт

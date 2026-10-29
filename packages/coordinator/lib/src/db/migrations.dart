@@ -448,6 +448,12 @@ const List<Migration> schemaMigrations = [
     CREATE INDEX repair_jobs_running ON repair_jobs (executor, kind)
       WHERE state IN (0, 1)''',
   ]),
+  Migration(15, 'здоровье бэкапа', [
+    // Последний пройденный аудит фрагмента на его узле, в том числе
+    // проверка нового фрагмента ремонта или переноса (задача 4.5.1):
+    // сколько фрагментов клиента недавно проверено (GetBackupHealth).
+    'ALTER TABLE fragments ADD COLUMN audited_at timestamptz',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

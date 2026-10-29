@@ -5044,6 +5044,510 @@ class ReconcileFragmentsResponse extends $pb.GeneratedMessage {
   $pb.PbList<$core.List<$core.int>> get unknown => $_getList(0);
 }
 
+/// Подписан ключом устройства.
+class GetBackupHealthRequest extends $pb.GeneratedMessage {
+  factory GetBackupHealthRequest({
+    $core.Iterable<$core.List<$core.int>>? segmentIds,
+    $fixnum.Int64? auditedSinceUnixMs,
+  }) {
+    final result = GetBackupHealthRequest._();
+    if (segmentIds != null) result.segmentIds.addAll(segmentIds);
+    if (auditedSinceUnixMs != null)
+      result.auditedSinceUnixMs = auditedSinceUnixMs;
+    return result;
+  }
+
+  GetBackupHealthRequest._();
+
+  factory GetBackupHealthRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackupHealthRequest()..mergeFromBuffer(data, registry);
+  factory GetBackupHealthRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackupHealthRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBackupHealthRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetBackupHealthRequest.$_createMessage)
+    ..p<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'segmentIds', $pb.PbFieldType.PY)
+    ..aInt64(2, _omitFieldNames ? '' : 'auditedSinceUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackupHealthRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackupHealthRequest copyWith(
+          void Function(GetBackupHealthRequest) updates) =>
+      super.copyWith((message) => updates(message as GetBackupHealthRequest))
+          as GetBackupHealthRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetBackupHealthRequest() / GetBackupHealthRequest.new instead')
+  static GetBackupHealthRequest create() => GetBackupHealthRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetBackupHealthRequest._();
+  @$core.override
+  GetBackupHealthRequest createEmptyInstance() => GetBackupHealthRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetBackupHealthRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBackupHealthRequest>(
+          GetBackupHealthRequest.$_createMessage);
+  static GetBackupHealthRequest? _defaultInstance;
+
+  /// До 1000 сегментов по 32 байта, без повторов; пусто — только сводка.
+  @$pb.TagNumber(1)
+  $pb.PbList<$core.List<$core.int>> get segmentIds => $_getList(0);
+
+  /// Фрагмент считается проверенным, если прошёл аудит не раньше этого
+  /// времени; 0 — за 30 суток до запроса.
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get auditedSinceUnixMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set auditedSinceUnixMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasAuditedSinceUnixMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearAuditedSinceUnixMs() => $_clearField(2);
+}
+
+class GetBackupHealthResponse extends $pb.GeneratedMessage {
+  factory GetBackupHealthResponse({
+    BackupHealthSummary? summary,
+    $core.Iterable<SegmentHealth>? segments,
+    $fixnum.Int64? auditedSinceUnixMs,
+  }) {
+    final result = GetBackupHealthResponse._();
+    if (summary != null) result.summary = summary;
+    if (segments != null) result.segments.addAll(segments);
+    if (auditedSinceUnixMs != null)
+      result.auditedSinceUnixMs = auditedSinceUnixMs;
+    return result;
+  }
+
+  GetBackupHealthResponse._();
+
+  factory GetBackupHealthResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackupHealthResponse()..mergeFromBuffer(data, registry);
+  factory GetBackupHealthResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetBackupHealthResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetBackupHealthResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetBackupHealthResponse.$_createMessage)
+    ..aOM<BackupHealthSummary>(1, _omitFieldNames ? '' : 'summary',
+        subBuilder: BackupHealthSummary.$_createMessage)
+    ..pPM<SegmentHealth>(2, _omitFieldNames ? '' : 'segments',
+        subBuilder: SegmentHealth.$_createMessage)
+    ..aInt64(3, _omitFieldNames ? '' : 'auditedSinceUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackupHealthResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetBackupHealthResponse copyWith(
+          void Function(GetBackupHealthResponse) updates) =>
+      super.copyWith((message) => updates(message as GetBackupHealthResponse))
+          as GetBackupHealthResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use GetBackupHealthResponse() / GetBackupHealthResponse.new instead')
+  static GetBackupHealthResponse create() => GetBackupHealthResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetBackupHealthResponse._();
+  @$core.override
+  GetBackupHealthResponse createEmptyInstance() => GetBackupHealthResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetBackupHealthResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<GetBackupHealthResponse>(
+          GetBackupHealthResponse.$_createMessage);
+  static GetBackupHealthResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  BackupHealthSummary get summary => $_getN(0);
+  @$pb.TagNumber(1)
+  set summary(BackupHealthSummary value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSummary() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSummary() => $_clearField(1);
+  @$pb.TagNumber(1)
+  BackupHealthSummary ensureSummary() => $_ensure(0);
+
+  /// По запрошенным сегментам, которые координатор знает как сохранённые,
+  /// в порядке запроса; отсутствующего в ответе сегмента у координатора нет.
+  @$pb.TagNumber(2)
+  $pb.PbList<SegmentHealth> get segments => $_getList(1);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get auditedSinceUnixMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set auditedSinceUnixMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAuditedSinceUnixMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAuditedSinceUnixMs() => $_clearField(3);
+}
+
+class BackupHealthSummary extends $pb.GeneratedMessage {
+  factory BackupHealthSummary({
+    $fixnum.Int64? segments,
+    $fixnum.Int64? healthy,
+    $fixnum.Int64? reduced,
+    $fixnum.Int64? atRisk,
+    $fixnum.Int64? lost,
+    $fixnum.Int64? repairing,
+    $fixnum.Int64? readableNow,
+    $fixnum.Int64? liveFragments,
+    $fixnum.Int64? auditedFragments,
+    $fixnum.Int64? lastAuditUnixMs,
+    $fixnum.Int64? fragmentBytes,
+  }) {
+    final result = BackupHealthSummary._();
+    if (segments != null) result.segments = segments;
+    if (healthy != null) result.healthy = healthy;
+    if (reduced != null) result.reduced = reduced;
+    if (atRisk != null) result.atRisk = atRisk;
+    if (lost != null) result.lost = lost;
+    if (repairing != null) result.repairing = repairing;
+    if (readableNow != null) result.readableNow = readableNow;
+    if (liveFragments != null) result.liveFragments = liveFragments;
+    if (auditedFragments != null) result.auditedFragments = auditedFragments;
+    if (lastAuditUnixMs != null) result.lastAuditUnixMs = lastAuditUnixMs;
+    if (fragmentBytes != null) result.fragmentBytes = fragmentBytes;
+    return result;
+  }
+
+  BackupHealthSummary._();
+
+  factory BackupHealthSummary.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BackupHealthSummary()..mergeFromBuffer(data, registry);
+  factory BackupHealthSummary.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      BackupHealthSummary()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'BackupHealthSummary',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: BackupHealthSummary.$_createMessage)
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'segments', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(2, _omitFieldNames ? '' : 'healthy', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(3, _omitFieldNames ? '' : 'reduced', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'atRisk', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'lost', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        6, _omitFieldNames ? '' : 'repairing', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        7, _omitFieldNames ? '' : 'readableNow', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        8, _omitFieldNames ? '' : 'liveFragments', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        9, _omitFieldNames ? '' : 'auditedFragments', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aInt64(10, _omitFieldNames ? '' : 'lastAuditUnixMs')
+    ..a<$fixnum.Int64>(
+        11, _omitFieldNames ? '' : 'fragmentBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BackupHealthSummary clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  BackupHealthSummary copyWith(void Function(BackupHealthSummary) updates) =>
+      super.copyWith((message) => updates(message as BackupHealthSummary))
+          as BackupHealthSummary;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use BackupHealthSummary() / BackupHealthSummary.new instead')
+  static BackupHealthSummary create() => BackupHealthSummary._();
+  static $pb.GeneratedMessage $_createMessage() => BackupHealthSummary._();
+  @$core.override
+  BackupHealthSummary createEmptyInstance() => BackupHealthSummary._();
+  @$core.pragma('dart2js:noInline')
+  static BackupHealthSummary getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<BackupHealthSummary>(
+          BackupHealthSummary.$_createMessage);
+  static BackupHealthSummary? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get segments => $_getI64(0);
+  @$pb.TagNumber(1)
+  set segments($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegments() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegments() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get healthy => $_getI64(1);
+  @$pb.TagNumber(2)
+  set healthy($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasHealthy() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearHealthy() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get reduced => $_getI64(2);
+  @$pb.TagNumber(3)
+  set reduced($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasReduced() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearReduced() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get atRisk => $_getI64(3);
+  @$pb.TagNumber(4)
+  set atRisk($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasAtRisk() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearAtRisk() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get lost => $_getI64(4);
+  @$pb.TagNumber(5)
+  set lost($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLost() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLost() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get repairing => $_getI64(5);
+  @$pb.TagNumber(6)
+  set repairing($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasRepairing() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearRepairing() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get readableNow => $_getI64(6);
+  @$pb.TagNumber(7)
+  set readableNow($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasReadableNow() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearReadableNow() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get liveFragments => $_getI64(7);
+  @$pb.TagNumber(8)
+  set liveFragments($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLiveFragments() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLiveFragments() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get auditedFragments => $_getI64(8);
+  @$pb.TagNumber(9)
+  set auditedFragments($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasAuditedFragments() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearAuditedFragments() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get lastAuditUnixMs => $_getI64(9);
+  @$pb.TagNumber(10)
+  set lastAuditUnixMs($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasLastAuditUnixMs() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearLastAuditUnixMs() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $fixnum.Int64 get fragmentBytes => $_getI64(10);
+  @$pb.TagNumber(11)
+  set fragmentBytes($fixnum.Int64 value) => $_setInt64(10, value);
+  @$pb.TagNumber(11)
+  $core.bool hasFragmentBytes() => $_has(10);
+  @$pb.TagNumber(11)
+  void clearFragmentBytes() => $_clearField(11);
+}
+
+class SegmentHealth extends $pb.GeneratedMessage {
+  factory SegmentHealth({
+    $core.List<$core.int>? segmentId,
+    $core.int? k,
+    $core.int? n,
+    $core.int? repairThreshold,
+    $core.int? live,
+    $core.int? online,
+    $core.int? audited,
+    $fixnum.Int64? lastAuditUnixMs,
+    $core.bool? repairing,
+  }) {
+    final result = SegmentHealth._();
+    if (segmentId != null) result.segmentId = segmentId;
+    if (k != null) result.k = k;
+    if (n != null) result.n = n;
+    if (repairThreshold != null) result.repairThreshold = repairThreshold;
+    if (live != null) result.live = live;
+    if (online != null) result.online = online;
+    if (audited != null) result.audited = audited;
+    if (lastAuditUnixMs != null) result.lastAuditUnixMs = lastAuditUnixMs;
+    if (repairing != null) result.repairing = repairing;
+    return result;
+  }
+
+  SegmentHealth._();
+
+  factory SegmentHealth.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SegmentHealth()..mergeFromBuffer(data, registry);
+  factory SegmentHealth.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      SegmentHealth()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'SegmentHealth',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: SegmentHealth.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'segmentId', $pb.PbFieldType.OY)
+    ..aI(2, _omitFieldNames ? '' : 'k', fieldType: $pb.PbFieldType.OU3)
+    ..aI(3, _omitFieldNames ? '' : 'n', fieldType: $pb.PbFieldType.OU3)
+    ..aI(4, _omitFieldNames ? '' : 'repairThreshold',
+        fieldType: $pb.PbFieldType.OU3)
+    ..aI(5, _omitFieldNames ? '' : 'live', fieldType: $pb.PbFieldType.OU3)
+    ..aI(6, _omitFieldNames ? '' : 'online', fieldType: $pb.PbFieldType.OU3)
+    ..aI(7, _omitFieldNames ? '' : 'audited', fieldType: $pb.PbFieldType.OU3)
+    ..aInt64(8, _omitFieldNames ? '' : 'lastAuditUnixMs')
+    ..aOB(9, _omitFieldNames ? '' : 'repairing')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SegmentHealth clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  SegmentHealth copyWith(void Function(SegmentHealth) updates) =>
+      super.copyWith((message) => updates(message as SegmentHealth))
+          as SegmentHealth;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use SegmentHealth() / SegmentHealth.new instead')
+  static SegmentHealth create() => SegmentHealth._();
+  static $pb.GeneratedMessage $_createMessage() => SegmentHealth._();
+  @$core.override
+  SegmentHealth createEmptyInstance() => SegmentHealth._();
+  @$core.pragma('dart2js:noInline')
+  static SegmentHealth getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<SegmentHealth>(
+          SegmentHealth.$_createMessage);
+  static SegmentHealth? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get segmentId => $_getN(0);
+  @$pb.TagNumber(1)
+  set segmentId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasSegmentId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearSegmentId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.int get k => $_getIZ(1);
+  @$pb.TagNumber(2)
+  set k($core.int value) => $_setUnsignedInt32(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasK() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearK() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.int get n => $_getIZ(2);
+  @$pb.TagNumber(3)
+  set n($core.int value) => $_setUnsignedInt32(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasN() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearN() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.int get repairThreshold => $_getIZ(3);
+  @$pb.TagNumber(4)
+  set repairThreshold($core.int value) => $_setUnsignedInt32(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasRepairThreshold() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearRepairThreshold() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $core.int get live => $_getIZ(4);
+  @$pb.TagNumber(5)
+  set live($core.int value) => $_setUnsignedInt32(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasLive() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearLive() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.int get online => $_getIZ(5);
+  @$pb.TagNumber(6)
+  set online($core.int value) => $_setUnsignedInt32(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasOnline() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearOnline() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $core.int get audited => $_getIZ(6);
+  @$pb.TagNumber(7)
+  set audited($core.int value) => $_setUnsignedInt32(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasAudited() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearAudited() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get lastAuditUnixMs => $_getI64(7);
+  @$pb.TagNumber(8)
+  set lastAuditUnixMs($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasLastAuditUnixMs() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearLastAuditUnixMs() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $core.bool get repairing => $_getBF(8);
+  @$pb.TagNumber(9)
+  set repairing($core.bool value) => $_setBool(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasRepairing() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearRepairing() => $_clearField(9);
+}
+
 /// Пропуск к relay. Узел (ключ узла, node_id — свой) получает пропуск
 /// LISTEN: держать управляющее соединение и принимать через relay.
 /// Устройство или узел при ремонте (node_id — другой узел) — CONNECT к узлу.

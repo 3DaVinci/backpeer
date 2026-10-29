@@ -251,6 +251,13 @@ void main() {
         device,
       ),
       'LocateSegment': (pb.LocateSegmentRequest(segmentId: id(3)), device),
+      'GetBackupHealth': (
+        pb.GetBackupHealthRequest(
+          segmentIds: [id(3), id(4)],
+          auditedSinceUnixMs: Int64(1700000000000),
+        ),
+        device,
+      ),
       'DeleteSegment': (pb.DeleteSegmentRequest(segmentId: id(3)), device),
       'RegisterNode': (
         pb.RegisterNodeRequest(

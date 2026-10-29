@@ -1,6 +1,7 @@
 // Сквозной сценарий CLI через настоящий координатор (задача 2.8.3):
 // регистрация на одном «устройстве», вход по паролю и восстановление по
-// фразе на других, устройства и отзыв, смена пароля, копия ключа. Фрагменты
+// фразе на других, устройства и отзыв, смена пароля, копия ключа, состояние
+// бэкапа и проверки (4.5). Фрагменты
 // — в папках узлов-заглушек (node stub). Нужен FS_TEST_POSTGRES.
 
 import 'dart:convert';
@@ -245,5 +246,44 @@ void main() {
       File('${dir.path}/a/config.json').readAsStringSync(),
     ) as Map<String, Object?>;
     expect(config['keyCopy'], isFalse);
+  });
+
+  test('состояние бэкапа от координатора (4.5.1)', () async {
+    final a = env('a');
+    var (code, result, console) = await cli(
+      ['register', ...storage(), '--login', 'carol'],
+      a,
+      answer: words,
+    );
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    (code, result, console) = await cli(['status'], a);
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    expect(result['localSegments'], 0);
+    expect((result['health']! as Map)['segments'], 0);
+
+    final source = Directory('${dir.path}/src')..createSync();
+    File('${source.path}/doc.txt').writeAsStringSync('данные ' * 5000);
+    (code, _, _) = await cli(['backup', source.path], a);
+    expect(code, ExitCode.ok);
+    (code, result, console) = await cli(['status'], a);
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    final local = result['localSegments']! as int;
+    expect(local, greaterThan(0));
+    final health = result['health']! as Map<String, Object?>;
+    expect(health['segments'], local);
+    expect(health['healthy'], local, reason: 'все 4 фрагмента из 4');
+    expect(health['atRisk'], 0);
+    expect(health['lost'], 0);
+    expect(health['liveFragments'], local * 4);
+    expect(health['fragmentBytes'], greaterThan(0));
+    expect(health['lastAudit'], isNull);
+
+    // Текст для человека.
+    final human = _Console();
+    expect(
+      await runCli(['status'], console: human, environment: a),
+      ExitCode.ok,
+    );
+    expect(human.lines.join('\n'), contains('полностью здоровы: $local'));
   });
 }

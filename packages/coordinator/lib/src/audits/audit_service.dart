@@ -393,7 +393,13 @@ final class AuditService {
       );
       var lost = false;
       if (outcome.passed) {
-        if (target.recheck) await _setFailed(tx, target, null);
+        await tx.execute(
+          Sql.named('''
+            UPDATE fragments
+              SET audited_at = @t:timestamptz, audit_failed_at = NULL
+              WHERE node_id = @n:bytea AND fragment_id = @f:bytea'''),
+          parameters: {'n': nodeId, 'f': target.fragmentId, 't': now},
+        );
       } else if (target.recheck) {
         lost = true;
         await tx.execute(

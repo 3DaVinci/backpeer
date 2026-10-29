@@ -59,6 +59,7 @@ export 'src/rpc/database_service.dart';
 export 'src/rpc/errors.dart';
 export 'src/rpc/methods.dart';
 export 'src/rpc/service.dart';
+export 'src/segments/backup_health.dart';
 export 'src/segments/segment_service.dart';
 export 'src/server.dart';
 export 'src/signer/signer_key.dart';

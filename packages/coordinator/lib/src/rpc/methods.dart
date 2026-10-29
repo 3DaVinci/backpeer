@@ -208,6 +208,12 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.ReconcileFragmentsRequest.fromBuffer,
     handle: s.reconcileFragments,
   ),
+  RpcMethod<pb.GetBackupHealthRequest, pb.GetBackupHealthResponse>(
+    name: 'GetBackupHealth',
+    auth: AuthRequirement.device,
+    parse: pb.GetBackupHealthRequest.fromBuffer,
+    handle: s.getBackupHealth,
+  ),
   RpcMethod<pb.GetRelayPassRequest, pb.GetRelayPassResponse>(
     name: 'GetRelayPass',
     auth: AuthRequirement.deviceOrNode,

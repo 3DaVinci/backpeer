@@ -531,13 +531,27 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get createdBody =>
-      'Ключи сохранены в хранилище ключей системы — бэкап по расписанию пойдёт без пароля. Осталось выбрать папки для бэкапа.';
+      'Ключи сохранены в хранилище ключей системы — бэкап по расписанию пойдёт без пароля.';
 
   @override
   String get toBackup => 'Перейти к бэкапу';
 
   @override
   String get next => 'Далее';
+
+  @override
+  String get later => 'Позже';
+
+  @override
+  String get onboardKeeperTitle => 'Станьте хранителем';
+
+  @override
+  String get onboardKeeperBody =>
+      'Backpeer хранит бэкапы на компьютерах участников. Отдайте часть свободного места на этом компьютере: выберите папку и сколько отдать — остальное хранитель сделает сам, в фоне.';
+
+  @override
+  String get onboardKeeperLater =>
+      'Можно и позже — в разделе «Хранитель». Папки для бэкапа выбираются следующим шагом, в разделе «Бэкап».';
 
   @override
   String get back => 'Назад';

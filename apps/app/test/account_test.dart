@@ -201,6 +201,68 @@ void main() {
     expect(find.text('Учётная запись создана'), findsOneWidget);
     // Хранилище ключей недоступно — пользователь знает о пароле.
     expect(find.text('Бэкап ждёт пароль'), findsOneWidget);
+
+    // Следующий шаг — хранитель; «Позже» — к разделам.
+    agent.update(status: agentStatus());
+    await tap(tester, find.text('Далее'));
+    expect(find.text('Станьте хранителем'), findsOneWidget);
+    await tap(tester, find.byKey(const ValueKey('keeper-later')));
+    expect(agent.calls.where((c) => c.$1 == 'keeper.enable'), isEmpty);
+    expect(find.text('Сделать бэкап сейчас'), findsOneWidget);
+  });
+
+  testWidgets('после создания с сервером первым настраивается хранитель', (
+    tester,
+  ) async {
+    final agent = FakeProcess(
+      status: agentStatus(configured: false),
+      answer: (method, params) async => switch (method) {
+        'account.new_phrase' => {'words': words, 'confirm': 3},
+        'account.create' => {'remembered': true, 'accountId': 'ab' * 32},
+        'keeper.info' => {
+          'enabled': false,
+          'settings': null,
+          'defaultStorageDir': '/home/user/.local/share/backpeer/node',
+          'minQuotaBytes': 1 << 30,
+        },
+        'keeper.disk' => {
+          'path': params['path'],
+          'availableBytes': 400000000000,
+        },
+        'keeper.enable' => {'started': true, 'nodeId': 'ab' * 32},
+        _ => const {},
+      },
+    );
+    await pump(tester, agent, coordinator: 'https://coordinator.example');
+    await tap(tester, find.text('Создать учётную запись'));
+    await enter(tester, 'login', 'alice');
+    await tap(tester, find.text('Далее'));
+    await enter(tester, 'newPassword', strong);
+    await enter(tester, 'repeatPassword', strong);
+    await tap(tester, find.text('Далее'));
+    await tap(tester, find.byKey(const ValueKey('phraseWritten')));
+    await tap(tester, find.text('Далее'));
+    for (final p in asked(tester)) {
+      await enter(tester, 'check$p', words[p - 1]);
+    }
+    await tap(tester, find.text('Создать учётную запись'));
+    expect(find.text('Перейти к бэкапу'), findsNothing);
+    agent.update(status: agentStatus());
+    await tap(tester, find.text('Далее'));
+
+    expect(find.text('Станьте хранителем'), findsOneWidget);
+    expect(find.textContaining('не может их прочитать'), findsOneWidget);
+    expect(agent.calls.last.$1, 'keeper.info');
+    await tap(tester, find.byKey(const ValueKey('keeper-enable')));
+    // Половина свободного, не больше 500 ГБ.
+    expect(find.text('200'), findsOneWidget);
+    await tap(tester, find.byKey(const ValueKey('keeper-submit')));
+    final (method, params) = agent.calls.last;
+    expect(method, 'keeper.enable');
+    expect(params['storageDir'], '/home/user/.local/share/backpeer/node');
+    expect(params['quotaBytes'], 200 * 1000 * 1000 * 1000);
+    expect(find.text('Роль хранителя включена'), findsOneWidget);
+    expect(find.text('Сделать бэкап сейчас'), findsOneWidget);
   });
 
   testWidgets('новый компьютер: вход по паролю, последний снимок, '

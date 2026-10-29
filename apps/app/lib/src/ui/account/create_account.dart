@@ -231,7 +231,7 @@ class _CreateAccountFlowState extends State<CreateAccountFlow> {
               onPressed: _busy ? null : next,
               child: Text(switch (_step) {
                 _Step.check => l10n.createAccount,
-                _Step.done => l10n.toBackup,
+                _Step.done => _withServer ? l10n.next : l10n.toBackup,
                 _ => l10n.next,
               }),
             ),

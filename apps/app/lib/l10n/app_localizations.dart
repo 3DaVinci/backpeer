@@ -983,7 +983,7 @@ abstract class AppLocalizations {
   /// No description provided for @createdBody.
   ///
   /// In ru, this message translates to:
-  /// **'Ключи сохранены в хранилище ключей системы — бэкап по расписанию пойдёт без пароля. Осталось выбрать папки для бэкапа.'**
+  /// **'Ключи сохранены в хранилище ключей системы — бэкап по расписанию пойдёт без пароля.'**
   String get createdBody;
 
   /// No description provided for @toBackup.
@@ -997,6 +997,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Далее'**
   String get next;
+
+  /// No description provided for @later.
+  ///
+  /// In ru, this message translates to:
+  /// **'Позже'**
+  String get later;
+
+  /// No description provided for @onboardKeeperTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Станьте хранителем'**
+  String get onboardKeeperTitle;
+
+  /// No description provided for @onboardKeeperBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Backpeer хранит бэкапы на компьютерах участников. Отдайте часть свободного места на этом компьютере: выберите папку и сколько отдать — остальное хранитель сделает сам, в фоне.'**
+  String get onboardKeeperBody;
+
+  /// No description provided for @onboardKeeperLater.
+  ///
+  /// In ru, this message translates to:
+  /// **'Можно и позже — в разделе «Хранитель». Папки для бэкапа выбираются следующим шагом, в разделе «Бэкап».'**
+  String get onboardKeeperLater;
 
   /// No description provided for @back.
   ///

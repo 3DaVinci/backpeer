@@ -7,7 +7,7 @@
 # Бандлы `dart build cli` (бинарник и lib/ с libsodium и SQLite) требуют
 # glibc 2.34+, поэтому основа — Debian 12, а не Alpine.
 
-ARG DART_VERSION=3.13.5
+ARG DART_VERSION=3.13.7
 
 FROM dart:${DART_VERSION} AS build
 # Хук пакета sodium собирает libsodium из исходников.

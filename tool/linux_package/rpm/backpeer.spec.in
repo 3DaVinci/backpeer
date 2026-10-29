@@ -1,0 +1,60 @@
+# Пакет .rpm (задача 5.7.3) из готовой раскладки: rpmbuild только
+# упаковывает, ничего не собирает. Подстановки @…@ — inside.sh.
+Name:           backpeer
+Version:        @VERSION@
+Release:        1
+Summary:        Encrypted backups on other people's computers
+License:        LicenseRef-proprietary
+BuildArch:      @RPM_ARCH@
+Requires:       gtk3, libsecret, glib2
+Recommends:     libayatana-appindicator-gtk3, systemd
+
+# Бандлы несут свои библиотеки (Flutter, libsodium, SQLite): автоматические
+# Requires/Provides по ним не нужны и сломали бы установку.
+AutoReqProv:    no
+# Бинарники Dart AOT нельзя ни strip, ни разбирать на debuginfo: снимок
+# программы дописан в конец файла.
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+%global _build_id_links none
+
+%description
+Back up important files in encrypted form to computers of other users and
+give your own free disk space in return. Files are encrypted on your
+computer; scheduled backups run in the background.
+
+%install
+cp -a @STAGE@/. %{buildroot}/
+
+%files
+/opt/backpeer
+/usr/bin/backpeer
+/usr/bin/backpeer-cli
+/usr/bin/backpeer-agent
+/usr/share/applications/org.backpeer.app.desktop
+/usr/share/icons/hicolor/*/apps/backpeer.*
+/usr/share/metainfo/org.backpeer.app.metainfo.xml
+
+%preun
+# Удаление (не обновление): то же, что prerm пакета .deb.
+if [ "$1" -eq 0 ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl list-users --no-legend 2>/dev/null | while read -r uid user rest; do
+    [ -d "/run/user/$uid" ] || continue
+    home="$(getent passwd "$user" | cut -d: -f6)"
+    runuser -u "$user" -- env HOME="$home" USER="$user" LOGNAME="$user" \
+      XDG_RUNTIME_DIR="/run/user/$uid" \
+      DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" \
+      /opt/backpeer/daemons/agent/bin/agent uninstall >/dev/null 2>&1 || true
+  done
+fi
+exit 0
+
+%postun
+# Обновление: службы пользователей — на новую версию.
+if [ "$1" -ge 1 ] && command -v loginctl >/dev/null 2>&1; then
+  loginctl list-users --no-legend 2>/dev/null | while read -r uid user rest; do
+    systemctl --user -M "$user@" try-restart \
+      backpeer-agent.service backpeer-node.service >/dev/null 2>&1 || true
+  done
+fi
+exit 0

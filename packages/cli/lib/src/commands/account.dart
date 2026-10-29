@@ -3,10 +3,10 @@ import 'dart:typed_data';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:cli/src/account_ops.dart';
 import 'package:cli/src/app_config.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
-import 'package:protocol/protocol.dart' as pb;
 
 /// Общие флаги хранилищ для init, register, login и recover; с
 /// [coordinator] — адрес координатора и его УЦ.
@@ -61,24 +61,20 @@ int _int(ArgResults args, String name) {
   return value;
 }
 
-AppConfig _newConfig(CliContext ctx, ArgResults args, CryptoProvider crypto) {
-  final coordinator = args.options.contains('coordinator')
+AppConfig _newConfig(AccountOps ops, ArgResults args) => ops.newConfig(
+  nodes: args.option('nodes'),
+  nodeCount: _int(args, 'node-count'),
+  objects: args.option('objects'),
+  durability: DurabilityParameters(
+    k: _int(args, 'k'),
+    n: _int(args, 'n'),
+    repairThreshold: _int(args, 'repair-threshold'),
+  ),
+  coordinator: args.options.contains('coordinator')
       ? args.option('coordinator')
-      : null;
-  return AppConfig(
-    nodes: args.option('nodes') ?? '${ctx.home.dir.path}/nodes',
-    nodeCount: _int(args, 'node-count'),
-    objects: args.option('objects') ?? '${ctx.home.dir.path}/objects',
-    durability: DurabilityParameters(
-      k: _int(args, 'k'),
-      n: _int(args, 'n'),
-      repairThreshold: _int(args, 'repair-threshold'),
-    ),
-    deviceId: crypto.randomBytes(32),
-    coordinator: coordinator,
-    coordinatorCa: coordinator == null ? null : args.option('ca'),
-  )..check();
-}
+      : null,
+  coordinatorCa: args.options.contains('ca') ? args.option('ca') : null,
+);
 
 /// Имя для входа из `--login`; недопустимое — ошибка вызова.
 String loginOption(ArgResults args) {
@@ -91,13 +87,6 @@ String loginOption(ArgResults args) {
     );
   }
   return login;
-}
-
-/// Каталог программы ещё пуст.
-void _requireEmptyHome(CliContext ctx) {
-  if (ctx.home.keysFile.existsSync()) {
-    throw CliException('В ${ctx.home.dir.path} уже есть учётная запись');
-  }
 }
 
 /// Новая фраза: показать, проверить три слова (У-2).
@@ -141,24 +130,6 @@ void _checkWords(CliContext ctx, List<String> words) {
   }
 }
 
-/// Понятное сообщение для ошибки координатора при работе с учётной записью.
-Never coordinatorFailure(CoordinatorException e, {String? unauthenticated}) {
-  final message = switch (e.code) {
-    pb.ErrorCode.ERROR_CODE_UNAUTHENTICATED when unauthenticated != null =>
-      unauthenticated,
-    pb.ErrorCode.ERROR_CODE_RATE_LIMITED =>
-      'координатор просит подождать'
-          '${e.retryAfter == null ? '' : ' ${_duration(e.retryAfter!)}'}',
-    pb.ErrorCode.ERROR_CODE_UNAVAILABLE => 'координатор недоступен',
-    _ => e.message,
-  };
-  throw CliException(message);
-}
-
-String _duration(Duration d) => d.inMinutes >= 1
-    ? '${d.inMinutes} мин'
-    : '${(d.inMilliseconds / 1000).ceil()} с';
-
 final class InitCommand extends CliCommand {
   new(super.ctx) {
     _storageOptions(this);
@@ -174,15 +145,16 @@ final class InitCommand extends CliCommand {
 
   @override
   Future<int> run() async {
-    _requireEmptyHome(ctx);
-    final crypto = await ctx.crypto();
-    final config = _newConfig(ctx, argResults!, crypto);
-    final phrase = _newPhrase(ctx, crypto);
+    final ops = await ctx.accountOps();
+    ops.requireEmptyHome();
+    final config = _newConfig(ops, argResults!);
+    final phrase = _newPhrase(ctx, ops.crypto);
     final password = ctx.newPassword();
-    final keys = await AccountKeys.fromPhrase(phrase, crypto);
-    await (await ctx.keyStore()).create(keys, password, phrase: phrase);
-    config.save(ctx.home);
-    ctx.index().close();
+    final (keys, _) = await ops.create(
+      config: config,
+      phrase: phrase,
+      password: password,
+    );
     ctx.report
       ..info(
         'Учётная запись создана: '
@@ -233,79 +205,41 @@ final class RegisterCommand extends CliCommand {
 
   @override
   Future<int> run() async {
-    _requireEmptyHome(ctx);
+    final ops = await ctx.accountOps();
+    ops.requireEmptyHome();
     final args = argResults!;
     final login = loginOption(args);
-    final crypto = await ctx.crypto();
-    final config = _newConfig(ctx, args, crypto)..login = login;
-    final client = await ctx.client(
-      config.coordinator!,
-      ca: config.coordinatorCa,
-    );
-    final phrase = _newPhrase(ctx, crypto);
+    final config = _newConfig(ops, args)..login = login;
+    // Адрес проверяется до показа фразы.
+    ops.client(config).close();
+    final phrase = _newPhrase(ctx, ops.crypto);
     final password = ctx.newPassword();
-    final keys = await AccountKeys.fromPhrase(phrase, crypto);
-    final device = await DeviceKeys.generate(crypto);
     try {
-      final copy = args.flag('key-copy')
-          ? await KeyCopy.create(
-              crypto,
-              keys: keys,
-              password: password,
-              params: ctx.argon2,
-            )
-          : KeyCopy.none;
-      try {
-        await client.registerAccount(
-          pb.RegisterAccountRequest(
-            deviceCertificate: await DeviceCertificates.issue(
-              crypto,
-              keys,
-              device,
-              issuedAt: DateTime.now(),
-            ),
-            login: login,
-            keyBundle: copy.keyBundle,
-            authVerifier: copy.authVerifier,
-          ),
-          accountKey: keys.accountSign,
-        );
-      } on CoordinatorException catch (e) {
-        if (e.code == pb.ErrorCode.ERROR_CODE_ALREADY_EXISTS) {
-          throw CliException('Имя $login занято, выберите другое');
-        }
-        coordinatorFailure(e);
-      }
-      config
-        ..deviceId = device.deviceId
-        ..keyCopy = copy.enabled;
-      await (await ctx.keyStore()).create(
-        keys,
-        password,
+      final (keys, device) = await ops.create(
+        config: config,
         phrase: phrase,
-        device: device,
+        password: password,
+        keyCopy: args.flag('key-copy'),
       );
-      config.save(ctx.home);
-      ctx.index().close();
+      final copy = config.keyCopy == true;
       ctx.report
         ..info(
           'Учётная запись $login создана на ${config.coordinator}: '
           '${bytesToHex(keys.accountId).substring(0, 16)}…'
-          '${copy.enabled ? '' : '; копии ключа на координаторе нет — '
+          '${copy ? '' : '; копии ключа на координаторе нет — '
                     'на новом устройстве только по фразе'}.',
         )
         ..result({
           'accountId': bytesToHex(keys.accountId),
           'login': login,
-          'deviceId': bytesToHex(device.deviceId),
-          'keyCopy': copy.enabled,
+          'deviceId': bytesToHex(device!.deviceId),
+          'keyCopy': copy,
           ...config.durability.toConfig(),
         });
-      return ExitCode.ok;
-    } finally {
-      client.close();
       keys.dispose();
       device.dispose();
+      return ExitCode.ok;
+    } finally {
       phrase.dispose();
     }
   }
@@ -326,55 +260,24 @@ final class RecoverCommand extends CliCommand {
 
   @override
   Future<int> run() async {
-    _requireEmptyHome(ctx);
-    final crypto = await ctx.crypto();
-    final config = _newConfig(ctx, argResults!, crypto);
+    final ops = await ctx.accountOps();
+    ops.requireEmptyHome();
+    final config = _newConfig(ops, argResults!);
+    if (config.coordinator != null) ops.client(config).close();
     final text =
         ctx.env['FS_PHRASE'] ??
         ctx.console.askSecret('Фраза восстановления (24 слова): ');
     if (text == null) throw const CliException('Фраза не введена');
-    final RecoveryPhrase phrase;
-    try {
-      phrase = RecoveryPhrase.parse(text);
-    } on DataFormatException catch (e) {
-      throw CliException(
-        'Фраза не разобрана: ${e.detail ?? e.problem.description}',
-      );
-    } on IntegrityException {
-      throw const CliException(
-        'Фраза с ошибкой: не сходится контрольная сумма',
-      );
-    }
-    final keys = await AccountKeys.fromPhrase(phrase, crypto);
-    final url = config.coordinator;
-    final client = url == null
-        ? null
-        : await ctx.client(url, ca: config.coordinatorCa);
-    DeviceKeys? device;
+    final phrase = AccountOps.parsePhrase(text);
     try {
       final password = ctx.newPassword();
-      if (client != null) {
-        device = await DeviceKeys.generate(crypto);
-        await addDevice(ctx, client, keys, device);
-        config.deviceId = device.deviceId;
-      }
-      await (await ctx.keyStore()).create(
-        keys,
-        password,
+      final (keys, device) = await ops.recover(
+        config: config,
         phrase: phrase,
-        device: device,
+        password: password,
       );
-      config.save(ctx.home);
-      final objects = client == null
-          ? LocalObjectStore(Directory(config.objects))
-          : CoordinatorObjectStore(
-              await ctx.client(url!, ca: config.coordinatorCa, device: device),
-            );
-      return await restoreIndex(ctx, keys, objects);
+      return await restoreIndex(ctx, ops, config, keys, device);
     } finally {
-      client?.close();
-      keys.dispose();
-      device?.dispose();
       phrase.dispose();
     }
   }
@@ -401,111 +304,30 @@ final class LoginCommand extends CliCommand {
 
   @override
   Future<int> run() async {
-    _requireEmptyHome(ctx);
+    final ops = await ctx.accountOps();
+    ops.requireEmptyHome();
     final args = argResults!;
-    final login = loginOption(args);
-    final crypto = await ctx.crypto();
-    final config = _newConfig(ctx, args, crypto)
-      ..login = login
-      ..keyCopy = true;
-    final client = await ctx.client(
-      config.coordinator!,
-      ca: config.coordinatorCa,
+    final config = _newConfig(ops, args)..login = loginOption(args);
+    ops.client(config).close();
+    final (keys, device) = await ops.login(
+      config: config,
+      password: ctx.password(),
     );
-    final password = ctx.password();
-    final AccountKeys keys;
-    try {
-      (keys, _) = await loginWithPassword(
-        client,
-        crypto,
-        login: login,
-        password: password,
-      );
-    } on CoordinatorException catch (e) {
-      client.close();
-      coordinatorFailure(
-        e,
-        unauthenticated:
-            'Неверное имя или пароль, либо вход по паролю для этой учётной '
-            'записи выключен (тогда — recover по фразе)',
-      );
-    } on CoreException catch (e) {
-      client.close();
-      throw CliException('Копия ключа с координатора не открыта: ${e.message}');
-    }
-    final device = await DeviceKeys.generate(crypto);
-    try {
-      await addDevice(ctx, client, keys, device);
-      config.deviceId = device.deviceId;
-      await (await ctx.keyStore()).create(keys, password, device: device);
-      config.save(ctx.home);
-      return await restoreIndex(
-        ctx,
-        keys,
-        CoordinatorObjectStore(
-          await ctx.client(
-            config.coordinator!,
-            ca: config.coordinatorCa,
-            device: device,
-          ),
-        ),
-      );
-    } finally {
-      client.close();
-      keys.dispose();
-      device.dispose();
-    }
-  }
-}
-
-/// `AddDevice`: новое устройство учётной записи на координаторе.
-Future<void> addDevice(
-  CliContext ctx,
-  CoordinatorClient client,
-  AccountKeys keys,
-  DeviceKeys device,
-) async {
-  final crypto = await ctx.crypto();
-  try {
-    await client.addDevice(
-      pb.AddDeviceRequest(
-        deviceCertificate: await DeviceCertificates.issue(
-          crypto,
-          keys,
-          device,
-          issuedAt: DateTime.now(),
-        ),
-      ),
-      accountKey: keys.accountSign,
-    );
-  } on CoordinatorException catch (e) {
-    if (e.code == pb.ErrorCode.ERROR_CODE_QUOTA_EXCEEDED) {
-      throw const CliException(
-        'У учётной записи уже 5 устройств: отзовите ненужное (cli revoke) '
-        'на другом устройстве',
-      );
-    }
-    coordinatorFailure(
-      e,
-      unauthenticated: 'учётная запись не зарегистрирована на координаторе',
-    );
+    return await restoreIndex(ctx, ops, config, keys, device);
   }
 }
 
 /// Локальный индекс из объектов-индексов и итог команды (recover, login).
+/// Ключи освобождаются.
 Future<int> restoreIndex(
   CliContext ctx,
+  AccountOps ops,
+  AppConfig config,
   AccountKeys keys,
-  ObjectStore objects,
+  DeviceKeys? device,
 ) async {
-  final index = ctx.index();
   try {
-    final report = await recoverIndex(
-      crypto: await ctx.crypto(),
-      manifestKey: keys.manifestKey,
-      store: objects,
-      index: index,
-    );
+    final report = await ops.restoreIndex(config, keys, device);
     ctx.report.info(
       'Учётная запись восстановлена: '
       '${bytesToHex(keys.accountId).substring(0, 16)}…; '
@@ -526,8 +348,8 @@ Future<int> restoreIndex(
     }, exitCode: code);
     return code;
   } finally {
-    index.close();
-    if (objects case CoordinatorObjectStore(:final client)) client.close();
+    keys.dispose();
+    device?.dispose();
   }
 }
 
@@ -542,16 +364,11 @@ final class ShowPhraseCommand extends CliCommand {
 
   @override
   Future<int> run() async {
-    final store = await ctx.keyStore();
-    if (!store.hasPhrase) {
+    final ops = await ctx.accountOps();
+    if (!ops.keyStore.hasPhrase) {
       throw const CliException('Копии фразы на этом устройстве нет');
     }
-    final RecoveryPhrase phrase;
-    try {
-      phrase = await store.unlockPhrase(ctx.password());
-    } on IntegrityException {
-      throw const CliException('Неверный пароль');
-    }
+    final phrase = await ops.phrase(ctx.password());
     final words = phrase.words;
     for (var i = 0; i < words.length; i++) {
       ctx.report.info('${(i + 1).toString().padLeft(2)}. ${words[i]}');
@@ -606,7 +423,26 @@ final class ConfigCommand extends CliCommand {
         help: 'Убрать все правила исключения',
         negatable: false,
       );
+    for (final (name, what) in _keepOptions) {
+      argParser.addOption(
+        'keep-$name',
+        help: 'Политика хранения: сколько $what снимков хранить',
+      );
+    }
+    argParser.addFlag(
+      'keep-all',
+      help: 'Хранить все снимки (без очистки по политике)',
+      negatable: false,
+    );
   }
+
+  static const _keepOptions = [
+    ('last', 'последних'),
+    ('hourly', 'почасовых'),
+    ('daily', 'дневных'),
+    ('weekly', 'недельных'),
+    ('monthly', 'месячных'),
+  ];
 
   @override
   String get name => 'config';
@@ -663,6 +499,25 @@ final class ConfigCommand extends CliCommand {
       config.excludes = [...config.excludes, ...a.multiOption('exclude')];
       changed = true;
     }
+    if (a.flag('keep-all')) {
+      config.retention = null;
+      changed = true;
+    }
+    final keep = {
+      for (final (name, _) in _keepOptions)
+        if (a.option('keep-$name') != null) name: _int(a, 'keep-$name'),
+    };
+    if (keep.isNotEmpty) {
+      try {
+        config.retention = RetentionPolicy.fromJson({
+          ...?config.retention?.toJson(),
+          ...keep,
+        });
+      } on ConfigException catch (e) {
+        throw CliException(e.message, ExitCode.usage);
+      }
+      changed = true;
+    }
     if (changed) config.save(ctx.home);
     ctx.report
       ..info('Каталог программы: ${ctx.home.dir.path}')
@@ -681,6 +536,7 @@ final class ConfigCommand extends CliCommand {
       )
       ..info('Надёжность: ${config.durability}')
       ..info('Устройство: ${bytesToHex(config.deviceId).substring(0, 16)}…')
+      ..info('Хранение снимков: ${config.retention ?? 'все'}')
       ..info(
         'Исключения: '
         '${config.excludes.isEmpty ? 'нет' : config.excludes.join(', ')}',

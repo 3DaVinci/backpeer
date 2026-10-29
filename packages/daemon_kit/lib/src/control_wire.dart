@@ -6,7 +6,9 @@ import 'dart:typed_data';
 ///
 /// Запрос — `{"id": 1, "method": "status", "params": {…}}`, ответ —
 /// `{"id": 1, "result": {…}}` или `{"id": 1, "error": {"code": …,
-/// "message": …}}`. Строка длиннее [maxLine] обрывает соединение.
+/// "message": …}}`. После метода `subscribe` сервер шлёт и события без
+/// `id`: `{"event": "progress", "data": {…}}`. Строка длиннее [maxLine]
+/// обрывает соединение.
 abstract final class ControlWire {
   static const int maxLine = 64 << 10;
 

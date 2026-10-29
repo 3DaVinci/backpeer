@@ -2,11 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:node/src/daemon/command_channel.dart';
 import 'package:node/src/daemon/identity.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:node/src/net/reachability.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
@@ -162,6 +162,7 @@ final class CoordinatorLink {
   List<String> _unknownKeys = const [];
   bool _leaving;
   pb.LeaveNetworkResponse? _leave;
+  pb.NodeStanding? _standing;
   Completer<void>? _wake;
   Future<void>? _loop;
   Future<void>? _reporting;
@@ -179,7 +180,29 @@ final class CoordinatorLink {
     'channel': channel?.toJson(),
     'reconcile': reconciler?.toJson(),
     'exit': exitJson,
+    'standing': ?_standingJson(),
   };
+
+  /// Как координатор видел узел при последнем heartbeat (задача 5.5.2);
+  /// `null` — ещё не было ответа с этими сведениями.
+  Map<String, Object?>? _standingJson() {
+    final s = _standing;
+    if (s == null) return null;
+    String at(Int64 ms) => DateTime.fromMillisecondsSinceEpoch(
+      ms.toInt(),
+      isUtc: true,
+    ).toIso8601String();
+    return {
+      'availability': s.availability,
+      'reputation': s.reputation,
+      'onProbation': s.onProbation,
+      'probationEndsAt': at(s.probationEndsUnixMs),
+      'auditsPassed': s.auditsPassed.toInt(),
+      'auditsFailed': s.auditsFailed.toInt(),
+      'excluded': s.excluded,
+      'registeredAt': at(s.registeredUnixMs),
+    };
+  }
 
   /// Выход из сети: `null` — узел не уходит.
   Map<String, Object?>? get exitJson => !_leaving
@@ -471,6 +494,7 @@ final class CoordinatorLink {
     final response = await _sendHeartbeat(request);
     _lastHeartbeat = _clock();
     if (response.reconcile) reconciler?.request();
+    if (response.hasStanding()) _standing = response.standing;
     if (response.nextHeartbeatMs > 0) {
       _interval = Duration(milliseconds: response.nextHeartbeatMs);
     }

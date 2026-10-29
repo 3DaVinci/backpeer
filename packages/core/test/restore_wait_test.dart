@@ -193,6 +193,7 @@ void main() {
     hideSegment(hidden);
     final target = Directory('${dir.path}/out');
     var sawPartial = false;
+    RestoreProgress? waiting;
     final pending = restore(
       target,
       wait: const RestoreWait(
@@ -200,13 +201,20 @@ void main() {
         retryInterval: Duration(milliseconds: 200),
       ),
       onProgress: (p) {
-        if (p.waitingFiles > 0 && p.files > 0) sawPartial = true;
+        if (p.waitingFiles > 0 && p.files > 0) {
+          sawPartial = true;
+          waiting = p;
+        }
       },
     );
     await _eventually(() => sawPartial ? true : null);
     expect(sawPartial, isTrue, reason: 'маленький файл не ждёт большой');
     expect(restored(target, 'sub/small.txt').readAsStringSync(), 'маленький');
     expect(restored(target, 'big.bin').existsSync(), isFalse);
+    // Видно, чего ждём: путь отложенного файла и причина.
+    expect(waiting!.waitingPaths.single, endsWith('big.bin'));
+    expect(waiting!.waitingReason, isNotEmpty);
+    expect(waiting!.waitLeft, isNotNull);
     nodes.missing.clear();
     final result = await pending;
     expect(result.isComplete, isTrue, reason: '${result.errors}');

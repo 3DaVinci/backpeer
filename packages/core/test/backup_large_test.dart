@@ -4,7 +4,7 @@
 //   FS_LARGE_TESTS=1 dart test test/backup_large_test.dart
 //
 // FS_BACKUP_GIB — размер (по умолчанию 10), FS_LARGE_DIR — каталог для
-// файла данных на диске (по умолчанию ~/.cache/file_storage_tests: /tmp
+// файла данных на диске (по умолчанию ~/.cache/backpeer_tests: /tmp
 // бывает в памяти). Фрагменты не сохраняются — только считаются.
 
 import 'dart:io';
@@ -50,7 +50,7 @@ void main() {
     'бэкап $gib ГиБ: пиковая память в пределе',
     () async {
       final root = Directory(
-        env['FS_LARGE_DIR'] ?? '${env['HOME']}/.cache/file_storage_tests',
+        env['FS_LARGE_DIR'] ?? '${env['HOME']}/.cache/backpeer_tests',
       )..createSync(recursive: true);
       final dir = root.createTempSync('backup-');
       addTearDown(() => dir.deleteSync(recursive: true));

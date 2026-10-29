@@ -4,9 +4,9 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Канал закрыт или не открыт: heartbeat уходит по HTTP.

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Приём соединений по UDP после сведения через координатор (задачи

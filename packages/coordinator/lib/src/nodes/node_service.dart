@@ -28,12 +28,17 @@ final class NodeService {
     this._checks, {
     this.policy = const NodePolicy(),
     this._coordinatorKeys,
+    this.probation = Duration.zero,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
   final Database _db;
   final CertificateChecks _checks;
   final NodePolicy policy;
+
+  /// Испытательный срок узлов (`PlacementPolicy.probation`) — для
+  /// `standing` в ответе на heartbeat.
+  final Duration probation;
 
   /// Ключи, которыми подписант подписывает талоны сейчас (protocol.md,
   /// раздел 5.1); `null` — подписант не настроен.
@@ -194,7 +199,7 @@ final class NodeService {
     _checkEndpoints(request.endpoints);
     final subnet = _subnet(context);
     final now = _clock();
-    final reconcile = await _db.transaction((tx) async {
+    final (reconcile, standing) = await _db.transaction((tx) async {
       final rows = await tx.execute(
         Sql.named('''
           UPDATE nodes SET capacity_bytes = @cap:int8, used_bytes = @u:int8,
@@ -212,11 +217,60 @@ final class NodeService {
         },
       );
       await _beat(tx, nodeId, now);
-      return rows.isNotEmpty && rows.single.single! as bool;
+      return (
+        rows.isNotEmpty && rows.single.single! as bool,
+        await _standing(tx, nodeId, now),
+      );
     });
     return pb.HeartbeatResponse(
       nextHeartbeatMs: policy.heartbeatInterval.inMilliseconds,
       reconcile: reconcile,
+      standing: standing,
+    );
+  }
+
+  /// Как координатор видит узел: для статистики хранителя (задача 5.5.2).
+  Future<pb.NodeStanding> _standing(
+    TxSession tx,
+    Uint8List nodeId,
+    DateTime now,
+  ) async {
+    final [
+      availability as double,
+      registered as DateTime,
+      passed as int,
+      failed as int,
+      recentFailed as int,
+      latencyMs as double?,
+      excluded as DateTime?,
+    ] = (await tx.execute(
+      Sql.named('''
+        SELECT availability, registered_at, audits_passed, audits_failed,
+               audit_window_failures, audit_latency_ms, excluded_at
+          FROM nodes WHERE node_id = @n:bytea'''),
+      parameters: {'n': nodeId},
+    )).single;
+    final probationEnds = registered.add(probation);
+    return pb.NodeStanding(
+      availability: availability,
+      reputation: Reputation.of(
+        ReputationInput(
+          availability: availability,
+          age: now.difference(registered),
+          auditsPassed: passed,
+          auditsFailed: failed,
+          recentFailures: recentFailed,
+          auditLatency: latencyMs == null
+              ? null
+              : Duration(microseconds: (latencyMs * 1000).round()),
+        ),
+      ),
+      onProbation: probationEnds.isAfter(now),
+      probationEndsUnixMs: Int64(probationEnds.millisecondsSinceEpoch),
+      auditsPassed: Int64(passed),
+      auditsFailed: Int64(failed),
+      excluded: excluded != null,
+      registeredUnixMs: Int64(registered.millisecondsSinceEpoch),
     );
   }
 

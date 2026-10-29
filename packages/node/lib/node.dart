@@ -7,7 +7,8 @@
 ///   фрагментов с координатором (4.4.3);
 /// - `repair/` — исполнитель ремонта (4.3.4) и перенос своих фрагментов
 ///   (4.4.1, 4.4.2);
-/// - `control/` — локальный API управления для CLI и приложения (3.1.3);
+/// - `control/` — клиент локального API управления для CLI и приложения
+///   (3.1.3); сервер, кадры и журнал — в общем пакете `daemon_kit`;
 /// - `net/` — приём TCP, проверка достижимости, проброс порта на роутере
 ///   (UPnP IGD, PCP, NAT-PMP) (3.5), приём UDP после сведения узлов (3.7),
 ///   приём через relay (3.8);
@@ -16,15 +17,21 @@
 /// - `stub_nodes.dart` — узлы-заглушки этапа 2 для разработки и тестов.
 library;
 
-export 'src/control/control_client.dart';
-export 'src/control/control_endpoint.dart'
-    show ControlEndpoint, ControlException;
-export 'src/control/control_server.dart';
+export 'package:daemon_kit/daemon_kit.dart'
+    show
+        ControlEndpoint,
+        ControlEvent,
+        ControlException,
+        ControlServer,
+        JsonLogWriter,
+        LogEvent,
+        RotatingLogFile;
+
+export 'src/control/node_control_client.dart';
 export 'src/daemon/command_channel.dart';
 export 'src/daemon/config.dart';
 export 'src/daemon/coordinator_link.dart';
 export 'src/daemon/identity.dart';
-export 'src/daemon/log.dart';
 export 'src/daemon/node_daemon.dart';
 export 'src/daemon/transfers.dart';
 export 'src/net/peer_listener.dart';

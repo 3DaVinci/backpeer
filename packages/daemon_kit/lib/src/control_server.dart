@@ -4,10 +4,10 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/src/control_endpoint.dart';
+import 'package:daemon_kit/src/control_wire.dart';
+import 'package:daemon_kit/src/log.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/control/control_endpoint.dart';
-import 'package:node/src/control/control_wire.dart';
-import 'package:node/src/daemon/log.dart';
 
 /// Обработчик метода локального API: результат или [ControlException].
 typedef ControlHandler = Future<Map<String, Object?>> Function(
@@ -15,8 +15,12 @@ typedef ControlHandler = Future<Map<String, Object?>> Function(
   Map<String, Object?> params,
 );
 
-/// Сервер локального API демона ([ControlEndpoint]). Доступ — только
-/// пользователю ОС, от которого запущен демон.
+/// Сервер локального API фонового процесса ([ControlEndpoint]). Доступ —
+/// только пользователю ОС, от которого запущен процесс.
+///
+/// Методы `subscribe` (`params.events` — список имён, нет — все) и
+/// `unsubscribe` сервер обрабатывает сам: после подписки соединение
+/// получает события [publish].
 final class ControlServer {
   new _(this.endpoint, this._socket, this._handler, this._token, this._uid);
 
@@ -56,7 +60,7 @@ final class ControlServer {
         path,
       );
     }
-    await _removeStale(path);
+    await _removeStale(path, endpoint.process);
     final socket = await ServerSocket.bind(
       InternetAddress(path, type: InternetAddressType.unix),
       0,
@@ -91,6 +95,28 @@ final class ControlServer {
   /// Допустимый пользователь собеседника (Linux) или `null`.
   final int? _uid;
   final _connections = <Socket>{};
+
+  /// Подписки соединений: `null` — на все события.
+  final _subscriptions = <Socket, Set<String>?>{};
+
+  /// Есть ли подписчики на [event].
+  bool hasSubscribers(String event) => _subscriptions.values.any(
+    (names) => names == null || names.contains(event),
+  );
+
+  /// Шлёт событие [event] подписанным соединениям.
+  void publish(String event, Map<String, Object?> data) {
+    if (_subscriptions.isEmpty) return;
+    final frame = ControlWire.encode({'event': event, 'data': data});
+    for (final MapEntry(key: socket, value: names) in _subscriptions.entries) {
+      if (names != null && !names.contains(event)) continue;
+      try {
+        socket.add(frame);
+      } on Object {
+        // Соединение закрывается; его уберёт _accept.
+      }
+    }
+  }
 
   Future<void> close() async {
     await _socket.close();
@@ -148,6 +174,20 @@ final class ControlServer {
               );
               return;
             }
+          } else if (method == 'subscribe') {
+            final events = params['events'];
+            if (events != null &&
+                (events is! List<Object?> || events.any((e) => e is! String))) {
+              reply = _error(id, 'bad_request', 'events: список строк');
+            } else {
+              _subscriptions[socket] = events == null
+                  ? null
+                  : {for (final e in events as List<Object?>) e! as String};
+              reply = {'id': id, 'result': const <String, Object?>{}};
+            }
+          } else if (method == 'unsubscribe') {
+            _subscriptions.remove(socket);
+            reply = {'id': id, 'result': const <String, Object?>{}};
           } else {
             try {
               reply = {'id': id, 'result': await _handler(method, params)};
@@ -159,7 +199,11 @@ final class ControlServer {
                 e,
                 st,
               );
-              reply = _error(id, 'internal', 'внутренняя ошибка демона');
+              reply = _error(
+                id,
+                'internal',
+                'внутренняя ошибка: ${endpoint.process}',
+              );
             }
           }
           socket.add(ControlWire.encode(reply));
@@ -171,6 +215,7 @@ final class ControlServer {
       // Клиент закрыл соединение.
     } finally {
       _connections.remove(socket);
+      _subscriptions.remove(socket);
       await socket.flush().catchError((_) {});
       socket.destroy();
     }
@@ -184,7 +229,7 @@ final class ControlServer {
 
   /// Оставшийся от прошлого запуска сокет удаляется, если на нём никто не
   /// слушает; файл другого типа и работающий демон — ошибка.
-  static Future<void> _removeStale(String path) async {
+  static Future<void> _removeStale(String path, String process) async {
     final type = FileSystemEntity.typeSync(path, followLinks: false);
     if (type == FileSystemEntityType.notFound) return;
     if (type != FileSystemEntityType.unixDomainSock) {
@@ -196,7 +241,7 @@ final class ControlServer {
         0,
       );
       probe.destroy();
-      throw FileSystemException('демон узла уже запущен', path);
+      throw FileSystemException('$process уже запущен', path);
     } on SocketException {
       File(path).deleteSync();
     }

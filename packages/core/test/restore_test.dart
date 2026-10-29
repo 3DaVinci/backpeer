@@ -80,8 +80,11 @@ void main() {
     Directory target, {
     List<String> paths = const [],
     bool overwrite = false,
+    ExistingFiles? existing,
+    bool originalLocation = false,
     LocalIndex? index,
     FragmentStore? fragments,
+    void Function(RestoreProgress)? onProgress,
   }) => runRestore(
     crypto: crypto,
     keys: keys,
@@ -89,9 +92,12 @@ void main() {
     fragments: fragments ?? s.nodes,
     objects: s.objects,
     snapshotId: Uint8List.fromList(backup.snapshot.snapshotId),
-    target: target,
+    target: originalLocation ? null : target,
+    originalLocation: originalLocation,
     paths: paths,
     overwrite: overwrite,
+    existing: existing,
+    onProgress: onProgress,
   );
 
   Directory restoredRoot(Directory target) =>
@@ -160,6 +166,63 @@ void main() {
     final forced = await restore(target, overwrite: true);
     expect(forced.errors, isEmpty);
     expect(file.readAsStringSync(), 'глубоко');
+  });
+
+  test('выбранный путь: объём считается заранее', () async {
+    final target = Directory('${dir.path}/out');
+    final seen = <int?>[];
+    await restore(
+      target,
+      paths: ['${data.path}/sub', '${data.path}/empty'],
+      onProgress: (p) => seen.add(p.totalBytes),
+    );
+    final expected =
+        File('${data.path}/sub/deep/z.txt').lengthSync() +
+        File('${data.path}/sub/run.sh').lengthSync();
+    expect(seen.last, expected);
+  });
+
+  test('keepBoth: существующий остаётся, восстановленный — рядом', () async {
+    final target = Directory('${dir.path}/out');
+    final paths = ['${data.path}/sub/deep/z.txt'];
+    await restore(target, paths: paths);
+    final deep = '${restoredRoot(target).path}/sub/deep';
+    File('$deep/z.txt').writeAsStringSync('правка');
+    final first = await restore(
+      target,
+      paths: paths,
+      existing: ExistingFiles.keepBoth,
+    );
+    expect(first.files, 1);
+    expect(first.renamed.single.$2, '$deep/z (restored).txt');
+    final second = await restore(
+      target,
+      paths: paths,
+      existing: ExistingFiles.keepBoth,
+    );
+    expect(second.renamed.single.$2, '$deep/z (restored 2).txt');
+    expect(File('$deep/z.txt').readAsStringSync(), 'правка');
+    expect(File('$deep/z (restored).txt').readAsStringSync(), 'глубоко');
+    expect(File('$deep/z (restored 2).txt').readAsStringSync(), 'глубоко');
+  });
+
+  test('на исходное место: удалённый файл возвращается', () async {
+    final file = File('${data.path}/sub/deep/z.txt');
+    final mtime = file.statSync().modified;
+    file.deleteSync();
+    File('${data.path}/sub/run.sh').writeAsStringSync('правка');
+    final result = await restore(
+      Directory('${dir.path}/unused'),
+      originalLocation: true,
+      paths: ['${data.path}/sub'],
+    );
+    expect(result.errors, isEmpty);
+    expect(file.readAsStringSync(), 'глубоко');
+    expect(file.statSync().modified, mtime);
+    // Существующий без политики не тронут.
+    expect(File('${data.path}/sub/run.sh').readAsStringSync(), 'правка');
+    expect(result.skippedExisting.single, endsWith('run.sh'));
+    expect(Directory('${dir.path}/unused').existsSync(), isFalse);
   });
 
   test('потеряны любые n − k узлов — восстановление проходит', () async {

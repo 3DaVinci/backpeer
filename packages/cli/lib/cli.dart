@@ -4,6 +4,7 @@ library;
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:cli/src/account_ops.dart';
 import 'package:cli/src/app_config.dart';
 import 'package:cli/src/commands/account.dart';
 import 'package:cli/src/commands/data.dart';
@@ -12,10 +13,16 @@ import 'package:cli/src/commands/node.dart';
 import 'package:cli/src/commands/status.dart';
 import 'package:cli/src/console.dart';
 import 'package:cli/src/context.dart';
+import 'package:cli/src/session.dart';
 import 'package:core/core.dart';
 
+export 'src/account_ops.dart'
+    show AccountDevice, AccountException, AccountOps, coordinatorFailure;
+export 'src/app_config.dart' show AppConfig, AppHome, FragmentsMode;
 export 'src/console.dart' show Console, StdConsole;
 export 'src/context.dart' show ExitCode;
+export 'src/session.dart'
+    show Session, SessionException, openCoordinatorClient, openSession;
 
 /// Запуск CLI; возвращает код возврата ([ExitCode]).
 Future<int> runCli(
@@ -105,6 +112,16 @@ Future<int> runCli(
   } on CliException catch (e) {
     report.error(e.message, e.exitCode);
     return e.exitCode;
+  } on AccountException catch (e) {
+    final code = const {'not_found', 'current_device'}.contains(e.code)
+        ? ExitCode.usage
+        : ExitCode.error;
+    report.error(e.message, code);
+    return code;
+  } on SessionException catch (e) {
+    final code = e.usage ? ExitCode.usage : ExitCode.error;
+    report.error(e.message, code);
+    return code;
   } on CancelledException {
     report.error('операция прервана', ExitCode.cancelled);
     return ExitCode.cancelled;

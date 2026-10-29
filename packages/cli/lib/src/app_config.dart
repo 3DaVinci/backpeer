@@ -13,16 +13,14 @@ final class AppHome {
     if (override != null) return AppHome(Directory(override));
     if (env['FS_HOME'] case final String home) return AppHome(Directory(home));
     if (Platform.isWindows) {
-      return AppHome(Directory('${env['APPDATA']}\\file_storage'));
+      return AppHome(Directory('${env['APPDATA']}\\backpeer'));
     }
     final home = env['HOME'] ?? '.';
     if (Platform.isMacOS) {
-      return AppHome(
-        Directory('$home/Library/Application Support/file_storage'),
-      );
+      return AppHome(Directory('$home/Library/Application Support/backpeer'));
     }
     final xdg = env['XDG_CONFIG_HOME'] ?? '$home/.config';
-    return AppHome(Directory('$xdg/file_storage'));
+    return AppHome(Directory('$xdg/backpeer'));
   }
 
   final Directory dir;
@@ -53,6 +51,7 @@ final class AppConfig {
     this.keyCopy,
     this.fragments = FragmentsMode.folders,
     this.distinctSubnets = true,
+    this.retention = RetentionPolicy.defaults,
   });
 
   /// Чтение с проверкой; ошибки — [ConfigException].
@@ -110,6 +109,17 @@ final class AppConfig {
         optional<String>('fragments') ?? FragmentsMode.folders.name,
       ),
       distinctSubnets: optional<bool>('distinctSubnets') ?? true,
+      retention: switch (map) {
+        {'retention': null} => null,
+        {'retention': final Map<String, Object?> r} => RetentionPolicy.fromJson(
+          r,
+        ),
+        {'retention': _} => throw const ConfigException(
+          key: 'retention',
+          reason: 'нужен объект или null',
+        ),
+        _ => RetentionPolicy.defaults,
+      },
     )..check();
     return config;
   }
@@ -153,6 +163,11 @@ final class AppConfig {
   /// раздел 5); `false` — только для стенда, где все узлы в одной сети.
   bool distinctSubnets;
 
+  /// Политика хранения снимков устройства (задача 5.3.5): агент применяет
+  /// её после каждого бэкапа, `cli forget --policy` — по команде. `null` —
+  /// хранить все снимки. Нет в файле — [RetentionPolicy.defaults].
+  RetentionPolicy? retention;
+
   bool get usesCoordinator => coordinator != null;
 
   /// Фрагменты по сети на настоящие узлы.
@@ -192,6 +207,7 @@ final class AppConfig {
     'keyCopy': ?keyCopy,
     if (fragments != FragmentsMode.folders) 'fragments': fragments.name,
     if (!distinctSubnets) 'distinctSubnets': false,
+    'retention': retention?.toJson(),
   };
 
   void save(AppHome home) {

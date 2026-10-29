@@ -2,13 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/control/control_endpoint.dart';
-import 'package:node/src/control/control_server.dart';
 import 'package:node/src/daemon/config.dart';
 import 'package:node/src/daemon/coordinator_link.dart';
 import 'package:node/src/daemon/identity.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:node/src/daemon/transfers.dart';
 import 'package:node/src/net/peer_listener.dart';
 import 'package:node/src/net/port_mapping/port_mapper.dart';
@@ -74,7 +72,10 @@ final class NodeDaemon {
   }) async {
     final dataDir = Directory(config.dataDir);
     createPrivateDir(dataDir);
-    final lock = _acquireLock(dataDir);
+    final lock = DirLock.acquire(
+      File('${dataDir.path}/node.lock'),
+      busy: 'папка данных занята другим демоном узла',
+    );
     RotatingLogFile? logFile;
     JsonLogWriter? writer;
     NodeIdentity? identity;
@@ -98,8 +99,11 @@ final class NodeDaemon {
           'устройстве владельца и импортируйте (node import-cert)',
         );
       }
+      if (config.storageDir != config.dataDir) {
+        createPrivateDir(Directory(config.storageDir));
+      }
       storage = FragmentStorage.open(
-        config.dataDir,
+        config.storageDir,
         crypto: crypto,
         quotaBytes: config.quotaBytes,
         freeReserveBytes: config.freeReserveBytes,
@@ -139,7 +143,7 @@ final class NodeDaemon {
       identity?.dispose();
       await writer?.detach();
       logFile?.close();
-      _releaseLock(dataDir, lock);
+      lock.release();
       rethrow;
     }
   }
@@ -206,7 +210,7 @@ final class NodeDaemon {
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
-  final RandomAccessFile _lock;
+  final DirLock _lock;
   final JsonLogWriter _writer;
   final RotatingLogFile? _logFile;
 
@@ -487,7 +491,7 @@ final class NodeDaemon {
     _log.info(const LogEvent('stopped'));
     await _writer.detach();
     _logFile?.close();
-    _releaseLock(Directory(config.dataDir), _lock);
+    _lock.release();
     _done.complete();
   }
 
@@ -600,6 +604,7 @@ final class NodeDaemon {
     'state': state.name,
     'startedAt': startedAt.toUtc().toIso8601String(),
     'dataDir': config.dataDir,
+    'storageDir': config.storageDir,
     'quotaBytes': config.quotaBytes,
     'usedBytes': storage.usedBytes,
     'freeBytes': storage.freeBytes,
@@ -623,38 +628,4 @@ final class NodeDaemon {
     'effective': effectiveLimits.toJson(),
     'schedule': config.schedule.toJson(),
   };
-
-  /// Папка данных — одному демону: исключительная блокировка
-  /// `node.lock` (на Windows она же не даёт удалить файл). Внутри — pid
-  /// для диагностики.
-  static RandomAccessFile _acquireLock(Directory dataDir) {
-    final raf = File('${dataDir.path}/node.lock')
-        .openSync(mode: FileMode.append);
-    try {
-      raf.lockSync();
-    } on FileSystemException {
-      raf.closeSync();
-      throw FileSystemException(
-        'папка данных занята другим демоном узла',
-        dataDir.path,
-      );
-    }
-    raf
-      ..truncateSync(0)
-      ..setPositionSync(0)
-      ..writeStringSync('$pid\n')
-      ..flushSync();
-    return raf;
-  }
-
-  static void _releaseLock(Directory dataDir, RandomAccessFile lock) {
-    try {
-      lock
-        ..truncateSync(0)
-        ..unlockSync()
-        ..closeSync();
-    } on FileSystemException {
-      // Уже закрыт.
-    }
-  }
 }

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Вход AppImage (задача 5.7.3). Программы агента и хранителя приложение
+# копирует из образа в ~/.local/lib/backpeer/daemons: образ монтируется
+# по временному пути, а службы должны указывать на постоянный.
+here="$(dirname "$(readlink -f "$0")")"
+case "$1" in
+  cli) shift; exec "$here/daemons/cli/bin/cli" "$@" ;;
+  agent) shift; exec "$here/daemons/agent/bin/agent" "$@" ;;
+esac
+exec "$here/backpeer" "$@"

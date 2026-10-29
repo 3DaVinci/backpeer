@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:node/src/net/port_mapping/local_network.dart';
 import 'package:node/src/net/port_mapping/pcp.dart';
 import 'package:node/src/net/port_mapping/port_mapping.dart';

@@ -6,7 +6,6 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:cli/cli.dart';
-import 'package:cli/src/app_config.dart';
 import 'package:core/core.dart';
 import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
@@ -186,6 +185,43 @@ void main() {
       expect(nodeBytes(), lessThan(before));
     },
   );
+
+  test('политика хранения: config --keep-…, forget --policy', () async {
+    await init();
+    final data = Directory('${dir.path}/data')..createSync();
+    for (var i = 0; i < 3; i++) {
+      File('${data.path}/a.txt').writeAsStringSync('версия $i');
+      expect((await cli(['backup', data.path])).$1, ExitCode.ok);
+    }
+    final (shownCode, shown) = await cli(['--json', 'config']);
+    expect(shownCode, ExitCode.ok);
+    final config = jsonDecode(shown.lines.last) as Map<String, Object?>;
+    expect(config['retention'], RetentionPolicy.defaults.toJson());
+    expect((await cli(['config', '--keep-last', '0'])).$1, ExitCode.usage);
+    expect(
+      (await cli([
+        'config',
+        ...['--keep-last', '2', '--keep-hourly', '0', '--keep-daily', '0'],
+        ...['--keep-weekly', '0', '--keep-monthly', '0'],
+      ])).$1,
+      ExitCode.ok,
+    );
+    final (dryCode, dry) = await cli([
+      '--json',
+      'forget',
+      '--policy',
+      '--dry-run',
+    ]);
+    expect(dryCode, ExitCode.ok, reason: dry.errors.join('\n'));
+    final plan = jsonDecode(dry.lines.last) as Map<String, Object?>;
+    expect(plan['forgotten'], hasLength(1));
+    expect((await cli(['snapshots'])).$2.lines, hasLength(3));
+    expect((await cli(['forget', '--policy'])).$1, ExitCode.ok);
+    expect((await cli(['snapshots'])).$2.lines, hasLength(2));
+    expect((await cli(['config', '--keep-all'])).$1, ExitCode.ok);
+    expect((await cli(['forget', '--policy'])).$1, ExitCode.error);
+    expect((await cli(['forget', '--policy', 'abcd'])).$1, ExitCode.usage);
+  });
 
   test(
     'новый пароль: слабый отклоняется, средний — с подтверждением',

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream (задача 5.7.3). Название продукта временное (С.1.2). -->
+<component type="desktop-application">
+  <id>org.backpeer.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <name>Backpeer</name>
+  <url type="homepage">https://backpeer.app.tridavinci.org/</url>
+  <summary>Encrypted backups on other people's computers</summary>
+  <summary xml:lang="ru">Зашифрованные бэкапы на компьютерах других людей</summary>
+  <description>
+    <p>
+      Back up important files in encrypted form to computers of other users
+      and give your own free disk space in return.
+    </p>
+    <p xml:lang="ru">
+      Бэкап важных файлов в зашифрованном виде на компьютеры других
+      пользователей; взамен вы отдаёте свободное место на своём диске.
+    </p>
+    <ul>
+      <li>Files are encrypted on your computer: keepers see neither contents nor names.</li>
+      <li xml:lang="ru">Файлы шифруются на вашем компьютере: хранители не видят ни содержимого, ни имён.</li>
+      <li>Erasure coding keeps data available when some computers go away.</li>
+      <li xml:lang="ru">Помехоустойчивое кодирование сохраняет данные, когда часть компьютеров уходит.</li>
+      <li>Scheduled backups run in the background without an open window.</li>
+      <li xml:lang="ru">Бэкап по расписанию идёт в фоне без открытого окна.</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">org.backpeer.app.desktop</launchable>
+  <provides>
+    <binary>backpeer</binary>
+    <binary>backpeer-cli</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+    <category>Archiving</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <developer id="org.backpeer">
+    <name>Backpeer</name>
+  </developer>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

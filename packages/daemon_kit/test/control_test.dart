@@ -1,16 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:node/node.dart';
-import 'package:node/src/control/control_endpoint.dart' show currentUid;
-import 'package:node/src/control/control_wire.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:test/test.dart';
 
 void main() {
   late Directory dir;
   late ControlEndpoint endpoint;
   setUp(() {
-    dir = Directory.systemTemp.createTempSync('fs-node-ctl-');
+    dir = Directory.systemTemp.createTempSync('fs-daemon-ctl-');
     endpoint = ControlEndpoint.forDataDir(dir.path);
   });
   tearDown(() => dir.deleteSync(recursive: true));
@@ -27,7 +25,7 @@ void main() {
 
   test('запрос и ответ, ошибки метода, внутренняя ошибка без текста', () async {
     final server = await ControlServer.bind(endpoint, echo);
-    final client = await NodeControlClient.connect(endpoint);
+    final client = await ControlClient.connect(endpoint);
     expect(await client.call('echo', {'a': 1}), {'a': 1});
     // Несколько запросов подряд по одному соединению.
     final many = await Future.wait([
@@ -53,9 +51,47 @@ void main() {
     expect(File(endpoint.socketPath).existsSync(), isFalse);
   });
 
+  test('подписка на события: только выбранные, только подписчикам', () async {
+    final server = await ControlServer.bind(endpoint, echo);
+    final client = await ControlClient.connect(endpoint);
+    final other = await ControlClient.connect(endpoint);
+    final got = <ControlEvent>[];
+    final otherGot = <ControlEvent>[];
+    client.events.listen(got.add);
+    other.events.listen(otherGot.add);
+    expect(server.hasSubscribers('progress'), isFalse);
+    await client.subscribe(['progress']);
+    expect(server.hasSubscribers('progress'), isTrue);
+    expect(server.hasSubscribers('status'), isFalse);
+    server
+      ..publish('status', {'a': 1})
+      ..publish('progress', {'p': 2});
+    // Ответ идёт по тому же соединению после события.
+    await client.call('echo');
+    await Future<void>.delayed(Duration.zero);
+    expect([for (final e in got) e.name], ['progress']);
+    expect(got.single.data, {'p': 2});
+    expect(otherGot, isEmpty);
+    await expectLater(
+      client.call('subscribe', {'events': 'progress'}),
+      throwsA(
+        isA<ControlException>().having((e) => e.code, 'code', 'bad_request'),
+      ),
+    );
+    await client.call('unsubscribe');
+    expect(server.hasSubscribers('progress'), isFalse);
+    await other.subscribe();
+    expect(server.hasSubscribers('status'), isTrue);
+    await server.close();
+    // Остановка процесса видна клиенту: done и конец потока событий.
+    await other.done;
+    expect(other.isClosed, isTrue);
+    await client.close();
+  });
+
   test('демон не запущен — unavailable', () async {
     await expectLater(
-      NodeControlClient.connect(endpoint),
+      ControlClient.connect(endpoint),
       throwsA(
         isA<ControlException>().having((e) => e.code, 'code', 'unavailable'),
       ),
@@ -97,7 +133,7 @@ void main() {
       FileSystemEntityType.unixDomainSock,
     );
     final server = await ControlServer.bind(endpoint, echo);
-    final client = await NodeControlClient.connect(endpoint);
+    final client = await ControlClient.connect(endpoint);
     expect(await client.call('echo'), isEmpty);
     await client.close();
     await server.close();
@@ -110,7 +146,7 @@ void main() {
       echo,
       allowedUid: currentUid() + 1,
     );
-    final client = await NodeControlClient.connect(endpoint);
+    final client = await ControlClient.connect(endpoint);
     await expectLater(
       client.call('echo'),
       throwsA(
@@ -138,7 +174,7 @@ void main() {
       socket.destroy();
     }
     // Сервер продолжает работать.
-    final client = await NodeControlClient.connect(endpoint);
+    final client = await ControlClient.connect(endpoint);
     expect(await client.call('echo', {'x': 'y'}), {'x': 'y'});
     await client.close();
     await server.close();

@@ -76,6 +76,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         db,
         checks,
         policy: config.nodes,
+        probation: config.placement.probation,
         coordinatorKeys: signer == null
             ? null
             : () async => [await signer.publicKey()],

@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:node/src/storage/fragment_files.dart';
 import 'package:node/src/storage/fragment_index.dart';
 import 'package:node/src/storage/fragment_storage.dart';

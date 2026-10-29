@@ -10,6 +10,7 @@ import 'package:core/src/format/durability.dart';
 import 'package:core/src/pipeline/segment_encoder.dart';
 import 'package:core/src/pipeline/segment_packer.dart';
 import 'package:core/src/snapshot/exclude_rules.dart';
+import 'package:core/src/snapshot/fs_entry.dart';
 import 'package:core/src/snapshot/manifest_objects.dart';
 import 'package:core/src/snapshot/snapshot_catalog.dart';
 import 'package:core/src/snapshot/tree_builder.dart';
@@ -20,12 +21,14 @@ import 'package:core/src/storage/local_index.dart';
 import 'package:core/src/storage/object_store.dart';
 import 'package:core/src/storage/placement.dart';
 import 'package:fixnum/fixnum.dart';
+import 'package:meta/meta.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Прогресс бэкапа.
 final class BackupProgress {
   const new({
     required this.files,
+    required this.bytes,
     required this.bytesRead,
     required this.newBytes,
     required this.segmentsStored,
@@ -34,6 +37,10 @@ final class BackupProgress {
   });
 
   final int files;
+
+  /// Байт в обработанных файлах, включая неизменённые (их не читают) —
+  /// для доли сделанного от оценки объёма.
+  final int bytes;
   final int bytesRead;
 
   /// Байт новых чанков (до упаковки и кодирования).
@@ -99,6 +106,7 @@ Future<BackupResult> runBackup({
   CancellationToken? cancel,
   void Function(BackupProgress)? onProgress,
   Duration progressInterval = const Duration(milliseconds: 250),
+  @visibleForTesting FileSystemReader? fs,
 }) async {
   if (paths.isEmpty) throw ArgumentError('Нет путей для бэкапа');
   final token = cancel ?? CancellationToken();
@@ -125,7 +133,7 @@ Future<BackupResult> runBackup({
     maxInFlight: maxInFlight,
     cancel: token,
   );
-  final walker = TreeWalker(excludes: excludes);
+  final walker = TreeWalker(excludes: excludes, fs: fs);
   final builder = TreeBuilder(
     walker: walker,
     cdc: FastCdc(GearTable.derive(crypto, keys.gearKey)),
@@ -136,6 +144,7 @@ Future<BackupResult> runBackup({
   void progress() => onProgress?.call(
     BackupProgress(
       files: builder.stats.files,
+      bytes: builder.stats.bytes,
       bytesRead: builder.stats.bytesRead,
       newBytes: builder.stats.newBytes,
       segmentsStored: packer.segmentsStored,

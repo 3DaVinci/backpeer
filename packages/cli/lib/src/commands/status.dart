@@ -1,4 +1,4 @@
-import 'package:cli/src/commands/account.dart';
+import 'package:cli/src/account_ops.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
 import 'package:protocol/protocol.dart' as pb;

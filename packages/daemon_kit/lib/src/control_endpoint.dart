@@ -17,8 +17,8 @@ final class ControlException implements Exception {
   String toString() => 'ControlException($code): $message';
 }
 
-/// Где слушает локальный API демона (`docs/ops/node.md`, раздел
-/// «Локальный API»):
+/// Где слушает локальный API фонового процесса (`docs/ops/node.md`,
+/// раздел «Локальный API»; `docs/ops/agent.md`):
 ///
 /// - Linux и macOS — Unix-сокет `<data>/run/control.sock` (или
 ///   `control.socket`) в каталоге с правами 0700, сам сокет 0600; на Linux
@@ -28,13 +28,18 @@ final class ControlException implements Exception {
 ///   токеном. Порт и токен — в `<data>/run/control.json`, доступном только
 ///   владельцу; первым запросом клиент предъявляет токен.
 final class ControlEndpoint {
-  new({required this.runDir, String? socketPath})
+  new({required this.runDir, String? socketPath, this.process = 'демон узла'})
     : socketPath = socketPath ?? '${runDir.path}/control.sock';
 
-  /// Для папки данных узла [dataDir].
-  factory forDataDir(String dataDir, {String? socketPath}) => ControlEndpoint(
+  /// Для папки данных [dataDir]: сокет и токен — в `<dataDir>/run`.
+  factory forDataDir(
+    String dataDir, {
+    String? socketPath,
+    String process = 'демон узла',
+  }) => ControlEndpoint(
     runDir: Directory('$dataDir/run'),
     socketPath: socketPath,
+    process: process,
   );
 
   /// Наибольшая длина пути Unix-сокета: `sun_path` — 108 байт на Linux и
@@ -43,6 +48,9 @@ final class ControlEndpoint {
 
   final Directory runDir;
   final String socketPath;
+
+  /// Название процесса для сообщений: «демон узла», «агент бэкапа».
+  final String process;
 
   /// Файл с портом и токеном (Windows).
   File get tokenFile => File('${runDir.path}/control.json');
@@ -55,7 +63,7 @@ final class ControlEndpoint {
     try {
       json = jsonDecode(tokenFile.readAsStringSync());
     } on FileSystemException {
-      throw const ControlException('unavailable', 'демон узла не запущен');
+      throw ControlException('unavailable', '$process не запущен');
     } on FormatException {
       throw const ControlException('unavailable', 'control.json повреждён');
     }

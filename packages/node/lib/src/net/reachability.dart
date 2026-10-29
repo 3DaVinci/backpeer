@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart';
 import 'package:logging/logging.dart';
-import 'package:node/src/daemon/log.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Доступен ли узел извне и какие адреса он сообщает координатору

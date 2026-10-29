@@ -9,6 +9,7 @@ import 'package:coordinator/src/nodes/node_address.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/nodes/uptime.dart';
 import 'package:coordinator/src/placement/placement.dart';
+import 'package:coordinator/src/repair/live_fragments.dart';
 import 'package:coordinator/src/reputation/reputation.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
@@ -182,9 +183,9 @@ final class NodeService {
   ) async {
     final nodeId = context.caller!.publicKey;
     final capacity = _capacity(request.capacityBytes);
-    if (request.usedBytes.isNegative || request.usedBytes.toInt() > capacity) {
-      throw _bad('used_bytes больше ёмкости');
-    }
+    // Занятое может быть больше ёмкости: квоту уменьшили или кончается
+    // место на диске — координатор перенесёт лишнее (задача 4.4.2).
+    if (request.usedBytes.isNegative) throw _bad('used_bytes слишком велик');
     int? free;
     if (request.hasFreeBytes()) {
       free = _capacity(request.freeBytes);
@@ -193,13 +194,14 @@ final class NodeService {
     _checkEndpoints(request.endpoints);
     final subnet = _subnet(context);
     final now = _clock();
-    await _db.transaction((tx) async {
-      await tx.execute(
+    final reconcile = await _db.transaction((tx) async {
+      final rows = await tx.execute(
         Sql.named('''
           UPDATE nodes SET capacity_bytes = @cap:int8, used_bytes = @u:int8,
                  free_bytes = @free:int8, endpoints = @e:_text,
                  subnet = @sub:text
-            WHERE node_id = @n:bytea'''),
+            WHERE node_id = @n:bytea
+            RETURNING reconcile_at IS NOT NULL'''),
         parameters: {
           'n': nodeId,
           'cap': capacity,
@@ -210,9 +212,11 @@ final class NodeService {
         },
       );
       await _beat(tx, nodeId, now);
+      return rows.isNotEmpty && rows.single.single! as bool;
     });
     return pb.HeartbeatResponse(
       nextHeartbeatMs: policy.heartbeatInterval.inMilliseconds,
+      reconcile: reconcile,
     );
   }
 
@@ -235,20 +239,30 @@ final class NodeService {
       throw _bad('fragment_ids: по 32 байта');
     }
     final nodeId = context.caller!.publicKey;
-    final rows = await _db.transaction(
-      (tx) => tx.execute(
+    final now = _clock();
+    final idList = [for (final id in ids) Uint8List.fromList(id)];
+    final rows = await _db.transaction((tx) async {
+      final rows = await tx.execute(
         Sql.named('''
           UPDATE fragments
             SET damaged_at = coalesce(damaged_at, @t:timestamptz)
             WHERE node_id = @n:bytea AND fragment_id = ANY(@ids:_bytea)
             RETURNING 1'''),
-        parameters: {
-          'n': nodeId,
-          't': _clock(),
-          'ids': [for (final id in ids) Uint8List.fromList(id)],
-        },
-      ),
-    );
+        parameters: {'n': nodeId, 't': now, 'ids': idList},
+      );
+      if (rows.isNotEmpty) {
+        // Повреждённый фрагмент не живой (4.3.1).
+        await LiveFragments.recount(
+          tx,
+          scope:
+              'SELECT DISTINCT account_id, segment_id FROM fragments '
+              'WHERE node_id = @n:bytea AND fragment_id = ANY(@ids:_bytea)',
+          parameters: {'n': nodeId, 'ids': idList},
+          now: now,
+        );
+      }
+      return rows;
+    });
     _log.warning(
       LogEvent('fragments_damaged', {
         'node_id': bytesToHex(nodeId),
@@ -398,8 +412,9 @@ final class NodeService {
   }
 
   /// Узлы, подходящие для размещения фрагментов размера [fragmentSize]
-  /// (задача 2.7.1): в сети, не удалены и не исключены оператором, владелец
-  /// не заблокирован, свободного места хватает, доступность не ниже
+  /// (задача 2.7.1): в сети, не удалены, не исключены оператором и не
+  /// объявили выход (4.4.1), владелец не заблокирован, свободного места
+  /// хватает, доступность не ниже
   /// [minAvailability], подсеть известна. Свободное место — ёмкость минус
   /// большее из занятого по словам узла и выданного координатором под
   /// фрагменты. Узлы владельца сегмента [exceptOwner] исключаются; узлы
@@ -493,6 +508,7 @@ final class NodeService {
             FROM nodes
             WHERE removed_at IS NULL
               AND excluded_at IS NULL
+              AND leaving_at IS NULL
               AND account_id NOT IN (
                 SELECT account_id FROM accounts WHERE blocked_at IS NOT NULL)
               AND last_heartbeat_at >= @online:timestamptz
@@ -575,13 +591,26 @@ final class NodeService {
       registered.single.single! as DateTime,
       now,
     );
-    await tx.execute(
+    final returned = await tx.execute(
       Sql.named('''
         UPDATE nodes SET last_heartbeat_at = @t:timestamptz,
-               availability = @av:float8
-          WHERE node_id = @n:bytea'''),
+               availability = @av:float8, lost_at = NULL
+          WHERE node_id = @n:bytea
+          RETURNING (SELECT lost_at IS NOT NULL FROM nodes
+                       WHERE node_id = @n:bytea)'''),
       parameters: {'n': nodeId, 't': now, 'av': availability},
     );
+    if (returned.single.single == true) {
+      // Узел считался потерянным (4.3.1): его фрагменты снова живые,
+      // кроме тех, что за это время отремонтированы на другие узлы.
+      final segments = await LiveFragments.recountNode(tx, nodeId, now);
+      _log.info(
+        LogEvent('node_returned', {
+          'node_id': bytesToHex(nodeId),
+          'segments': segments,
+        }),
+      );
+    }
   }
 
   static Future<double> _availability(

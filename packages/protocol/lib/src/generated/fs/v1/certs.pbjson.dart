@@ -112,6 +112,7 @@ const FragmentTicket$json = {
       '10': 'expiresAtUnixMs'
     },
     {'1': 'ticket_id', '3': 7, '4': 1, '5': 12, '10': 'ticketId'},
+    {'1': 'owner_account', '3': 8, '4': 1, '5': 12, '10': 'ownerAccount'},
   ],
 };
 
@@ -121,4 +122,5 @@ final $typed_data.Uint8List fragmentTicketDescriptor = $convert.base64Decode(
     'Rpb25SCW9wZXJhdGlvbhIXCgdub2RlX2lkGAIgASgMUgZub2RlSWQSHwoLZGV2aWNlX3NpZ24Y'
     'AyABKAxSCmRldmljZVNpZ24SHwoLZnJhZ21lbnRfaWQYBCABKAxSCmZyYWdtZW50SWQSIwoNZn'
     'JhZ21lbnRfc2l6ZRgFIAEoDVIMZnJhZ21lbnRTaXplEisKEmV4cGlyZXNfYXRfdW5peF9tcxgG'
-    'IAEoA1IPZXhwaXJlc0F0VW5peE1zEhsKCXRpY2tldF9pZBgHIAEoDFIIdGlja2V0SWQ=');
+    'IAEoA1IPZXhwaXJlc0F0VW5peE1zEhsKCXRpY2tldF9pZBgHIAEoDFIIdGlja2V0SWQSIwoNb3'
+    'duZXJfYWNjb3VudBgIIAEoDFIMb3duZXJBY2NvdW50');

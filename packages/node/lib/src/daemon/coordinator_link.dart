@@ -10,6 +10,7 @@ import 'package:node/src/daemon/log.dart';
 import 'package:node/src/net/reachability.dart';
 import 'package:node/src/peers/revocations.dart';
 import 'package:node/src/storage/fragment_storage.dart';
+import 'package:node/src/storage/reconciler.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Регистрация узла у координатора и heartbeat (`protocol.md`,
@@ -35,6 +36,15 @@ import 'package:protocol/protocol.dart' as pb;
 ///   только пока канала нет; открылся канал — heartbeat сразу. Команда
 ///   `SyncRevocations` дочитывает отзывы со случайной задержкой до
 ///   [revocationJitter], чтобы узлы не пришли к координатору разом.
+/// - Ёмкость в heartbeat — [capacity] (меньше квоты, когда кончается место
+///   на диске), занятое — как есть, даже больше ёмкости: координатор
+///   перенесёт лишнее (задача 4.4.2).
+/// - Сверка фрагментов ([reconciler], задача 4.4.3) — в фоне после
+///   heartbeat, когда о ней просит координатор (`reconcile` в ответе) или
+///   она нужна по расписанию.
+/// - Выход из сети ([leave], задача 4.4.1): пока перенос идёт, после
+///   каждого heartbeat — `LeaveNetwork` о ходе; перенос закончен (`done`)
+///   — [onLeft].
 final class CoordinatorLink {
   new({
     required this.client,
@@ -42,6 +52,7 @@ final class CoordinatorLink {
     required this.capacityBytes,
     required this.usedBytes,
     required this.trustedKeys,
+    this.capacity,
     this.freeBytes,
     this.damaged,
     this.revocations,
@@ -49,6 +60,11 @@ final class CoordinatorLink {
     this.reachability,
     this.rendezvous,
     this.audit,
+    this.repair,
+    this.relocate,
+    this.reconciler,
+    this.onLeft,
+    this._leaving = false,
     this.maxBackoff = const Duration(minutes: 5),
     this._interval = defaultInterval,
     bool commandChannel = false,
@@ -75,7 +91,12 @@ final class CoordinatorLink {
 
   final CoordinatorClient client;
   final NodeIdentity identity;
+
+  /// Квота из настроек: ёмкость при регистрации.
   final int capacityBytes;
+
+  /// Ёмкость для heartbeat сейчас; `null` — [capacityBytes].
+  final int Function()? capacity;
 
   /// Занятое место сейчас.
   final int Function() usedBytes;
@@ -105,6 +126,22 @@ final class CoordinatorLink {
   /// Отвечает на аудит (задача 4.1.2; protocol.md, раздел 4.13); `null` —
   /// хранилища нет, команда отклоняется `NOT_FOUND`.
   final Future<pb.AuditReply> Function(pb.AuditCommand command)? audit;
+
+  /// Принимает задание ремонта (задача 4.3.4; protocol.md, раздел 4.14) и
+  /// выполняет его в фоне; отказ — [CoordinatorException]. `null` — узел
+  /// не выполняет ремонт, команда отклоняется `UNAVAILABLE`.
+  final void Function(pb.RepairCommand command)? repair;
+
+  /// Принимает перенос своего фрагмента (задачи 4.4.1, 4.4.2) и выполняет
+  /// его в фоне; `null` — команда отклоняется `UNAVAILABLE`.
+  final void Function(pb.RelocateCommand command)? relocate;
+
+  /// Сверка фрагментов с координатором; `null` — не выполняется.
+  final FragmentReconciler? reconciler;
+
+  /// Перенос при выходе закончен: координатор удалил узел. Вызывается
+  /// после ответа [leave], не изнутри цикла.
+  final Future<void> Function()? onLeft;
   final Duration maxBackoff;
 
   /// Наибольшая случайная задержка `ListRevocations` по команде.
@@ -123,6 +160,8 @@ final class CoordinatorLink {
   DateTime? _nextAttempt;
   String? _lastError;
   List<String> _unknownKeys = const [];
+  bool _leaving;
+  pb.LeaveNetworkResponse? _leave;
   Completer<void>? _wake;
   Future<void>? _loop;
   Future<void>? _reporting;
@@ -138,7 +177,21 @@ final class CoordinatorLink {
     'lastError': _lastError,
     'unknownCoordinatorKeys': _unknownKeys,
     'channel': channel?.toJson(),
+    'reconcile': reconciler?.toJson(),
+    'exit': exitJson,
   };
+
+  /// Выход из сети: `null` — узел не уходит.
+  Map<String, Object?>? get exitJson => !_leaving
+      ? null
+      : {
+          'remainingFragments': _leave?.remainingFragments.toInt(),
+          'remainingBytes': _leave?.remainingBytes.toInt(),
+          'done': _leave?.done ?? false,
+        };
+
+  /// Узел объявил выход и перенос ещё идёт.
+  bool get leaving => _leaving;
 
   /// Запускает цикл регистрации и heartbeat.
   void start() => _loop ??= _run();
@@ -173,6 +226,8 @@ final class CoordinatorLink {
         _lastError = null;
         await reportDamaged();
         await syncRevocations();
+        _reconcile();
+        if (await _checkLeave()) break;
         if (await _checkReachability()) next = Duration.zero;
       } on CoordinatorException catch (e) {
         if (_stopped) break;
@@ -265,6 +320,27 @@ final class CoordinatorLink {
           );
         }
         return pb.NodeChannelMessage(audit: await handler(command.audit));
+      case pb.CoordinatorChannelMessage_Body.repair:
+        final handler = repair;
+        if (handler == null) {
+          throw const CoordinatorException(
+            pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+            'узел не выполняет ремонт',
+          );
+        }
+        // Принятое задание выполняется в фоне, итог — ReportRepair.
+        handler(command.repair);
+        return null;
+      case pb.CoordinatorChannelMessage_Body.relocate:
+        final handler = relocate;
+        if (handler == null) {
+          throw const CoordinatorException(
+            pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
+            'узел не переносит фрагменты',
+          );
+        }
+        handler(command.relocate);
+        return null;
       case pb.CoordinatorChannelMessage_Body.syncRevocations:
         final list = revocations;
         if (list == null ||
@@ -285,6 +361,64 @@ final class CoordinatorLink {
           pb.ErrorCode.ERROR_CODE_BAD_REQUEST,
           'неизвестная команда',
         );
+    }
+  }
+
+  /// Сверка фрагментов в фоне, если нужна; сбой — в журнал, повтор после
+  /// следующего heartbeat.
+  void _reconcile() {
+    final r = reconciler;
+    if (r == null || !_registered || _stopped || r.running || !r.due) return;
+    unawaited(
+      r.run().then<void>(
+        (_) {},
+        onError: (Object _) {
+          // Причина уже в журнале сверки.
+        },
+      ),
+    );
+  }
+
+  /// `LeaveNetwork`: объявить выход ([cancel] — отменить) или узнать, как
+  /// идёт перенос. Бросает [CoordinatorException]. Перенос закончен —
+  /// [onLeft].
+  Future<pb.LeaveNetworkResponse> leave({bool cancel = false}) async {
+    final response = await client.leaveNetwork(
+      pb.LeaveNetworkRequest(cancel: cancel),
+      nodeKey: identity.keys.sign,
+    );
+    _leaving = !cancel;
+    _leave = cancel ? null : response;
+    _log.info(
+      LogEvent(cancel ? 'exit_cancelled' : 'exit_progress', {
+        'remaining_fragments': response.remainingFragments.toInt(),
+        'done': response.done,
+      }),
+    );
+    if (response.done) {
+      _stopped = true;
+      _wakeUp();
+      // Не здесь: обработчик останавливает узел, а с ним и этот цикл и
+      // локальный API, который ждёт ответа.
+      if (onLeft case final f?) Timer.run(() => unawaited(f()));
+    }
+    return response;
+  }
+
+  /// Ход выхода после heartbeat; `true` — перенос закончен, цикл
+  /// останавливается.
+  Future<bool> _checkLeave() async {
+    if (!_leaving || !_registered || _stopped) return false;
+    try {
+      return (await leave()).done;
+    } on CoordinatorException catch (e) {
+      _log.warning(
+        LogEvent('exit_check_failed', {
+          'code': e.code.name,
+          'http_status': e.httpStatus,
+        }),
+      );
+      return false;
     }
   }
 
@@ -322,19 +456,21 @@ final class CoordinatorLink {
   /// `Heartbeat`; возвращает паузу до следующего.
   Future<Duration> heartbeat() async {
     final used = usedBytes();
+    final cap = capacity?.call() ?? capacityBytes;
     final request = pb.HeartbeatRequest(
-      // Координатор отклоняет занятое больше ёмкости, а квоту могли
-      // уменьшить в настройках при уже принятых фрагментах.
-      usedBytes: Int64(math.min(used, capacityBytes)),
-      capacityBytes: Int64(capacityBytes),
+      // Занятое может быть больше ёмкости (квоту уменьшили, кончается
+      // место на диске): координатор перенесёт лишнее (4.4.2).
+      usedBytes: Int64(used),
+      capacityBytes: Int64(cap),
       endpoints: currentEndpoints,
       freeBytes: switch (freeBytes) {
-        final f? => Int64(math.min(f(), capacityBytes)),
+        final f? => Int64(math.min(f(), cap)),
         null => null,
       },
     );
     final response = await _sendHeartbeat(request);
     _lastHeartbeat = _clock();
+    if (response.reconcile) reconciler?.request();
     if (response.nextHeartbeatMs > 0) {
       _interval = Duration(milliseconds: response.nextHeartbeatMs);
     }

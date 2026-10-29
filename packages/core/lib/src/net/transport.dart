@@ -116,18 +116,21 @@ final class ConnectionStrategy implements Transport {
   /// Стратегия клиента координатора [client]: TCP, UDP через сводник
   /// координатора (сокет открывается при первом сведении) и relay по
   /// пропускам `GetRelayPass`. [udp] и [relay] — включить способ.
+  /// [key] — ключ, которым подписаны `Rendezvous` и `GetRelayPass`: ключ
+  /// узла-исполнителя ремонта; `null` — ключ устройства клиента.
   factory forCoordinator({
     required CryptoProvider crypto,
     required LocalPeer local,
     required CoordinatorClient client,
+    Ed25519KeyPair? key,
     TrafficMeter? meter,
     bool udp = true,
     bool relay = true,
   }) {
     Future<UdpConnector>? connector;
     Future<UdpConnector> udpConnector() => connector ??= UdpEndpoint.bind()
-        .then((e) => UdpConnector(client: client, endpoint: e));
-    final relayConnector = RelayConnector(client: client);
+        .then((e) => UdpConnector(client: client, endpoint: e, key: key));
+    final relayConnector = RelayConnector(client: client, key: key);
     return ConnectionStrategy(
       crypto: crypto,
       local: local,

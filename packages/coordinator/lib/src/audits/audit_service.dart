@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
+import 'package:coordinator/src/repair/live_fragments.dart';
 import 'package:coordinator/src/reputation/reputation.dart';
 import 'package:core/core.dart';
 import 'package:logging/logging.dart';
@@ -165,7 +166,9 @@ AuditOutcome checkAuditReply(
 /// **Провал** — неверный блок или путь, ошибка или нет ответа за срок
 /// команды канала. Первый провал фрагмента — повторная проверка через
 /// [AuditPolicy.recheckDelay] (другой случайный блок); второй — фрагмент
-/// потерян: `damaged_at`, не выдаётся в `LocateSegment`, ремонт — 4.3.
+/// потерян: `damaged_at`, не выдаётся в `LocateSegment`, число живых
+/// фрагментов сегмента пересчитывается (`LiveFragments`), ремонт его
+/// досоздаёт.
 /// Итоги копятся в журнале `audits` и счётчиках узла, время ответа на
 /// пройденные — в сглаженном `audit_latency_ms`, провалы в окне — в
 /// `audit_window_failures` (репутация, 4.2.1);
@@ -390,7 +393,13 @@ final class AuditService {
       );
       var lost = false;
       if (outcome.passed) {
-        if (target.recheck) await _setFailed(tx, target, null);
+        await tx.execute(
+          Sql.named('''
+            UPDATE fragments
+              SET audited_at = @t:timestamptz, audit_failed_at = NULL
+              WHERE node_id = @n:bytea AND fragment_id = @f:bytea'''),
+          parameters: {'n': nodeId, 'f': target.fragmentId, 't': now},
+        );
       } else if (target.recheck) {
         lost = true;
         await tx.execute(
@@ -400,6 +409,15 @@ final class AuditService {
                   audit_failed_at = NULL
               WHERE node_id = @n:bytea AND fragment_id = @f:bytea'''),
           parameters: {'n': nodeId, 'f': target.fragmentId, 't': now},
+        );
+        // Потерянный фрагмент не живой: ремонт его досоздаст (4.3.1).
+        await LiveFragments.recount(
+          tx,
+          scope:
+              'SELECT account_id, segment_id FROM fragments '
+              'WHERE node_id = @n:bytea AND fragment_id = @f:bytea',
+          parameters: {'n': nodeId, 'f': target.fragmentId},
+          now: now,
         );
       } else {
         await _setFailed(tx, target, now);

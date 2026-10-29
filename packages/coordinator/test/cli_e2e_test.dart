@@ -1,13 +1,16 @@
 // Сквозной сценарий CLI через настоящий координатор (задача 2.8.3):
 // регистрация на одном «устройстве», вход по паролю и восстановление по
-// фразе на других, устройства и отзыв, смена пароля, копия ключа. Фрагменты
+// фразе на других, устройства и отзыв, смена пароля, копия ключа, состояние
+// бэкапа и проверки (4.5). Фрагменты
 // — в папках узлов-заглушек (node stub). Нужен FS_TEST_POSTGRES.
 
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:cli/cli.dart';
+import 'package:coordinator/coordinator.dart';
 import 'package:node/node.dart';
+import 'package:postgres/postgres.dart';
 import 'package:test/test.dart';
 
 import 'support/live.dart';
@@ -245,5 +248,96 @@ void main() {
       File('${dir.path}/a/config.json').readAsStringSync(),
     ) as Map<String, Object?>;
     expect(config['keyCopy'], isFalse);
+  });
+
+  test('состояние бэкапа от координатора (4.5.1)', () async {
+    final a = env('a');
+    var (code, result, console) = await cli(
+      ['register', ...storage(), '--login', 'carol'],
+      a,
+      answer: words,
+    );
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    (code, result, console) = await cli(['status'], a);
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    expect(result['localSegments'], 0);
+    expect((result['health']! as Map)['segments'], 0);
+
+    final source = Directory('${dir.path}/src')..createSync();
+    File('${source.path}/doc.txt').writeAsStringSync('данные ' * 5000);
+    (code, _, _) = await cli(['backup', source.path], a);
+    expect(code, ExitCode.ok);
+    (code, result, console) = await cli(['status'], a);
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    final local = result['localSegments']! as int;
+    expect(local, greaterThan(0));
+    final health = result['health']! as Map<String, Object?>;
+    expect(health['segments'], local);
+    expect(health['healthy'], local, reason: 'все 4 фрагмента из 4');
+    expect(health['atRisk'], 0);
+    expect(health['lost'], 0);
+    expect(health['liveFragments'], local * 4);
+    expect(health['fragmentBytes'], greaterThan(0));
+    expect(health['lastAudit'], isNull);
+
+    // Текст для человека.
+    final human = _Console();
+    expect(
+      await runCli(['status'], console: human, environment: a),
+      ExitCode.ok,
+    );
+    expect(human.lines.join('\n'), contains('полностью здоровы: $local'));
+  });
+
+  test('проверка по аудитам без обращения к узлам (4.5.2)', () async {
+    final a = env('a');
+    var (code, result, console) = await cli(
+      ['register', ...storage(), '--login', 'dave'],
+      a,
+      answer: words,
+    );
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    final source = Directory('${dir.path}/src')..createSync();
+    File('${source.path}/doc.txt').writeAsStringSync('архив ' * 5000);
+    (code, _, _) = await cli(['backup', source.path], a);
+    expect(code, ExitCode.ok);
+
+    // Узлы недоступны: проверка по аудитам их не трогает.
+    Directory('${dir.path}/nodes').renameSync('${dir.path}/nodes-away');
+    (code, result, console) = await cli(['verify', '--audits'], a);
+    expect(code, ExitCode.ok, reason: console.lines.join('\n'));
+    expect(result['mode'], 'audits');
+    final segments = result['segments']! as int;
+    expect(segments, greaterThan(0));
+    expect(result['healthy'], isTrue);
+    expect(result['unaudited'], segments, reason: 'аудитов ещё не было');
+    expect(result['repairing'], 0);
+
+    // Сегмент потерял три фрагмента из четырёх (k = 2).
+    final db = Database.open(live.db.config);
+    addTearDown(db.close);
+    await db.transaction((tx) async {
+      final rows = await tx.execute(
+        'SELECT account_id, segment_id FROM segments LIMIT 1',
+      );
+      final [account as List<int>, segment as List<int>] = rows.first;
+      await tx.execute(
+        Sql.named('''
+          UPDATE fragments SET damaged_at = now()
+            WHERE segment_id = @g:bytea AND idx < 3'''),
+        parameters: {'g': segment},
+      );
+      await LiveFragments.recountSegment(tx, account, segment, DateTime.now());
+    });
+    (code, result, _) = await cli(['verify', '--audits'], a);
+    expect(code, ExitCode.error);
+    expect(result['unrecoverable'], 1);
+    (code, result, _) = await cli(['status'], a);
+    expect(code, ExitCode.partial);
+    expect((result['health']! as Map)['lost'], 1);
+    final history = (result['verifications']! as List)
+        .cast<Map<String, Object?>>();
+    expect(history.single['mode'], 'audits');
+    expect(history.single['unrecoverable'], 1);
   });
 }

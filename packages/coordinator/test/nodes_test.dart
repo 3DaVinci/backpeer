@@ -228,10 +228,10 @@ void main() {
       expect(row[1], 1 << 41);
       expect(row[2], 5000);
       expect(row[6], '192.0.2.0/24');
-      await expectLater(
-        () => h.heartbeat(node, used: 2, capacity: 1),
-        failsWith(_badRequest),
-      );
+      // Занятое больше ёмкости — квоту уменьшили: координатор перенесёт
+      // лишнее (4.4.2).
+      await h.heartbeat(node, used: 2, capacity: 1);
+      expect((await nodeRow(node))[2], 2);
       await expectLater(
         () => h.heartbeat(node, free: 2, capacity: 1),
         failsWith(_badRequest),

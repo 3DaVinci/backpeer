@@ -63,6 +63,8 @@ void main() {
         'objects',
         'relay_reports',
         'relay_usage',
+        'repair_jobs',
+        'repair_targets',
         'schema_migrations',
         'segments',
         'server_secrets',

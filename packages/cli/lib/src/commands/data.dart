@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:args/command_runner.dart';
+import 'package:cli/src/commands/account.dart';
+import 'package:cli/src/commands/status.dart';
 import 'package:cli/src/context.dart';
 import 'package:core/core.dart';
 
@@ -326,11 +328,33 @@ final class RestoreCommand extends CliCommand {
 
 final class VerifyCommand extends CliCommand {
   new(super.ctx) {
-    argParser.addFlag(
-      'full',
-      help: 'Прочитать и проверить все фрагменты (долго)',
-      negatable: false,
-    );
+    argParser
+      ..addFlag(
+        'full',
+        help: 'Прочитать и проверить все фрагменты (долго)',
+        negatable: false,
+      )
+      ..addFlag(
+        'audits',
+        help:
+            'Быстро по данным координатора: живые фрагменты и аудиты, '
+            'без обращения к узлам',
+        negatable: false,
+      )
+      ..addOption(
+        'sample',
+        valueHelp: 'N',
+        help:
+            'Тестовое восстановление N случайных сегментов: прочитать, '
+            'собрать, расшифровать и сверить чанки',
+      )
+      ..addOption(
+        'every',
+        valueHelp: 'ДНЕЙ',
+        help:
+            'Для запуска по расписанию: проверить, только если такая же '
+            'проверка была больше ДНЕЙ назад',
+      );
   }
 
   @override
@@ -339,64 +363,153 @@ final class VerifyCommand extends CliCommand {
   @override
   String get description =>
       'Проверить сохранённые сегменты: на месте ли фрагменты '
-      '(--full — целы ли).';
+      '(--full — целы ли, --audits — по аудитам координатора, '
+      '--sample — тестовое восстановление выборки).';
 
   @override
   Future<int> run() async {
+    final args = argResults!;
+    final sample = _positive(args.option('sample'), '--sample');
+    final every = _positive(args.option('every'), '--every');
+    final modes = [
+      if (args.flag('full')) VerifyMode.full,
+      if (args.flag('audits')) VerifyMode.audits,
+      if (sample != null) VerifyMode.sample,
+    ];
+    if (modes.length > 1) {
+      throw UsageException(
+        '--full, --audits и --sample — разные проверки, укажите одну',
+        usage,
+      );
+    }
+    final mode = modes.firstOrNull ?? VerifyMode.exists;
     final config = ctx.config();
     final session = await ctx.session(config);
     try {
-      final report = await runVerify(
-        crypto: await ctx.crypto(),
-        keys: session.keys,
-        index: session.index,
-        fragments: session.fragments,
-        locator: session.locator,
-        full: argResults!.flag('full'),
-        params: config.durability,
-      );
-      ctx.report.info(
-        'Сегментов ${report.segments}, фрагментов ${report.fragments}: '
-        '${report.isHealthy ? 'всё в порядке' : 'есть проблемы'}.',
-      );
-      for (final p in report.problems) {
-        ctx.report.warn('Фрагмент: $p', {
-          'segmentId': bytesToHex(p.segmentId),
-          'fragment': p.index,
-          'node': p.node,
-          'error': p.error.message,
-        });
-      }
-      for (final id in report.atRisk) {
-        ctx.report.warn('В риске (нужен ремонт): сегмент ${_shortId(id)}', {
-          'atRisk': bytesToHex(id),
-        });
-      }
-      for (final (id, e) in report.unrecoverable) {
-        ctx.report.warn(
-          'Не восстановить: сегмент ${_shortId(id)}: ${e.message}',
-          {'unrecoverable': bytesToHex(id)},
+      final now = DateTime.now().toUtc();
+      final last = session.index.lastVerify(mode);
+      if (every != null &&
+          last != null &&
+          now.difference(last.at) < Duration(days: every)) {
+        ctx.report.info(
+          'Проверка «${verifyModeName(mode)}» была ${formatTime(last.at)}; '
+          'следующая — после '
+          '${formatTime(last.at.add(Duration(days: every)))}.',
         );
+        ctx.report.result({
+          'mode': mode.name,
+          'skipped': true,
+          'lastAt': last.at.toIso8601String(),
+        });
+        return ExitCode.ok;
       }
+      final VerifyReport report;
+      var sampled = 0;
+      switch (mode) {
+        case VerifyMode.audits:
+          final client =
+              session.client ??
+              (throw const CliException(
+                'Проверка по аудитам — только с координатором',
+              ));
+          try {
+            report = await runAuditVerify(index: session.index, client: client);
+          } on CoordinatorException catch (e) {
+            coordinatorFailure(e);
+          }
+        case VerifyMode.exists || VerifyMode.full || VerifyMode.sample:
+          List<Uint8List>? segments;
+          if (sample != null) {
+            segments = session.index.storedSegments()..shuffle(ctx.random);
+            if (segments.length > sample) segments.length = sample;
+            sampled = segments.length;
+          }
+          report = await runVerify(
+            crypto: await ctx.crypto(),
+            keys: session.keys,
+            index: session.index,
+            fragments: session.fragments,
+            locator: session.locator,
+            full: mode != VerifyMode.exists,
+            segments: segments,
+            params: config.durability,
+          );
+      }
+      session.index.recordVerify(report.toRecord(mode, now));
+      _print(mode, report);
       final code = report.unrecoverable.isNotEmpty
           ? ExitCode.error
           : report.isHealthy
           ? ExitCode.ok
           : ExitCode.partial;
       ctx.report.result({
-        'full': argResults!.flag('full'),
+        'mode': mode.name,
+        'skipped': false,
+        'full': mode == VerifyMode.full || mode == VerifyMode.sample,
         'segments': report.segments,
         'fragments': report.fragments,
         'healthy': report.isHealthy,
         'problems': report.problems.length,
         'atRisk': report.atRisk.length,
         'unrecoverable': report.unrecoverable.length,
+        if (mode == VerifyMode.sample) 'sampled': sampled,
+        if (mode == VerifyMode.audits) ...{
+          'unaudited': report.unaudited.length,
+          'repairing': report.repairing,
+        },
       }, exitCode: code);
       return code;
     } finally {
       await session.close();
     }
   }
+
+  void _print(VerifyMode mode, VerifyReport report) {
+    final what = mode == VerifyMode.audits ? 'живых фрагментов' : 'фрагментов';
+    ctx.report.info(
+      '${_capitalized(verifyModeName(mode))}: сегментов ${report.segments}, '
+      '$what ${report.fragments}: '
+      '${report.isHealthy ? 'всё в порядке' : 'есть проблемы'}.',
+    );
+    if (mode == VerifyMode.audits) {
+      final audited = report.segments - report.unaudited.length;
+      ctx.report.info(
+        '  с фрагментами, проверенными аудитом за 30 суток: $audited из '
+        '${report.segments}; ремонтируются: ${report.repairing}',
+      );
+    }
+    for (final p in report.problems) {
+      ctx.report.warn('Фрагмент: $p', {
+        'segmentId': bytesToHex(p.segmentId),
+        'fragment': p.index,
+        'node': p.node,
+        'error': p.error.message,
+      });
+    }
+    for (final id in report.atRisk) {
+      ctx.report.warn('В риске (нужен ремонт): сегмент ${_shortId(id)}', {
+        'atRisk': bytesToHex(id),
+      });
+    }
+    for (final (id, e) in report.unrecoverable) {
+      ctx.report.warn(
+        'Не восстановить: сегмент ${_shortId(id)}: ${e.message}',
+        {'unrecoverable': bytesToHex(id)},
+      );
+    }
+  }
+
+  int? _positive(String? value, String flag) {
+    if (value == null) return null;
+    final n = int.tryParse(value);
+    if (n == null || n < 1) {
+      throw UsageException('$flag — целое число больше 0', usage);
+    }
+    return n;
+  }
+
+  static String _capitalized(String s) =>
+      s.substring(0, 1).toUpperCase() + s.substring(1);
 }
 
 final class ForgetCommand extends CliCommand {

@@ -251,6 +251,13 @@ void main() {
         device,
       ),
       'LocateSegment': (pb.LocateSegmentRequest(segmentId: id(3)), device),
+      'GetBackupHealth': (
+        pb.GetBackupHealthRequest(
+          segmentIds: [id(3), id(4)],
+          auditedSinceUnixMs: Int64(1700000000000),
+        ),
+        device,
+      ),
       'DeleteSegment': (pb.DeleteSegmentRequest(segmentId: id(3)), device),
       'RegisterNode': (
         pb.RegisterNodeRequest(
@@ -277,6 +284,21 @@ void main() {
       ),
       'ListRevocations': (
         pb.ListRevocationsRequest(afterSequence: Int64.ZERO, limit: 5),
+        node,
+      ),
+      // Задания нет: NOT_FOUND после проверки полей.
+      'ReportRepair': (
+        pb.ReportRepairRequest(
+          jobId: List.filled(16, 7),
+          storedIndexes: [1, 2],
+          failures: [pb.RepairFailure(index: 3, reason: 'нет связи')],
+          bytesDownloaded: Int64(1000),
+          bytesUploaded: Int64(200),
+        ),
+        node,
+      ),
+      'ReconcileFragments': (
+        pb.ReconcileFragmentsRequest(fragmentIds: [id(1), id(2)], first: true),
         node,
       ),
       // Адрес запросов фаззера — для документации: координатор не
@@ -330,6 +352,9 @@ void main() {
         ),
         device,
       ),
+      // Последним: изменённый запрос без отмены удаляет узел фаззера без
+      // фрагментов, и методы после него получали бы UNAUTHENTICATED.
+      'LeaveNetwork': (pb.LeaveNetworkRequest(cancel: true), node),
     });
   });
   tearDownAll(() => h.close());

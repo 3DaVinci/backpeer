@@ -17,9 +17,12 @@ import 'package:node/src/net/relay_peers.dart';
 import 'package:node/src/net/udp_peers.dart';
 import 'package:node/src/peers/peer_service.dart';
 import 'package:node/src/peers/revocations.dart';
+import 'package:node/src/repair/relocator.dart';
+import 'package:node/src/repair/repair_executor.dart';
 import 'package:node/src/storage/audits.dart';
 import 'package:node/src/storage/fragment_storage.dart';
 import 'package:node/src/storage/integrity_checker.dart';
+import 'package:node/src/storage/reconciler.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Состояние демона для `cli node status`.
@@ -32,7 +35,10 @@ enum NodeState { running, paused, stopping }
 /// порта на роутере ([portMapper]), приём UDP после сведения узлов
 /// ([udp], 3.7), приём через relay, когда узел недоступен извне ([relay],
 /// 3.8), регистрация у координатора, heartbeat
-/// и проверка достижимости ([reachability]), локальный API управления.
+/// и проверка достижимости ([reachability]), ремонт ([repair]), перенос
+/// своих фрагментов ([relocator]) и сверка их с координатором
+/// ([reconciler]), выход из сети (метод `exit`, задача 4.4.1), локальный
+/// API управления.
 ///
 /// Остановка ([stop], SIGINT, SIGTERM, метод `stop` локального API):
 /// новые передачи не начинаются, начатые завершаются (не дольше
@@ -98,6 +104,12 @@ final class NodeDaemon {
         quotaBytes: config.quotaBytes,
         freeReserveBytes: config.freeReserveBytes,
       );
+      if (storage.index.syncValue(leftAtKey) != null) {
+        throw const NodeIdentityException(
+          'узел вышел из сети: координатор удалил его. Чтобы снова отдавать '
+          'место, создайте новый узел в другой папке данных (node init)',
+        );
+      }
       final daemon = NodeDaemon._(
         config: config,
         identity: identity,
@@ -133,6 +145,10 @@ final class NodeDaemon {
   }
 
   static final _log = Logger('node');
+
+  /// `sync_state`: узел объявил выход (1) и когда вышел из сети.
+  static const leavingKey = 'leaving';
+  static const leftAtKey = 'left_at';
 
   final NodeConfig config;
   final NodeIdentity identity;
@@ -170,6 +186,23 @@ final class NodeDaemon {
   /// Доступность извне и адреса узла; `null` — нет [listener].
   Reachability? get reachability => _reachability;
   Reachability? _reachability;
+
+  /// Исполнитель ремонта; `null` — нет сертификата узла или координатора.
+  RepairExecutor? get repair => _repair;
+  RepairExecutor? _repair;
+
+  /// Перенос своих фрагментов (задачи 4.4.1, 4.4.2); `null` — нет
+  /// сертификата узла или координатора.
+  Relocator? get relocator => _relocator;
+  Relocator? _relocator;
+
+  /// Сверка фрагментов с координатором (задача 4.4.3); `null` — нет
+  /// координатора.
+  FragmentReconciler? get reconciler => _reconciler;
+  FragmentReconciler? _reconciler;
+
+  /// Счётчики ремонта: их ведёт [repair].
+  final RepairStats repairStats = RepairStats();
   final TransferGate gate;
   final NodeStats stats = NodeStats();
   final DateTime startedAt;
@@ -214,15 +247,23 @@ final class NodeDaemon {
     final trustedKeys = config.coordinatorKeys.isEmpty
         ? CoordinatorKeySet.builtIn
         : CoordinatorKeySet.fromHex(config.coordinatorKeys);
+    final uploadLimiter = BandwidthLimiter(
+      () => effectiveLimits.uploadBytesPerSecond,
+    );
+    final downloadLimiter = BandwidthLimiter(
+      () => effectiveLimits.downloadBytesPerSecond,
+    );
+    LocalPeer? local;
     if (identity.certificate case final certificate?) {
+      local = LocalPeer(
+        role: pb.PeerRole.PEER_ROLE_NODE,
+        staticKey: identity.keys.dh,
+        certificate: certificate,
+        software: 'node $appVersion',
+      );
       _peers = PeerService(
         crypto: crypto,
-        local: LocalPeer(
-          role: pb.PeerRole.PEER_ROLE_NODE,
-          staticKey: identity.keys.dh,
-          certificate: certificate,
-          software: 'node $appVersion',
-        ),
+        local: local,
         nodeId: identity.nodeId,
         storage: storage,
         trustedKeys: trustedKeys,
@@ -230,12 +271,8 @@ final class NodeDaemon {
         gate: gate,
         stats: stats,
         limits: config.peers,
-        uploadLimiter: BandwidthLimiter(
-          () => effectiveLimits.uploadBytesPerSecond,
-        ),
-        downloadLimiter: BandwidthLimiter(
-          () => effectiveLimits.downloadBytesPerSecond,
-        ),
+        uploadLimiter: uploadLimiter,
+        downloadLimiter: downloadLimiter,
       );
       final listener = _listener = await PeerListener.bind(
         config.listenHost,
@@ -276,10 +313,56 @@ final class NodeDaemon {
         trustedCertificates: trusted,
         userAgent: 'node/$appVersion',
       );
+      if (local != null) {
+        // Ремонт (задача 4.3.4) и перенос (4.4.1): узел подключается к
+        // другим узлам, как клиент, со своим сертификатом и ключом узла.
+        final peer = local;
+        Transport transport() => ConnectionStrategy.forCoordinator(
+          crypto: crypto,
+          local: peer,
+          client: client,
+          key: identity.keys.sign,
+          udp: config.udp,
+          relay: config.relay != RelayMode.off,
+        );
+        Future<void> report(pb.ReportRepairRequest request) =>
+            client.reportRepair(request, nodeKey: identity.keys.sign);
+        _repair = RepairExecutor(
+          crypto: crypto,
+          nodeId: identity.nodeId,
+          transport: transport,
+          report: report,
+          gate: gate,
+          stats: repairStats,
+          uploadLimiter: uploadLimiter,
+          downloadLimiter: downloadLimiter,
+        );
+        _relocator = Relocator(
+          crypto: crypto,
+          nodeId: identity.nodeId,
+          storage: storage,
+          transport: transport,
+          report: report,
+          gate: gate,
+          stats: repairStats,
+          uploadLimiter: uploadLimiter,
+        );
+      }
+      _reconciler = FragmentReconciler(
+        storage: storage,
+        quarantine: config.cleanupQuarantine,
+        interval: config.reconcileInterval,
+        query: (ids, {required first}) async =>
+            (await client.reconcileFragments(
+              pb.ReconcileFragmentsRequest(fragmentIds: ids, first: first),
+              nodeKey: identity.keys.sign,
+            )).unknown,
+      );
       _link = CoordinatorLink(
         client: client,
         identity: identity,
         capacityBytes: config.quotaBytes,
+        capacity: () => storage.capacityBytes,
         usedBytes: () => storage.usedBytes,
         freeBytes: () => storage.freeBytes,
         damaged: storage,
@@ -288,6 +371,11 @@ final class NodeDaemon {
         reachability: _reachability,
         rendezvous: _udp?.handle,
         audit: (command) => answerAudit(storage, command),
+        repair: _repair?.accept,
+        relocate: _relocator?.accept,
+        reconciler: _reconciler,
+        leaving: storage.index.syncValue(leavingKey) == 1,
+        onLeft: _onLeft,
         trustedKeys: trustedKeys,
         commandChannel: config.commandChannel,
       )..start();
@@ -380,6 +468,8 @@ final class NodeDaemon {
     if (!drained && !_force) {
       _log.warning(LogEvent('transfers_abandoned', {'active': gate.active}));
     }
+    _repair?.close();
+    _relocator?.close();
     await _relay?.stop();
     await _listener?.close();
     await _udp?.close();
@@ -401,6 +491,46 @@ final class NodeDaemon {
     _done.complete();
   }
 
+  /// Перенос при выходе закончен (задача 4.4.1): координатор удалил узел
+  /// и больше не учитывает его фрагменты — они удаляются, узел
+  /// останавливается и больше не запускается с этой папкой данных.
+  Future<void> _onLeft() async {
+    final deleted = storage.deleteAll();
+    storage.index
+      ..setSyncValue(leftAtKey, DateTime.now().millisecondsSinceEpoch)
+      ..setSyncValue(leavingKey, 0);
+    _log.info(LogEvent('node_left', {'deleted': deleted}));
+    await stop(reason: 'left');
+  }
+
+  /// Метод `exit`: объявить выход из сети или отменить его.
+  Future<Map<String, Object?>> _exit(Map<String, Object?> params) async {
+    final link = _link;
+    if (link == null) {
+      throw const ControlException(
+        'bad_request',
+        'узел не связан с координатором',
+      );
+    }
+    final cancel = params['cancel'] == true;
+    final pb.LeaveNetworkResponse response;
+    try {
+      response = await link.leave(cancel: cancel);
+    } on CoordinatorException catch (e) {
+      throw ControlException(
+        'coordinator',
+        'координатор: ${e.code.name}: ${e.detail}',
+      );
+    }
+    if (!response.done) storage.index.setSyncValue(leavingKey, cancel ? 0 : 1);
+    return {
+      'leaving': !cancel,
+      'remainingFragments': response.remainingFragments.toInt(),
+      'remainingBytes': response.remainingBytes.toInt(),
+      'done': response.done,
+    };
+  }
+
   /// Методы локального API (`docs/ops/node.md`, раздел «Локальный API»).
   Future<Map<String, Object?>> _handle(
     String method,
@@ -413,6 +543,12 @@ final class NodeDaemon {
         return {
           ...stats.toJson(),
           ...checker.toJson(),
+          'repair': {
+            'busy': _repair?.busy ?? false,
+            'relocating': _relocator?.active ?? 0,
+            ...repairStats.toJson(),
+          },
+          'reconcile': ?_reconciler?.toJson(),
           'activeTransfers': gate.active,
           'uptimeSeconds': DateTime.now().difference(startedAt).inSeconds,
         };
@@ -435,6 +571,8 @@ final class NodeDaemon {
         if (gate.paused) _log.info(const LogEvent('resumed'));
         gate.paused = false;
         return {'state': state.name};
+      case 'exit':
+        return await _exit(params);
       case 'stop':
         // Ответ уходит до закрытия сервера API.
         Timer.run(() => unawaited(stop(reason: 'control')));

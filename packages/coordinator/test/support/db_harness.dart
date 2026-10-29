@@ -21,6 +21,7 @@ final class DbHarness {
     this.db,
     this.handler,
     this.signerKey,
+    this.signer,
   );
 
   /// [withSigner] — талоны подписывает [InProcessTicketSigner] ключом
@@ -76,7 +77,7 @@ final class DbHarness {
       healthCheck: db.ping,
       trustForwardedFor: true,
     );
-    return DbHarness._(crypto, clock, testDb, db, handler, signerKey);
+    return DbHarness._(crypto, clock, testDb, db, handler, signerKey, signer);
   }
 
   /// Настройки тестов: узлы с любой ёмкостью, без испытательного срока.
@@ -99,6 +100,9 @@ final class DbHarness {
 
   /// Ключ подписанта талонов.
   final Ed25519KeyPair signerKey;
+
+  /// Подписант в процессе; `null` — без подписанта.
+  final TicketSigner? signer;
 
   Future<void> close() async {
     await db.close();

@@ -100,6 +100,8 @@ final class NodeConfig {
     this.freeReserveBytes = 2000000000,
     this.checkInterval = const Duration(days: 30),
     this.checkBytesPerSecond = 10000000,
+    this.cleanupQuarantine = const Duration(hours: 24),
+    this.reconcileInterval = const Duration(days: 7),
     this.listenHost,
     this.listenPort = 7340,
     this.portMapping = PortMappingMode.auto,
@@ -169,6 +171,8 @@ final class NodeConfig {
     'storage.free_reserve_bytes',
     'storage.check_interval_days',
     'storage.check_bytes_per_second',
+    'storage.cleanup_quarantine_hours',
+    'storage.reconcile_interval_hours',
     'listen.host',
     'listen.port',
     'listen.endpoints',
@@ -213,6 +217,14 @@ final class NodeConfig {
   /// Предел скорости чтения фоновой проверки, байт в секунду; 0 — без
   /// предела.
   final int checkBytesPerSecond;
+
+  /// Сколько фрагмент, который координатор не учитывает, лежит до
+  /// удаления (задача 4.4.3): удаляется, если и после карантина не
+  /// признан.
+  final Duration cleanupQuarantine;
+
+  /// Как часто сверять фрагменты с координатором без его просьбы.
+  final Duration reconcileInterval;
 
   /// Адрес приёма соединений; `null` — все адреса IPv6 и IPv4.
   final String? listenHost;
@@ -313,6 +325,16 @@ final class _Reader {
       checkBytesPerSecond:
           _int('storage.check_bytes_per_second', 0, 1 << 40) ??
           d.checkBytesPerSecond,
+      cleanupQuarantine: Duration(
+        hours:
+            _int('storage.cleanup_quarantine_hours', 0, 24 * 365) ??
+            d.cleanupQuarantine.inHours,
+      ),
+      reconcileInterval: Duration(
+        hours:
+            _int('storage.reconcile_interval_hours', 1, 24 * 365) ??
+            d.reconcileInterval.inHours,
+      ),
       listenHost: _string('listen.host'),
       listenPort: _int('listen.port', 0, 65535) ?? d.listenPort,
       endpoints: _list('listen.endpoints'),

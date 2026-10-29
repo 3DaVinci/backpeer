@@ -6,6 +6,7 @@ import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
 import 'package:coordinator/src/relay/relay_policy.dart';
+import 'package:coordinator/src/repair/repair_service.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
@@ -88,6 +89,7 @@ final class CoordinatorConfig {
     this.placement = const PlacementPolicy(),
     this.relay = const RelayPolicy(),
     this.audits = const AuditPolicy(),
+    this.repair = const RepairPolicy(),
     this.signerSocket,
     this.adminRole = 'fs_admin',
     this.logLevel = Level.INFO,
@@ -198,6 +200,19 @@ final class CoordinatorConfig {
     'audits.max_per_second',
     'audits.max_concurrent',
     'audits.retention_days',
+    'repair.enabled',
+    'repair.offline_hours',
+    'repair.lazy_margin',
+    'repair.lazy_hours',
+    'repair.max_jobs',
+    'repair.max_bytes_per_hour',
+    'repair.retry_minutes',
+    'repair.job_minutes',
+    'repair.executor_min_reputation',
+    'repair.verify_hours',
+    'repair.suspend_hours',
+    'repair.max_relocations',
+    'repair.relocations_per_node',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -240,6 +255,9 @@ final class CoordinatorConfig {
 
   /// Аудиты хранения: частота, повторная проверка, исключение узлов.
   final AuditPolicy audits;
+
+  /// Ремонт: когда узел потерян, очередь, пределы трафика.
+  final RepairPolicy repair;
 
   /// Unix-сокет подписанта талонов; без него методы размещения отвечают
   /// `UNAVAILABLE`.
@@ -409,6 +427,7 @@ final class _Reader {
         perMinute: _int('relay.per_minute', 1, 10000) ?? relay.perMinute,
       ),
       audits: _audits(ap),
+      repair: _repair(),
       signerSocket: _string('signer.socket'),
       adminRole: _role('admin.role') ?? d.adminRole,
       logLevel:
@@ -458,6 +477,44 @@ final class _Reader {
       retention: Duration(
         days: _int('audits.retention_days', 1, 3650) ?? ap.retention.inDays,
       ),
+    );
+  }
+
+  RepairPolicy _repair() {
+    const rp = RepairPolicy();
+    return RepairPolicy(
+      enabled: _bool('repair.enabled') ?? rp.enabled,
+      offline: Duration(
+        hours: _int('repair.offline_hours', 1, 24 * 365) ?? rp.offline.inHours,
+      ),
+      lazyMargin: _int('repair.lazy_margin', 0, 254) ?? rp.lazyMargin,
+      lazyDelay: Duration(
+        hours: _int('repair.lazy_hours', 0, 24 * 30) ?? rp.lazyDelay.inHours,
+      ),
+      maxJobs: _int('repair.max_jobs', 1, 100000) ?? rp.maxJobs,
+      maxBytesPerHour:
+          _int('repair.max_bytes_per_hour', 1 << 20, 1 << 60) ??
+          rp.maxBytesPerHour,
+      retryDelay: Duration(
+        minutes:
+            _int('repair.retry_minutes', 1, 24 * 60) ?? rp.retryDelay.inMinutes,
+      ),
+      jobTimeout: Duration(
+        minutes: _int('repair.job_minutes', 1, 60) ?? rp.jobTimeout.inMinutes,
+      ),
+      executorMinReputation:
+          _double('repair.executor_min_reputation') ?? rp.executorMinReputation,
+      verifyTimeout: Duration(
+        hours:
+            _int('repair.verify_hours', 1, 24 * 7) ?? rp.verifyTimeout.inHours,
+      ),
+      suspend: Duration(
+        hours: _int('repair.suspend_hours', 0, 24 * 365) ?? rp.suspend.inHours,
+      ),
+      maxRelocations:
+          _int('repair.max_relocations', 0, 100000) ?? rp.maxRelocations,
+      relocationsPerNode:
+          _int('repair.relocations_per_node', 1, 64) ?? rp.relocationsPerNode,
     );
   }
 

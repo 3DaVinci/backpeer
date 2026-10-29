@@ -121,7 +121,10 @@ void main() {
     expect(register.versions, [1]);
     expect(register.software, startsWith('node '));
     final beat = pb.HeartbeatRequest.fromBuffer(fake.bodies[1]);
-    expect(beat.usedBytes.toInt(), 1000);
+    // Занятое — как есть, даже больше квоты: координатор перенесёт
+    // лишнее (4.4.2).
+    expect(beat.usedBytes.toInt(), 5000);
+    expect(beat.capacityBytes.toInt(), 1000);
     expect(link.registered, isTrue);
     expect(link.toJson()['unknownCoordinatorKeys'], [
       CoordinatorKeySet.keyId(crypto, unknown),

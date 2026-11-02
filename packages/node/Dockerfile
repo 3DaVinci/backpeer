@@ -25,6 +25,12 @@ WORKDIR /src/packages/node
 RUN dart build cli -t bin/node.dart -o /out/node
 
 FROM debian:bookworm-slim
+# `ip` нужен стенду с NAT (задача 3.10.2): точка входа стенда ставит
+# маршрут по умолчанию на маршрутизатор, пока контейнер ещё root.
+# `setpriv` (util-linux) уже есть в базовом образе.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends iproute2 \
+ && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10003 fs-node \
  && useradd --uid 10003 --gid 10003 --no-create-home --shell /usr/sbin/nologin fs-node \
  && install -d -o fs-node -g fs-node -m 0700 /var/lib/fs-node

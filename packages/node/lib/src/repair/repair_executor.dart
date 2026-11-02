@@ -326,6 +326,7 @@ final class RepairExecutor {
   ) async {
     final c = job.command;
     final queue = [...job.sources];
+    final failed = <(pb.Placement, Uint8List)>[];
     final got = <Fragment>[];
     final problems = <String>[];
     Future<void> worker() async {
@@ -350,13 +351,36 @@ final class RepairExecutor {
           if (got.length < c.k) got.add(f);
         } on CoreException catch (e) {
           problems.add('${p.index}: ${e.message}');
+          failed.add((p, fragmentId));
         }
       }
     }
 
     await Future.wait([for (var i = 0; i < c.k; i++) worker()]);
-    return (got, problems);
+    // Узел мог быть просто без сети в этот момент (уход узла, обрыв):
+    // повторяем неудачные источники, пока не наберётся k. Источников
+    // обычно больше k, но при уходе узлов их может остаться меньше, и
+    // задание без повтора проваливается на ровном месте.
+    for (
+      var attempt = 0;
+      attempt < sourceRetries && got.length < c.k;
+      attempt++
+    ) {
+      if (failed.isEmpty) break;
+      await Future<void>.delayed(sourceRetryDelay);
+      queue.addAll(failed);
+      failed.clear();
+      await Future.wait([for (var i = 0; i < c.k; i++) worker()]);
+    }
+    return (got, problems.toSet().toList());
   }
+
+  /// Сколько раз повторять неудачные источники, прежде чем провалить
+  /// задание: узел без сети на секунды не должен срывать ремонт.
+  static const int sourceRetries = 2;
+
+  /// Пауза перед повтором источников.
+  static const Duration sourceRetryDelay = Duration(seconds: 2);
 
   /// Отчёт с повтором до срока задания.
   Future<void> _report(_Job job, pb.ReportRepairRequest request) =>

@@ -125,7 +125,9 @@ final class CoordinatorConfig {
     }
     for (final key in _keys) {
       final env = environment[envName(key)];
-      if (env != null) values[key] = env;
+      // Пустая переменная — «не задано»: так стенды передают настройки
+      // только когда они нужны (docker-compose.stand.yaml).
+      if (env != null && env.isNotEmpty) values[key] = env;
     }
     return _Reader(values).build();
   }
@@ -202,14 +204,20 @@ final class CoordinatorConfig {
     'audits.retention_days',
     'repair.enabled',
     'repair.offline_hours',
+    'repair.offline_minutes',
+    'repair.offline_seconds',
     'repair.lazy_margin',
     'repair.lazy_hours',
+    'repair.lazy_minutes',
+    'repair.lazy_seconds',
     'repair.max_jobs',
     'repair.max_bytes_per_hour',
     'repair.retry_minutes',
     'repair.job_minutes',
     'repair.executor_min_reputation',
     'repair.verify_hours',
+    'repair.verify_minutes',
+    'repair.verify_seconds',
     'repair.suspend_hours',
     'repair.max_relocations',
     'repair.relocations_per_node',
@@ -480,16 +488,41 @@ final class _Reader {
     );
   }
 
+  /// Длительность вида `repair.offline_*`: секунды, минуты, если заданы,
+  /// иначе часы. Секунды и минуты нужны стенду в ускоренном времени
+  /// (4.6.3, 4.6.4): год сети за час — это 1 симулированные сутки за
+  /// несколько секунд, и порог «узел потерян» надо задавать секундами.
+  Duration _minutesOr(
+    String key,
+    Duration fallback, {
+    required int hoursMax,
+    int minMinutes = 1,
+    int? minHours,
+  }) {
+    final seconds = _int(
+      '${key}_seconds',
+      minMinutes > 0 ? 1 : 0,
+      hoursMax * 3600,
+    );
+    if (seconds != null) return Duration(seconds: seconds);
+    final minutes = _int('${key}_minutes', minMinutes, hoursMax * 60);
+    if (minutes != null) return Duration(minutes: minutes);
+    final hours = _int('${key}_hours', minHours ?? minMinutes, hoursMax);
+    return Duration(hours: hours ?? fallback.inHours);
+  }
+
   RepairPolicy _repair() {
     const rp = RepairPolicy();
     return RepairPolicy(
       enabled: _bool('repair.enabled') ?? rp.enabled,
-      offline: Duration(
-        hours: _int('repair.offline_hours', 1, 24 * 365) ?? rp.offline.inHours,
-      ),
+      offline: _minutesOr('repair.offline', rp.offline, hoursMax: 24 * 365),
       lazyMargin: _int('repair.lazy_margin', 0, 254) ?? rp.lazyMargin,
-      lazyDelay: Duration(
-        hours: _int('repair.lazy_hours', 0, 24 * 30) ?? rp.lazyDelay.inHours,
+      lazyDelay: _minutesOr(
+        'repair.lazy',
+        rp.lazyDelay,
+        hoursMax: 24 * 30,
+        minMinutes: 0,
+        minHours: 0,
       ),
       maxJobs: _int('repair.max_jobs', 1, 100000) ?? rp.maxJobs,
       maxBytesPerHour:
@@ -504,9 +537,10 @@ final class _Reader {
       ),
       executorMinReputation:
           _double('repair.executor_min_reputation') ?? rp.executorMinReputation,
-      verifyTimeout: Duration(
-        hours:
-            _int('repair.verify_hours', 1, 24 * 7) ?? rp.verifyTimeout.inHours,
+      verifyTimeout: _minutesOr(
+        'repair.verify',
+        rp.verifyTimeout,
+        hoursMax: 24 * 7,
       ),
       suspend: Duration(
         hours: _int('repair.suspend_hours', 0, 24 * 365) ?? rp.suspend.inHours,

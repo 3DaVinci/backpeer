@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:app/src/app.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/background.dart';
+import 'package:app/src/services/crash_reporter.dart';
 import 'package:app/src/services/endpoints.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
@@ -29,6 +32,25 @@ void main() {
   );
   final tray = ChannelTrayHost();
   final background = OsBackground.forPlatform();
+
+  // Отчёты о сбоях (5.9.3): только с согласия пользователя и без путей и
+  // ключей — очистка внутри CrashReporter.
+  final crashReporter = CrashReporter(
+    file: File('${endpoints.home.dir.path}/app/crash-reports.jsonl'),
+  );
+  void report(Object error, StackTrace stack) {
+    if (preferences.crashReports) {
+      unawaited(crashReporter.capture(error, stack));
+    }
+  }
+
+  FlutterError.onError = (details) =>
+      report(details.exception, details.stack ?? StackTrace.current);
+  PlatformDispatcher.instance.onError = (error, stack) {
+    report(error, stack);
+    return true;
+  };
+
   runApp(
     App(
       services: AppServices(

@@ -1575,4 +1575,20 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get copied => 'Скопировано';
+
+  @override
+  String get updateTitle => 'Обновления';
+
+  @override
+  String get autoUpdate => 'Проверять обновления автоматически';
+
+  @override
+  String get betaChannel => 'Бета-канал обновлений';
+
+  @override
+  String get crashReports => 'Отправлять отчёты о сбоях';
+
+  @override
+  String get crashReportsExplain =>
+      'Отчёт содержит только версию, тип ошибки и очищенный от путей и ключей текст. Он помогает исправлять сбои и не содержит ваши файлы, ключи и пароли.';
 }

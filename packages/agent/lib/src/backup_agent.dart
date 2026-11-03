@@ -1289,6 +1289,7 @@ final class BackupAgent {
 
   Map<String, Object?> statusJson() => {
     'version': appVersion,
+    'daemonApiVersion': daemonApiVersion,
     'status': status.name,
     'startedAt': startedAt.toUtc().toIso8601String(),
     'home': paths.home.dir.path,

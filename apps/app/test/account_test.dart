@@ -13,7 +13,7 @@ import 'fakes.dart';
 void main() {
   setUp(() {
     TestWidgetsFlutterBinding.ensureInitialized()
-      ..platformDispatcher.views.first.physicalSize = const Size(1280, 1000)
+      ..platformDispatcher.views.first.physicalSize = const Size(1280, 1600)
       ..platformDispatcher.views.first.devicePixelRatio = 1;
   });
 

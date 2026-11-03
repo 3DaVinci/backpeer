@@ -430,5 +430,10 @@
   "keeperLingerTitle": "Keeper without signing in",
   "keeperLingerOff": "Right now the keeper only works while you are signed in. To keep it available after a reboot without signing in, run this command in a terminal (administrator rights required):",
   "copy": "Copy",
-  "copied": "Copied"
+  "copied": "Copied",
+  "updateTitle": "Updates",
+  "autoUpdate": "Check for updates automatically",
+  "betaChannel": "Beta update channel",
+  "crashReports": "Send crash reports",
+  "crashReportsExplain": "A report contains only the version, the error type, and text with paths and keys removed. It helps fix crashes and does not contain your files, keys, or passwords."
 }

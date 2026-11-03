@@ -2683,6 +2683,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Скопировано'**
   String get copied;
+
+  /// No description provided for @updateTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления'**
+  String get updateTitle;
+
+  /// No description provided for @autoUpdate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять обновления автоматически'**
+  String get autoUpdate;
+
+  /// No description provided for @betaChannel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бета-канал обновлений'**
+  String get betaChannel;
+
+  /// No description provided for @crashReports.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправлять отчёты о сбоях'**
+  String get crashReports;
+
+  /// No description provided for @crashReportsExplain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёт содержит только версию, тип ошибки и очищенный от путей и ключей текст. Он помогает исправлять сбои и не содержит ваши файлы, ключи и пароли.'**
+  String get crashReportsExplain;
 }
 
 class _AppLocalizationsDelegate

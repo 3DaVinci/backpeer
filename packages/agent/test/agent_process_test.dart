@@ -143,4 +143,71 @@ void main() {
     testOn: '!windows',
     timeout: const Timeout(Duration(minutes: 8)),
   );
+
+  test(
+    'обновление посреди бэкапа: корректная остановка (SIGTERM) отменяет '
+    'задание и следующий запуск продолжает',
+    () async {
+      await initHome(home.dir.path);
+      final data = Directory('${dir.path}/big')..createSync();
+      final random = File('/dev/urandom').openSync();
+      const files = 6;
+      const fileSize = 10 << 20;
+      for (var i = 0; i < files; i++) {
+        File('${data.path}/f$i.bin')
+            .writeAsBytesSync(random.readSync(fileSize));
+      }
+      random.closeSync();
+      AgentSettings(paths: [data.path]).save(AgentPaths(home).settings);
+
+      final first = await spawn();
+      unawaited(first.stdout.drain<void>());
+      unawaited(first.stderr.drain<void>());
+      var client = await connect();
+      await client.subscribe(['progress']);
+      final progressed = client.events.firstWhere(
+        (e) => (e.data['segmentsStored']! as int) >= 1,
+      );
+      await client.call('unlock', {
+        'password': testPassword,
+      }, const Duration(minutes: 1));
+      await progressed.timeout(
+        const Duration(minutes: 3),
+        onTimeout: () => fail('бэкап не начался'),
+      );
+
+      // Обновление останавливает службу — SIGTERM, как systemd/launchctl.
+      first.kill();
+      expect(await first.exitCode.timeout(const Duration(seconds: 60)), 0);
+      await client.close();
+      final state = AgentState.load(AgentPaths(home).state);
+      expect(state.interrupted, isNotNull);
+      // Отмена записана в историю, но снимок не завершён — данные не
+      // потеряны, следующий запуск продолжит с места остановки.
+
+      final restarted = await spawn();
+      unawaited(restarted.stdout.drain<void>());
+      unawaited(restarted.stderr.drain<void>());
+      client = await connect();
+      await client.subscribe(['job_finished']);
+      final done = client.events
+          .firstWhere((e) => e.data['kind'] == 'backup')
+          .timeout(const Duration(minutes: 3));
+      await client.call('unlock', {
+        'password': testPassword,
+      }, const Duration(minutes: 1));
+      final record = (await done).data;
+      expect(record['outcome'], 'ok', reason: '$record');
+      final result = record['result']! as Map<String, Object?>;
+      expect(result['files'], files);
+      // Сегменты, сохранённые до остановки, повторно не отправлялись.
+      expect(result['newBytes']! as int, lessThan(files * fileSize));
+
+      await client.call('stop');
+      await client.close();
+      expect(await restarted.exitCode.timeout(const Duration(seconds: 30)), 0);
+    },
+    testOn: '!windows',
+    timeout: const Timeout(Duration(minutes: 8)),
+  );
 }

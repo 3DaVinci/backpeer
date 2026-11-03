@@ -1555,4 +1555,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get copied => 'Copied';
+
+  @override
+  String get updateTitle => 'Updates';
+
+  @override
+  String get autoUpdate => 'Check for updates automatically';
+
+  @override
+  String get betaChannel => 'Beta update channel';
+
+  @override
+  String get crashReports => 'Send crash reports';
+
+  @override
+  String get crashReportsExplain =>
+      'A report contains only the version, the error type, and text with paths and keys removed. It helps fix crashes and does not contain your files, keys, or passwords.';
 }

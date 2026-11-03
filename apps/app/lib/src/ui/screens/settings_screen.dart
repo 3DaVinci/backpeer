@@ -74,6 +74,33 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
           Section(
+            title: l10n.updateTitle,
+            children: [
+              SwitchListTile(
+                key: const ValueKey('auto-update'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.autoUpdate),
+                value: prefs.autoUpdate,
+                onChanged: (v) => prefs.autoUpdate = v,
+              ),
+              SwitchListTile(
+                key: const ValueKey('beta-channel'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.betaChannel),
+                value: prefs.betaChannel,
+                onChanged: (v) => prefs.betaChannel = v,
+              ),
+              SwitchListTile(
+                key: const ValueKey('crash-reports'),
+                contentPadding: EdgeInsets.zero,
+                title: Text(l10n.crashReports),
+                subtitle: Text(l10n.crashReportsExplain),
+                value: prefs.crashReports,
+                onChanged: (v) => prefs.crashReports = v,
+              ),
+            ],
+          ),
+          Section(
             title: l10n.about,
             children: [Text(l10n.version(appVersion))],
           ),

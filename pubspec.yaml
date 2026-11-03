@@ -19,6 +19,9 @@ workspace:
   - prototypes/bench
 
 dev_dependencies:
+  # Инструменты в tool/ (например, tool/updates/sign.dart) используют
+  # пакеты рабочего пространства.
+  core: any
   melos: ^8.9.0
   very_good_analysis: ^11.0.0
 

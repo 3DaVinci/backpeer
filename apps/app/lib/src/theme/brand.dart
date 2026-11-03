@@ -2,9 +2,8 @@ import 'package:flutter/painting.dart';
 
 /// Цвета продукта для светлой и тёмной темы.
 ///
-/// Временные: те же, что у каркаса сайта (`apps/site/src/styles/main.css`)
-/// до визуального стиля С.1.4. Когда появится `docs/brand/`, меняются
-/// только значения здесь — экраны берут цвета из темы, а не отсюда.
+/// Единая палитра сайта и приложения — `docs/brand/colors.md` (задача С.1.4).
+/// Экраны берут цвета из темы, а не отсюда.
 final class BrandColors {
   const new({
     required this.background,

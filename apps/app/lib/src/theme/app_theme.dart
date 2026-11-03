@@ -2,7 +2,7 @@ import 'package:app/src/theme/brand.dart';
 import 'package:flutter/material.dart';
 
 /// Тема Material 3 на цветах [BrandColors]; шрифт — системный, как у
-/// сайта, до шрифтов из С.1.4.
+/// сайта (`docs/brand/fonts.md`).
 abstract final class AppTheme {
   static ThemeData light() => _build(BrandColors.light, Brightness.light);
 

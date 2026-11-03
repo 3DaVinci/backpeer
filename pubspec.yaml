@@ -53,7 +53,29 @@ melos:
       description: Все локальные проверки (как в pre-commit хуке) и тесты.
       steps:
         - lint
-        - dart run melos:melos test
+        - test-dart
+        - test-serial
+        - test-flutter
+
+    # Тесты врозь, как в CI (docs/ci.md, раздел «Параллельность тестов»):
+    # замеры памяти и времени (тег serial) идут по одному файлу, иначе пик
+    # RSS процесса складывается из соседних файлов и замер не проходит.
+    test-dart:
+      description: Тесты Dart-пакетов, кроме тега serial.
+      exec:
+        command: dart test -j "${FS_TEST_JOBS:-4}" -x serial
+        concurrency: 1
+      packageFilters:
+        flutter: false
+        dirExists: test
+
+    test-serial:
+      description: Тесты с тегом serial (замеры памяти и времени) по одному файлу.
+      exec:
+        command: dart test -j 1 -t serial
+        concurrency: 1
+      packageFilters:
+        scope: [core, node]
 
     # Число одновременно идущих тестовых файлов — FS_TEST_JOBS (по умолчанию
     # 4). Без -j dart test берёт число ядер машины: в поде Kubernetes это
@@ -85,6 +107,15 @@ melos:
         flutter: true
         dirExists: test
 
+    test-flutter:
+      description: Тесты Flutter-пакетов (приложение).
+      exec:
+        command: flutter test
+        concurrency: 1
+      packageFilters:
+        flutter: true
+        dirExists: test
+
     coverage:
       description: Тесты с покрытием и сводный отчёт в coverage/ (lcov и Cobertura).
       steps:
@@ -96,6 +127,10 @@ melos:
     build-exe:
       description: Собрать cli, node и agent под текущую платформу в build/bin/.
       run: dart run tool/build_exe.dart
+
+    macos:build:
+      description: macOS — Backpeer.app с программами внутри и .dmg (нужен Mac с Xcode, docs/ops/macos-packages.md).
+      run: tool/macos_package/build.sh
 
     site:check:
       description: Сайт (apps/site, нужен Node.js 22+) — типы, сборка и тесты, как задание site в CI.

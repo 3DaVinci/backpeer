@@ -346,6 +346,18 @@ void peerServiceTests({bool udp = false, bool relay = false}) {
     expect(await c.putFragment(await put(d), fragment.bytes), fragmentId);
   }
 
+  /// Ждёт, пока узел закончит начатые операции ([TransferGate.active] = 0).
+  /// Прерванная операция отпускает свой талон в `finally` уже после того, как
+  /// клиент получил отмену, поэтому фиксированной паузы мало: на быстром
+  /// loopback (macOS) следующий запрос с тем же талоном приходит раньше и
+  /// отклоняется так же, как запрос с израсходованным талоном.
+  Future<void> waitTransfersDone() async {
+    for (var i = 0; i < 250 && service.gate.active > 0; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+    expect(service.gate.active, 0);
+  }
+
   group('3.4.1: операции', () {
     test('загрузка, наличие, выдача, удаление, ping', () async {
       final c = await connect(alice);
@@ -870,11 +882,15 @@ void peerServiceTests({bool udp = false, bool relay = false}) {
     });
 
     test('прерванная выдача не расходует талон', () async {
+      // Медленная отдача (256 КиБ/с): фрагмент 300 КиБ заведомо не успевает
+      // уйти целиком до отмены. Иначе на быстром loopback (macOS) узел
+      // успевает выдать фрагмент полностью, и талон израсходован по делу.
+      service = makeService(upload: 256 << 10);
       final c = await connect(alice);
       await upload(c, alice);
       final t = await get(alice);
       await c.getFragment(t).first;
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await waitTransfersDone();
       expect(await c.readFragment(t), fragment.bytes);
       await c.close();
     });
@@ -1046,6 +1062,8 @@ void peerServiceTests({bool udp = false, bool relay = false}) {
       }
       expect(storage.incomingCount, 0);
       expect(storage.record(fragmentId), isNull);
+      // Талон отпускается, когда операция на узле закончилась целиком.
+      await waitTransfersDone();
       expect(await c.putFragment(t, fragment.bytes), fragmentId);
       await c.close();
     });

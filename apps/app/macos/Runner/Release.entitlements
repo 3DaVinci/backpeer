@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<!-- Без App Sandbox (ADR-012): приложение запускает агента и хранителя
+     (LaunchAgent), соединяется с их Unix-сокетами и открывает диалог выбора
+     папок. В песочнице HOME указывает в контейнер, launchctl запрещён, и
+     приложение ищет сокет и каталог программы не там, где их создают демоны.
+     Распространение — Developer ID, не Mac App Store (5.7.2), поэтому
+     песочница не нужна. -->
 <dict>
-	<key>com.apple.security.app-sandbox</key>
-	<true/>
 </dict>
 </plist>

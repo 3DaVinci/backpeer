@@ -188,7 +188,7 @@ void main() {
     final data = Directory('${dir.path}/big')..createSync();
     for (var i = 0; i < 4; i++) {
       File('${data.path}/f$i.bin')
-          .writeAsBytesSync(crypto.randomBytes(12 << 20));
+          .writeAsBytesSync(crypto.randomBytes(24 << 20));
     }
     power.battery = true;
     final client = await start();
@@ -203,12 +203,24 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     expect(agents.single.job, isNull, reason: 'от батареи — не начинать');
 
-    final progressed = client.events.firstWhere(
-      (e) => e.name == 'progress' && (e.data['segmentsStored']! as int) >= 1,
-    );
     final stopped = finished(client, 'backup');
     power.battery = false;
-    await progressed.timeout(const Duration(minutes: 2));
+    // Первый сохранённый сегмент ждём опросом `status`, а не событием
+    // `progress`: события приходят не чаще раза в 500 мс, и на быстрой
+    // машине (macOS) бэкап успевает закончиться раньше.
+    final deadline = DateTime.now().add(const Duration(minutes: 2));
+    while (true) {
+      final status = await client.call('status');
+      final job = status['job'] as Map<String, Object?>?;
+      final progress = job?['progress'] as Map<String, Object?>? ?? const {};
+      if ((progress['segmentsStored'] as int? ?? 0) >= 1) break;
+      if (DateTime.now().isAfter(deadline)) {
+        fail('бэкап не начался: $status');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    // Сегментов 16 МиБ, данных 96 МиБ: после первого сохранённого сегмента
+    // работа ещё идёт.
     power.battery = true;
     final record = await stopped;
     expect(record['outcome'], 'cancelled');
@@ -223,7 +235,7 @@ void main() {
     expect(done['outcome'], 'ok');
     expect(done['trigger'], 'resume');
     final result = done['result']! as Map<String, Object?>;
-    expect(result['newBytes']! as int, lessThan(48 << 20));
+    expect(result['newBytes']! as int, lessThan(96 << 20));
   }, timeout: const Timeout(Duration(minutes: 4)));
 
   test('потеряны фрагменты — здоровье «требует внимания» и одно '

@@ -454,6 +454,26 @@ const List<Migration> schemaMigrations = [
     // сколько фрагментов клиента недавно проверено (GetBackupHealth).
     'ALTER TABLE fragments ADD COLUMN audited_at timestamptz',
   ]),
+  Migration(16, 'привязка узла к учётной записи', [
+    // Привязка узла без ввода фразы восстановления (задачи 6.1.1, 6.1.2,
+    // protocol.md, раздел 4.17). Узел ещё не зарегистрирован, поэтому
+    // первичный ключ — node_id узла, а не ссылка на nodes. Одна запись на
+    // узел: повторная привязка перезаписывает её новым кодом. Код уникален
+    // среди всех записей — по нему владелец находит узел. Пока сертификат
+    // не подписан, account_id и certificate пустые.
+    r'''
+    CREATE TABLE node_pairings (
+      node_id bytea PRIMARY KEY CHECK (length(node_id) = 32),
+      node_dh bytea NOT NULL CHECK (length(node_dh) = 32),
+      code text NOT NULL UNIQUE CHECK (code ~ '^[0-9A-Z]{8}$'),
+      created_at timestamptz NOT NULL,
+      expires_at timestamptz NOT NULL,
+      attempts integer NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+      account_id bytea REFERENCES accounts (account_id),
+      certificate bytea,
+      signed_at timestamptz
+    )''',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

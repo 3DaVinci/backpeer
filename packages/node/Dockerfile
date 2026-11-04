@@ -1,9 +1,11 @@
-# Минимальный образ узла-хранителя для стендов: локального с координатором
-# (задача 3.10.1, docker-compose.nodes.yaml), с NAT (3.10.2) и из 100 узлов
-# (этап 4). Полноценный образ для NAS и Raspberry Pi — этап 6.
+# Образ узла-хранителя: минимальный для стендов (задача 3.10.1) и
+# полноценный для NAS и Raspberry Pi (этап 6): запуск не от root, том для
+# данных и ключей, настройки через FS_NODE_*, healthcheck через локальный
+# API и остановка по SIGTERM (демон node её обрабатывает, точка входа
+# запускает его через exec).
 # Сборка из корня репозитория:
 #
-#   docker build -f packages/node/Dockerfile -t fs-node .
+#   docker build -f packages/node/Dockerfile -t backpeer-node .
 #
 # Настройки — переменные FS_NODE_* (docs/ops/node.md, раздел «Docker»).
 # Бандл `dart build cli` требует glibc 2.34+, поэтому основа — Debian 12.
@@ -45,4 +47,7 @@ USER fs-node
 # становится новым узлом.
 VOLUME /var/lib/fs-node
 EXPOSE 7340/tcp 7340/udp
+# Демон отвечает по локальному API (Unix-сокет в томе данных) — значит жив.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD ["node", "health"]
 ENTRYPOINT ["fs-node-entrypoint"]

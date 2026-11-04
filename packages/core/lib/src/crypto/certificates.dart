@@ -76,6 +76,24 @@ abstract final class NodeCertificates {
   }
 }
 
+/// Короткий отпечаток ключей узла для привязки (protocol.md, раздел 4.17):
+/// первые 16 шестнадцатеричных символов BLAKE2b-256(node_id ‖ node_dh),
+/// группами по 4 через дефис. Владелец сверяет отпечаток на экране узла и
+/// на своём устройстве, чтобы не привязать чужой узел.
+String nodeFingerprint(
+  CryptoProvider crypto, {
+  required Uint8List nodeId,
+  required Uint8List nodeDh,
+}) {
+  final material = Uint8List(nodeId.length + nodeDh.length)
+    ..setRange(0, nodeId.length, nodeId)
+    ..setRange(nodeId.length, nodeId.length + nodeDh.length, nodeDh);
+  final hex = bytesToHex(crypto.blake2b256(material).sublist(0, 8))
+      .toUpperCase();
+  return [for (var i = 0; i < hex.length; i += 4) hex.substring(i, i + 4)]
+      .join('-');
+}
+
 /// Сертификат и отзыв устройства (protocol.md, разделы 4.7, 6):
 /// `DeviceCertificate` в контексте `device-cert` и `DeviceRevocation` в
 /// контексте `device-revoke`, оба подписаны ключом учётной записи.

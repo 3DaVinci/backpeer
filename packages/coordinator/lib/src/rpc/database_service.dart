@@ -5,6 +5,7 @@ import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
+import 'package:coordinator/src/nodes/node_pairing.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/objects/object_service.dart';
@@ -82,6 +83,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
             : () async => [await signer.publicKey()],
         clock: clock,
       ),
+      pairing = NodePairingService(
+        db,
+        checks,
+        policy: config.pairing,
+        clock: clock,
+      ),
       relay = RelayService(
         db: db,
         crypto: crypto,
@@ -129,6 +136,10 @@ final class DatabaseCoordinatorService extends CoordinatorService {
   final LoginService login;
   final ObjectService objects;
   final NodeService nodes;
+
+  /// Привязка узла к учётной записи без ввода фразы (задачи 6.1.1, 6.1.2).
+  final NodePairingService pairing;
+
   late final SegmentService segments;
 
   /// Пропуска relay, отчёты relay и трафика; ключ пропусков — из
@@ -263,6 +274,30 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.CheckReachabilityRequest request,
   ) => nodes.checkReachability(context, request);
+
+  @override
+  Future<pb.NodePairStartResponse> nodePairStart(
+    CallContext context,
+    pb.NodePairStartRequest request,
+  ) => pairing.start(context, request);
+
+  @override
+  Future<pb.NodePairStatusResponse> nodePairStatus(
+    CallContext context,
+    pb.NodePairStatusRequest request,
+  ) => pairing.status(context, request);
+
+  @override
+  Future<pb.NodePairLookupResponse> nodePairLookup(
+    CallContext context,
+    pb.NodePairLookupRequest request,
+  ) => pairing.lookup(context, request);
+
+  @override
+  Future<pb.NodePairSignResponse> nodePairSign(
+    CallContext context,
+    pb.NodePairSignRequest request,
+  ) => pairing.sign(context, request);
 
   @override
   Future<pb.GetRendezvousInfoResponse> getRendezvousInfo(

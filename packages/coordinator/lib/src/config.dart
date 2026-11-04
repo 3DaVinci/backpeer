@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
+import 'package:coordinator/src/nodes/node_pairing.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
@@ -84,6 +85,7 @@ final class CoordinatorConfig {
     this.maxDevicesPerAccount = 5,
     this.maxObjectBytesPerAccount = 1 << 30,
     this.nodes = const NodePolicy(),
+    this.pairing = const PairingPolicy(),
     this.channels = const ChannelPolicy(),
     this.rendezvous = const RendezvousPolicy(),
     this.placement = const PlacementPolicy(),
@@ -170,6 +172,8 @@ final class CoordinatorConfig {
     'nodes.heartbeat_seconds',
     'nodes.check_private_addresses',
     'nodes.reachability_timeout_ms',
+    'pairing.ttl_seconds',
+    'pairing.max_attempts',
     'channels.max_connections',
     'channels.ping_seconds',
     'rendezvous.public_host',
@@ -248,6 +252,9 @@ final class CoordinatorConfig {
   /// Реестр узлов: минимум места, предел узлов, период heartbeat.
   final NodePolicy nodes;
 
+  /// Привязка узла к учётной записи: срок кода, лимит попыток.
+  final PairingPolicy pairing;
+
   /// Канал команд узлов: предел каналов, период ping.
   final ChannelPolicy channels;
 
@@ -288,6 +295,7 @@ final class _Reader {
     const db = DatabaseConfig();
     const lim = RateLimits();
     const np = NodePolicy();
+    const pairp = PairingPolicy();
     const pp = PlacementPolicy();
     const cp = ChannelPolicy();
     const rp = RendezvousPolicy();
@@ -370,6 +378,12 @@ final class _Reader {
               _int('nodes.reachability_timeout_ms', 100, 60000) ??
               np.reachabilityTimeout.inMilliseconds,
         ),
+      ),
+      pairing: PairingPolicy(
+        ttl: Duration(
+          seconds: _int('pairing.ttl_seconds', 30, 3600) ?? pairp.ttl.inSeconds,
+        ),
+        maxAttempts: _int('pairing.max_attempts', 1, 100) ?? pairp.maxAttempts,
       ),
       channels: ChannelPolicy(
         maxConnections:

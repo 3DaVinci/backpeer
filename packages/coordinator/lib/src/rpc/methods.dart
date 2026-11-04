@@ -178,6 +178,30 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.CheckReachabilityRequest.fromBuffer,
     handle: s.checkReachability,
   ),
+  RpcMethod<pb.NodePairStartRequest, pb.NodePairStartResponse>(
+    name: 'NodePairStart',
+    auth: AuthRequirement.registering,
+    parse: pb.NodePairStartRequest.fromBuffer,
+    handle: s.nodePairStart,
+  ),
+  RpcMethod<pb.NodePairStatusRequest, pb.NodePairStatusResponse>(
+    name: 'NodePairStatus',
+    auth: AuthRequirement.registering,
+    parse: pb.NodePairStatusRequest.fromBuffer,
+    handle: s.nodePairStatus,
+  ),
+  RpcMethod<pb.NodePairLookupRequest, pb.NodePairLookupResponse>(
+    name: 'NodePairLookup',
+    auth: AuthRequirement.account,
+    parse: pb.NodePairLookupRequest.fromBuffer,
+    handle: s.nodePairLookup,
+  ),
+  RpcMethod<pb.NodePairSignRequest, pb.NodePairSignResponse>(
+    name: 'NodePairSign',
+    auth: AuthRequirement.account,
+    parse: pb.NodePairSignRequest.fromBuffer,
+    handle: s.nodePairSign,
+  ),
   RpcMethod<pb.GetRendezvousInfoRequest, pb.GetRendezvousInfoResponse>(
     name: 'GetRendezvousInfo',
     auth: AuthRequirement.deviceOrNode,

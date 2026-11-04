@@ -352,6 +352,21 @@ void main() {
         ),
         device,
       ),
+      // Ключ узла ещё не зарегистрирован — как у привязки.
+      'NodePairStart': (pb.NodePairStartRequest(nodeDh: id(0x55)), freshNode),
+      'NodePairStatus': (pb.NodePairStatusRequest(), freshNode),
+      // Код не существует: NOT_FOUND после проверки полей.
+      'NodePairLookup': (
+        pb.NodePairLookupRequest(code: 'AAAAAAAA'),
+        owner.accountSign,
+      ),
+      'NodePairSign': (
+        pb.NodePairSignRequest(
+          code: 'AAAAAAAA',
+          nodeCertificate: await h.nodeCert(owner, freshNode),
+        ),
+        owner.accountSign,
+      ),
       // Последним: изменённый запрос без отмены удаляет узел фаззера без
       // фрагментов, и методы после него получали бы UNAUTHENTICATED.
       'LeaveNetwork': (pb.LeaveNetworkRequest(cancel: true), node),

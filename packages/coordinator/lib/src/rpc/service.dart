@@ -156,6 +156,26 @@ abstract base class CoordinatorService {
     pb.ReportTrafficRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.NodePairStartResponse> nodePairStart(
+    CallContext context,
+    pb.NodePairStartRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.NodePairStatusResponse> nodePairStatus(
+    CallContext context,
+    pb.NodePairStatusRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.NodePairLookupResponse> nodePairLookup(
+    CallContext context,
+    pb.NodePairLookupRequest request,
+  ) => _unimplemented(context);
+
+  Future<pb.NodePairSignResponse> nodePairSign(
+    CallContext context,
+    pb.NodePairSignRequest request,
+  ) => _unimplemented(context);
+
   static Never _unimplemented(CallContext context) => throw RpcException(
     pb.ErrorCode.ERROR_CODE_INTERNAL,
     'метод ${context.method} не реализован',

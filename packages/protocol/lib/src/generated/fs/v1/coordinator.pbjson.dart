@@ -51,6 +51,23 @@ final $typed_data.Uint8List reachabilityStatusDescriptor = $convert.base64Decode
     'hBQklMSVRZX1NUQVRVU19XUk9OR19QRUVSEAQSIwofUkVBQ0hBQklMSVRZX1NUQVRVU19OT1Rf'
     'Q0hFQ0tFRBAF');
 
+@$core.Deprecated('Use nodePairStatusDescriptor instead')
+const NodePairStatus$json = {
+  '1': 'NodePairStatus',
+  '2': [
+    {'1': 'NODE_PAIR_STATUS_UNSPECIFIED', '2': 0},
+    {'1': 'NODE_PAIR_STATUS_PENDING', '2': 1},
+    {'1': 'NODE_PAIR_STATUS_SIGNED', '2': 2},
+    {'1': 'NODE_PAIR_STATUS_EXPIRED', '2': 3},
+  ],
+};
+
+/// Descriptor for `NodePairStatus`. Decode as a `google.protobuf.EnumDescriptorProto`.
+final $typed_data.Uint8List nodePairStatusDescriptor = $convert.base64Decode(
+    'Cg5Ob2RlUGFpclN0YXR1cxIgChxOT0RFX1BBSVJfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHAoYTk'
+    '9ERV9QQUlSX1NUQVRVU19QRU5ESU5HEAESGwoXTk9ERV9QQUlSX1NUQVRVU19TSUdORUQQAhIc'
+    'ChhOT0RFX1BBSVJfU1RBVFVTX0VYUElSRUQQAw==');
+
 @$core.Deprecated('Use connectionMethodDescriptor instead')
 const ConnectionMethod$json = {
   '1': 'ConnectionMethod',
@@ -907,6 +924,150 @@ const ReachabilityResult$json = {
 final $typed_data.Uint8List reachabilityResultDescriptor = $convert.base64Decode(
     'ChJSZWFjaGFiaWxpdHlSZXN1bHQSEgoEcG9ydBgBIAEoDVIEcG9ydBIxCgZzdGF0dXMYAiABKA'
     '4yGS5mcy52MS5SZWFjaGFiaWxpdHlTdGF0dXNSBnN0YXR1cw==');
+
+@$core.Deprecated('Use nodePairStartRequestDescriptor instead')
+const NodePairStartRequest$json = {
+  '1': 'NodePairStartRequest',
+  '2': [
+    {'1': 'node_dh', '3': 1, '4': 1, '5': 12, '10': 'nodeDh'},
+  ],
+};
+
+/// Descriptor for `NodePairStartRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairStartRequestDescriptor =
+    $convert.base64Decode(
+        'ChROb2RlUGFpclN0YXJ0UmVxdWVzdBIXCgdub2RlX2RoGAEgASgMUgZub2RlRGg=');
+
+@$core.Deprecated('Use nodePairStartResponseDescriptor instead')
+const NodePairStartResponse$json = {
+  '1': 'NodePairStartResponse',
+  '2': [
+    {'1': 'code', '3': 1, '4': 1, '5': 9, '10': 'code'},
+    {
+      '1': 'expires_at_unix_ms',
+      '3': 2,
+      '4': 1,
+      '5': 3,
+      '10': 'expiresAtUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `NodePairStartResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairStartResponseDescriptor = $convert.base64Decode(
+    'ChVOb2RlUGFpclN0YXJ0UmVzcG9uc2USEgoEY29kZRgBIAEoCVIEY29kZRIrChJleHBpcmVzX2'
+    'F0X3VuaXhfbXMYAiABKANSD2V4cGlyZXNBdFVuaXhNcw==');
+
+@$core.Deprecated('Use nodePairStatusRequestDescriptor instead')
+const NodePairStatusRequest$json = {
+  '1': 'NodePairStatusRequest',
+};
+
+/// Descriptor for `NodePairStatusRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairStatusRequestDescriptor =
+    $convert.base64Decode('ChVOb2RlUGFpclN0YXR1c1JlcXVlc3Q=');
+
+@$core.Deprecated('Use nodePairStatusResponseDescriptor instead')
+const NodePairStatusResponse$json = {
+  '1': 'NodePairStatusResponse',
+  '2': [
+    {
+      '1': 'status',
+      '3': 1,
+      '4': 1,
+      '5': 14,
+      '6': '.fs.v1.NodePairStatus',
+      '10': 'status'
+    },
+    {
+      '1': 'node_certificate',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'nodeCertificate'
+    },
+    {
+      '1': 'expires_at_unix_ms',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'expiresAtUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `NodePairStatusResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairStatusResponseDescriptor = $convert.base64Decode(
+    'ChZOb2RlUGFpclN0YXR1c1Jlc3BvbnNlEi0KBnN0YXR1cxgBIAEoDjIVLmZzLnYxLk5vZGVQYW'
+    'lyU3RhdHVzUgZzdGF0dXMSOAoQbm9kZV9jZXJ0aWZpY2F0ZRgCIAEoCzINLmZzLnYxLlNpZ25l'
+    'ZFIPbm9kZUNlcnRpZmljYXRlEisKEmV4cGlyZXNfYXRfdW5peF9tcxgDIAEoA1IPZXhwaXJlc0'
+    'F0VW5peE1z');
+
+@$core.Deprecated('Use nodePairLookupRequestDescriptor instead')
+const NodePairLookupRequest$json = {
+  '1': 'NodePairLookupRequest',
+  '2': [
+    {'1': 'code', '3': 1, '4': 1, '5': 9, '10': 'code'},
+  ],
+};
+
+/// Descriptor for `NodePairLookupRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairLookupRequestDescriptor =
+    $convert.base64Decode(
+        'ChVOb2RlUGFpckxvb2t1cFJlcXVlc3QSEgoEY29kZRgBIAEoCVIEY29kZQ==');
+
+@$core.Deprecated('Use nodePairLookupResponseDescriptor instead')
+const NodePairLookupResponse$json = {
+  '1': 'NodePairLookupResponse',
+  '2': [
+    {'1': 'node_id', '3': 1, '4': 1, '5': 12, '10': 'nodeId'},
+    {'1': 'node_dh', '3': 2, '4': 1, '5': 12, '10': 'nodeDh'},
+    {
+      '1': 'expires_at_unix_ms',
+      '3': 3,
+      '4': 1,
+      '5': 3,
+      '10': 'expiresAtUnixMs'
+    },
+  ],
+};
+
+/// Descriptor for `NodePairLookupResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairLookupResponseDescriptor = $convert.base64Decode(
+    'ChZOb2RlUGFpckxvb2t1cFJlc3BvbnNlEhcKB25vZGVfaWQYASABKAxSBm5vZGVJZBIXCgdub2'
+    'RlX2RoGAIgASgMUgZub2RlRGgSKwoSZXhwaXJlc19hdF91bml4X21zGAMgASgDUg9leHBpcmVz'
+    'QXRVbml4TXM=');
+
+@$core.Deprecated('Use nodePairSignRequestDescriptor instead')
+const NodePairSignRequest$json = {
+  '1': 'NodePairSignRequest',
+  '2': [
+    {'1': 'code', '3': 1, '4': 1, '5': 9, '10': 'code'},
+    {
+      '1': 'node_certificate',
+      '3': 2,
+      '4': 1,
+      '5': 11,
+      '6': '.fs.v1.Signed',
+      '10': 'nodeCertificate'
+    },
+  ],
+};
+
+/// Descriptor for `NodePairSignRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairSignRequestDescriptor = $convert.base64Decode(
+    'ChNOb2RlUGFpclNpZ25SZXF1ZXN0EhIKBGNvZGUYASABKAlSBGNvZGUSOAoQbm9kZV9jZXJ0aW'
+    'ZpY2F0ZRgCIAEoCzINLmZzLnYxLlNpZ25lZFIPbm9kZUNlcnRpZmljYXRl');
+
+@$core.Deprecated('Use nodePairSignResponseDescriptor instead')
+const NodePairSignResponse$json = {
+  '1': 'NodePairSignResponse',
+};
+
+/// Descriptor for `NodePairSignResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List nodePairSignResponseDescriptor =
+    $convert.base64Decode('ChROb2RlUGFpclNpZ25SZXNwb25zZQ==');
 
 @$core.Deprecated('Use nodeChannelMessageDescriptor instead')
 const NodeChannelMessage$json = {

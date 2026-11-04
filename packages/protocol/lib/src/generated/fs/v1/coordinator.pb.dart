@@ -3302,6 +3302,532 @@ class ReachabilityResult extends $pb.GeneratedMessage {
   void clearStatus() => $_clearField(2);
 }
 
+/// Узел начинает привязку. Подписан ключом узла (ещё без сертификата, ключ
+/// может быть неизвестен координатору).
+class NodePairStartRequest extends $pb.GeneratedMessage {
+  factory NodePairStartRequest({
+    $core.List<$core.int>? nodeDh,
+  }) {
+    final result = NodePairStartRequest._();
+    if (nodeDh != null) result.nodeDh = nodeDh;
+    return result;
+  }
+
+  NodePairStartRequest._();
+
+  factory NodePairStartRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStartRequest()..mergeFromBuffer(data, registry);
+  factory NodePairStartRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStartRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairStartRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairStartRequest.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'nodeDh', $pb.PbFieldType.OY)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStartRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStartRequest copyWith(void Function(NodePairStartRequest) updates) =>
+      super.copyWith((message) => updates(message as NodePairStartRequest))
+          as NodePairStartRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairStartRequest() / NodePairStartRequest.new instead')
+  static NodePairStartRequest create() => NodePairStartRequest._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairStartRequest._();
+  @$core.override
+  NodePairStartRequest createEmptyInstance() => NodePairStartRequest._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairStartRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairStartRequest>(
+          NodePairStartRequest.$_createMessage);
+  static NodePairStartRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get nodeDh => $_getN(0);
+  @$pb.TagNumber(1)
+  set nodeDh($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeDh() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeDh() => $_clearField(1);
+}
+
+class NodePairStartResponse extends $pb.GeneratedMessage {
+  factory NodePairStartResponse({
+    $core.String? code,
+    $fixnum.Int64? expiresAtUnixMs,
+  }) {
+    final result = NodePairStartResponse._();
+    if (code != null) result.code = code;
+    if (expiresAtUnixMs != null) result.expiresAtUnixMs = expiresAtUnixMs;
+    return result;
+  }
+
+  NodePairStartResponse._();
+
+  factory NodePairStartResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStartResponse()..mergeFromBuffer(data, registry);
+  factory NodePairStartResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStartResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairStartResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairStartResponse.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'code')
+    ..aInt64(2, _omitFieldNames ? '' : 'expiresAtUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStartResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStartResponse copyWith(
+          void Function(NodePairStartResponse) updates) =>
+      super.copyWith((message) => updates(message as NodePairStartResponse))
+          as NodePairStartResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairStartResponse() / NodePairStartResponse.new instead')
+  static NodePairStartResponse create() => NodePairStartResponse._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairStartResponse._();
+  @$core.override
+  NodePairStartResponse createEmptyInstance() => NodePairStartResponse._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairStartResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairStartResponse>(
+          NodePairStartResponse.$_createMessage);
+  static NodePairStartResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get code => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set code($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCode() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get expiresAtUnixMs => $_getI64(1);
+  @$pb.TagNumber(2)
+  set expiresAtUnixMs($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasExpiresAtUnixMs() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearExpiresAtUnixMs() => $_clearField(2);
+}
+
+/// Узел спрашивает, не подписан ли его сертификат. Подписан ключом узла.
+class NodePairStatusRequest extends $pb.GeneratedMessage {
+  factory NodePairStatusRequest() => NodePairStatusRequest._();
+
+  NodePairStatusRequest._();
+
+  factory NodePairStatusRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStatusRequest()..mergeFromBuffer(data, registry);
+  factory NodePairStatusRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStatusRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairStatusRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairStatusRequest.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStatusRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStatusRequest copyWith(
+          void Function(NodePairStatusRequest) updates) =>
+      super.copyWith((message) => updates(message as NodePairStatusRequest))
+          as NodePairStatusRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairStatusRequest() / NodePairStatusRequest.new instead')
+  static NodePairStatusRequest create() => NodePairStatusRequest._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairStatusRequest._();
+  @$core.override
+  NodePairStatusRequest createEmptyInstance() => NodePairStatusRequest._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairStatusRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairStatusRequest>(
+          NodePairStatusRequest.$_createMessage);
+  static NodePairStatusRequest? _defaultInstance;
+}
+
+class NodePairStatusResponse extends $pb.GeneratedMessage {
+  factory NodePairStatusResponse({
+    NodePairStatus? status,
+    $0.Signed? nodeCertificate,
+    $fixnum.Int64? expiresAtUnixMs,
+  }) {
+    final result = NodePairStatusResponse._();
+    if (status != null) result.status = status;
+    if (nodeCertificate != null) result.nodeCertificate = nodeCertificate;
+    if (expiresAtUnixMs != null) result.expiresAtUnixMs = expiresAtUnixMs;
+    return result;
+  }
+
+  NodePairStatusResponse._();
+
+  factory NodePairStatusResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStatusResponse()..mergeFromBuffer(data, registry);
+  factory NodePairStatusResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairStatusResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairStatusResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairStatusResponse.$_createMessage)
+    ..aE<NodePairStatus>(1, _omitFieldNames ? '' : 'status',
+        enumValues: NodePairStatus.values)
+    ..aOM<$0.Signed>(2, _omitFieldNames ? '' : 'nodeCertificate',
+        subBuilder: $0.Signed.$_createMessage)
+    ..aInt64(3, _omitFieldNames ? '' : 'expiresAtUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStatusResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairStatusResponse copyWith(
+          void Function(NodePairStatusResponse) updates) =>
+      super.copyWith((message) => updates(message as NodePairStatusResponse))
+          as NodePairStatusResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairStatusResponse() / NodePairStatusResponse.new instead')
+  static NodePairStatusResponse create() => NodePairStatusResponse._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairStatusResponse._();
+  @$core.override
+  NodePairStatusResponse createEmptyInstance() => NodePairStatusResponse._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairStatusResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairStatusResponse>(
+          NodePairStatusResponse.$_createMessage);
+  static NodePairStatusResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  NodePairStatus get status => $_getN(0);
+  @$pb.TagNumber(1)
+  set status(NodePairStatus value) => $_setField(1, value);
+  @$pb.TagNumber(1)
+  $core.bool hasStatus() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearStatus() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $0.Signed get nodeCertificate => $_getN(1);
+  @$pb.TagNumber(2)
+  set nodeCertificate($0.Signed value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNodeCertificate() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNodeCertificate() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $0.Signed ensureNodeCertificate() => $_ensure(1);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get expiresAtUnixMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set expiresAtUnixMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasExpiresAtUnixMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearExpiresAtUnixMs() => $_clearField(3);
+}
+
+/// Владелец вводит код и узнаёт ключи узла, чтобы сверить отпечаток.
+/// Подписан ключом учётной записи.
+class NodePairLookupRequest extends $pb.GeneratedMessage {
+  factory NodePairLookupRequest({
+    $core.String? code,
+  }) {
+    final result = NodePairLookupRequest._();
+    if (code != null) result.code = code;
+    return result;
+  }
+
+  NodePairLookupRequest._();
+
+  factory NodePairLookupRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairLookupRequest()..mergeFromBuffer(data, registry);
+  factory NodePairLookupRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairLookupRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairLookupRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairLookupRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'code')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairLookupRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairLookupRequest copyWith(
+          void Function(NodePairLookupRequest) updates) =>
+      super.copyWith((message) => updates(message as NodePairLookupRequest))
+          as NodePairLookupRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairLookupRequest() / NodePairLookupRequest.new instead')
+  static NodePairLookupRequest create() => NodePairLookupRequest._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairLookupRequest._();
+  @$core.override
+  NodePairLookupRequest createEmptyInstance() => NodePairLookupRequest._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairLookupRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairLookupRequest>(
+          NodePairLookupRequest.$_createMessage);
+  static NodePairLookupRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get code => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set code($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCode() => $_clearField(1);
+}
+
+class NodePairLookupResponse extends $pb.GeneratedMessage {
+  factory NodePairLookupResponse({
+    $core.List<$core.int>? nodeId,
+    $core.List<$core.int>? nodeDh,
+    $fixnum.Int64? expiresAtUnixMs,
+  }) {
+    final result = NodePairLookupResponse._();
+    if (nodeId != null) result.nodeId = nodeId;
+    if (nodeDh != null) result.nodeDh = nodeDh;
+    if (expiresAtUnixMs != null) result.expiresAtUnixMs = expiresAtUnixMs;
+    return result;
+  }
+
+  NodePairLookupResponse._();
+
+  factory NodePairLookupResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairLookupResponse()..mergeFromBuffer(data, registry);
+  factory NodePairLookupResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairLookupResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairLookupResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairLookupResponse.$_createMessage)
+    ..a<$core.List<$core.int>>(
+        1, _omitFieldNames ? '' : 'nodeId', $pb.PbFieldType.OY)
+    ..a<$core.List<$core.int>>(
+        2, _omitFieldNames ? '' : 'nodeDh', $pb.PbFieldType.OY)
+    ..aInt64(3, _omitFieldNames ? '' : 'expiresAtUnixMs')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairLookupResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairLookupResponse copyWith(
+          void Function(NodePairLookupResponse) updates) =>
+      super.copyWith((message) => updates(message as NodePairLookupResponse))
+          as NodePairLookupResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairLookupResponse() / NodePairLookupResponse.new instead')
+  static NodePairLookupResponse create() => NodePairLookupResponse._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairLookupResponse._();
+  @$core.override
+  NodePairLookupResponse createEmptyInstance() => NodePairLookupResponse._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairLookupResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairLookupResponse>(
+          NodePairLookupResponse.$_createMessage);
+  static NodePairLookupResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.List<$core.int> get nodeId => $_getN(0);
+  @$pb.TagNumber(1)
+  set nodeId($core.List<$core.int> value) => $_setBytes(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasNodeId() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearNodeId() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.List<$core.int> get nodeDh => $_getN(1);
+  @$pb.TagNumber(2)
+  set nodeDh($core.List<$core.int> value) => $_setBytes(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNodeDh() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNodeDh() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get expiresAtUnixMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set expiresAtUnixMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasExpiresAtUnixMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearExpiresAtUnixMs() => $_clearField(3);
+}
+
+/// Владелец подтвердил отпечаток и передаёт подписанный сертификат узла.
+/// Подписан ключом учётной записи.
+class NodePairSignRequest extends $pb.GeneratedMessage {
+  factory NodePairSignRequest({
+    $core.String? code,
+    $0.Signed? nodeCertificate,
+  }) {
+    final result = NodePairSignRequest._();
+    if (code != null) result.code = code;
+    if (nodeCertificate != null) result.nodeCertificate = nodeCertificate;
+    return result;
+  }
+
+  NodePairSignRequest._();
+
+  factory NodePairSignRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairSignRequest()..mergeFromBuffer(data, registry);
+  factory NodePairSignRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairSignRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairSignRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairSignRequest.$_createMessage)
+    ..aOS(1, _omitFieldNames ? '' : 'code')
+    ..aOM<$0.Signed>(2, _omitFieldNames ? '' : 'nodeCertificate',
+        subBuilder: $0.Signed.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairSignRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairSignRequest copyWith(void Function(NodePairSignRequest) updates) =>
+      super.copyWith((message) => updates(message as NodePairSignRequest))
+          as NodePairSignRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core
+      .Deprecated('Use NodePairSignRequest() / NodePairSignRequest.new instead')
+  static NodePairSignRequest create() => NodePairSignRequest._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairSignRequest._();
+  @$core.override
+  NodePairSignRequest createEmptyInstance() => NodePairSignRequest._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairSignRequest getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairSignRequest>(
+          NodePairSignRequest.$_createMessage);
+  static NodePairSignRequest? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $core.String get code => $_getSZ(0);
+  @$pb.TagNumber(1)
+  set code($core.String value) => $_setString(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasCode() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearCode() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $0.Signed get nodeCertificate => $_getN(1);
+  @$pb.TagNumber(2)
+  set nodeCertificate($0.Signed value) => $_setField(2, value);
+  @$pb.TagNumber(2)
+  $core.bool hasNodeCertificate() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearNodeCertificate() => $_clearField(2);
+  @$pb.TagNumber(2)
+  $0.Signed ensureNodeCertificate() => $_ensure(1);
+}
+
+class NodePairSignResponse extends $pb.GeneratedMessage {
+  factory NodePairSignResponse() => NodePairSignResponse._();
+
+  NodePairSignResponse._();
+
+  factory NodePairSignResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairSignResponse()..mergeFromBuffer(data, registry);
+  factory NodePairSignResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      NodePairSignResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'NodePairSignResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: NodePairSignResponse.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairSignResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  NodePairSignResponse copyWith(void Function(NodePairSignResponse) updates) =>
+      super.copyWith((message) => updates(message as NodePairSignResponse))
+          as NodePairSignResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated(
+      'Use NodePairSignResponse() / NodePairSignResponse.new instead')
+  static NodePairSignResponse create() => NodePairSignResponse._();
+  static $pb.GeneratedMessage $_createMessage() => NodePairSignResponse._();
+  @$core.override
+  NodePairSignResponse createEmptyInstance() => NodePairSignResponse._();
+  @$core.pragma('dart2js:noInline')
+  static NodePairSignResponse getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<NodePairSignResponse>(
+          NodePairSignResponse.$_createMessage);
+  static NodePairSignResponse? _defaultInstance;
+}
+
 enum NodeChannelMessage_Body {
   heartbeat,
   done,

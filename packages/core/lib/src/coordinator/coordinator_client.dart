@@ -535,4 +535,49 @@ final class CoordinatorClient {
     pb.ListRevocationsResponse.fromBuffer,
     key: nodeKey,
   );
+
+  /// Узел начинает привязку к учётной записи (protocol.md, раздел 4.17);
+  /// [nodeKey] — ключ узла, ещё без сертификата.
+  Future<pb.NodePairStartResponse> nodePairStart(
+    pb.NodePairStartRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'NodePairStart',
+    request,
+    pb.NodePairStartResponse.fromBuffer,
+    key: nodeKey,
+  );
+
+  /// Узел спрашивает, подписан ли его сертификат (protocol.md, раздел 4.17).
+  Future<pb.NodePairStatusResponse> nodePairStatus(
+    pb.NodePairStatusRequest request, {
+    required Ed25519KeyPair nodeKey,
+  }) => call(
+    'NodePairStatus',
+    request,
+    pb.NodePairStatusResponse.fromBuffer,
+    key: nodeKey,
+  );
+
+  /// Владелец по коду узнаёт ключи узла (protocol.md, раздел 4.17).
+  Future<pb.NodePairLookupResponse> nodePairLookup(
+    pb.NodePairLookupRequest request, {
+    required Ed25519KeyPair accountKey,
+  }) => call(
+    'NodePairLookup',
+    request,
+    pb.NodePairLookupResponse.fromBuffer,
+    key: accountKey,
+  );
+
+  /// Владелец передаёт подписанный сертификат узла (protocol.md, раздел 4.17).
+  Future<pb.NodePairSignResponse> nodePairSign(
+    pb.NodePairSignRequest request, {
+    required Ed25519KeyPair accountKey,
+  }) => call(
+    'NodePairSign',
+    request,
+    pb.NodePairSignResponse.fromBuffer,
+    key: accountKey,
+  );
 }

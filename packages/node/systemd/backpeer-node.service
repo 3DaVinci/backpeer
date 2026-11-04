@@ -1,0 +1,47 @@
+# Системная служба узла-хранителя Backpeer для headless-машин (NAS, сервер,
+# Raspberry Pi), задача 6.3.1; установка — docs/install/systemd.md.
+#
+#   install -m 0644 backpeer-node.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now backpeer-node
+#
+# Настройки узла — переменные FS_NODE_* из /etc/backpeer/node.env (или
+# файл node.yaml по FS_NODE_CONFIG); подробнее — docs/ops/node.md.
+
+[Unit]
+Description=Backpeer node — хранитель фрагментов
+Documentation=https://backpeer.app/
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+# Отдельный системный пользователь, создаётся на время работы.
+DynamicUser=yes
+# Папка данных по умолчанию; StateDirectory создаёт её с нужными правами.
+StateDirectory=backpeer-node
+# Настройки: переменные FS_NODE_*; «-» — файл необязателен.
+EnvironmentFile=-/etc/backpeer/node.env
+# Журнал — в journald (journalctl -u backpeer-node).
+Environment=FS_NODE_LOG_FILE=-
+# Данные (ключи, сертификат, фрагменты). Для внешнего диска задайте
+# FS_NODE_DATA_DIR и добавьте этот путь в ReadWritePaths.
+ReadWritePaths=/var/lib/backpeer-node
+# Песочница: /usr, /boot, /etc — только чтение; домашние каталоги скрыты.
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+Restart=on-failure
+RestartSec=5s
+
+ExecStart=/usr/bin/backpeer-node run
+
+[Install]
+WantedBy=multi-user.target

@@ -43,6 +43,8 @@ Future<int> _main(List<String> arguments) async {
   final importCert = daemonOptions();
   final run = daemonOptions();
   final standCert = daemonOptions();
+  final pair = daemonOptions();
+  final health = daemonOptions();
   final stub = ArgParser()
     ..addOption('dir', help: 'Папка папок-«узлов»', mandatory: true)
     ..addOption(
@@ -62,6 +64,8 @@ Future<int> _main(List<String> arguments) async {
     ..addCommand('import-cert', importCert)
     ..addCommand('run', run)
     ..addCommand('stand-cert', standCert)
+    ..addCommand('pair', pair)
+    ..addCommand('health', health)
     ..addCommand('stub', stub);
   final ArgResults args;
   try {
@@ -85,6 +89,14 @@ Future<int> _main(List<String> arguments) async {
       ..writeln(
         'node stand-cert [--data DIR]  стенд: сертификат от нового владельца',
       )
+      ..writeln(
+        'node pair [--data DIR]  привязка к учётной записи по '
+        'одноразовому коду',
+      )
+      ..writeln(
+        'node health [--data DIR]  проверить демон через локальный API '
+        '(Docker healthcheck)',
+      )
       ..writeln('node stub create|run --dir DIR --coordinator URL')
       ..writeln('Подробности — docs/ops/node.md.');
     return _Exit.ok;
@@ -99,6 +111,10 @@ Future<int> _main(List<String> arguments) async {
         return await _run(command);
       case 'stand-cert':
         return await _standCert(command);
+      case 'pair':
+        return await _pair(command);
+      case 'health':
+        return await _health(command);
       default:
         return await _stub(command, stub);
     }
@@ -273,6 +289,104 @@ Future<int> _standCert(ArgResults args) async {
     }
   } finally {
     identity.dispose();
+  }
+}
+
+/// Привязка узла к учётной записи по одноразовому коду (задачи 6.1.1,
+/// 6.1.2; protocol.md, раздел 4.17): узел показывает код и QR, владелец
+/// вводит код на своём устройстве (`cli node pair <код>`), узел забирает
+/// подписанный сертификат и импортирует его.
+Future<int> _pair(ArgResults args) async {
+  if (args.rest.isNotEmpty) return _usage('pair без аргументов');
+  final config = _config(args);
+  final url = config.coordinatorUrl;
+  if (url == null) {
+    throw const NodeConfigException('pair: не задан coordinator.url');
+  }
+  final crypto = await SodiumCryptoProvider.load();
+  final dir = Directory(config.dataDir);
+  await NodeIdentity.ensureKeys(dir, crypto);
+  final identity = await NodeIdentity.load(dir, crypto);
+  try {
+    if (identity.certificate != null) {
+      stdout.writeln('Сертификат узла уже есть — привязка не нужна.');
+      return _Exit.ok;
+    }
+    final client = CoordinatorClient(
+      baseUri: Uri.parse(url),
+      crypto: crypto,
+      trustedCertificates: switch (config.coordinatorCa) {
+        final String ca => SecurityContext()..setTrustedCertificates(ca),
+        null => null,
+      },
+      userAgent: 'node/$appVersion',
+    );
+    try {
+      final pairing = NodePairing(client, crypto);
+      final session = await pairing.start(identity.keys);
+      stdout
+        ..writeln('Привязка узла к учётной записи')
+        ..writeln()
+        ..writeln('Код: ${session.code}')
+        ..writeln('Действует до: ${_local(session.expiresAt)}')
+        ..writeln('Отпечаток узла: ${session.fingerprint}')
+        ..writeln()
+        ..writeln(renderPairQr(pairQrContent(session.code)))
+        ..writeln()
+        ..writeln('На устройстве, где вы уже вошли в учётную запись:')
+        ..writeln('  cli node pair ${session.code}')
+        ..writeln('и сверьте отпечаток узла с показанным выше.')
+        ..writeln();
+      final cert = await pairing.waitForCertificate(identity.keys);
+      if (cert == null) {
+        stdout.writeln('Код просрочен — начните привязку заново.');
+        return _Exit.error;
+      }
+      final owner = await NodeIdentity.importCertificate(
+        dir,
+        crypto,
+        cert.writeToBuffer(),
+        source: 'node pair',
+      );
+      stdout.writeln(
+        'Узел привязан к учётной записи '
+        '${bytesToHex(owner).substring(0, 16)}….',
+      );
+      return _Exit.ok;
+    } finally {
+      client.close();
+    }
+  } finally {
+    identity.dispose();
+  }
+}
+
+String _local(DateTime time) {
+  final t = time.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${t.year}-${two(t.month)}-${two(t.day)} '
+      '${two(t.hour)}:${two(t.minute)}';
+}
+
+/// Проверка демона через локальный API (`status`): для Docker HEALTHCHECK
+/// и сценариев. Демон отвечает — код 0, иначе — 1.
+Future<int> _health(ArgResults args) async {
+  if (args.rest.isNotEmpty) return _usage('health без аргументов');
+  final config = _config(args);
+  final endpoint = ControlEndpoint.forDataDir(
+    config.dataDir,
+    socketPath: config.controlSocket,
+  );
+  try {
+    final client = await NodeControlClient.connect(endpoint);
+    try {
+      await client.call('status');
+      return _Exit.ok;
+    } finally {
+      await client.close();
+    }
+  } on ControlException {
+    return _Exit.error;
   }
 }
 

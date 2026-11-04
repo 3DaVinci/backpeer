@@ -43,6 +43,7 @@ export 'src/net/port_mapping/upnp.dart';
 export 'src/net/reachability.dart';
 export 'src/net/relay_peers.dart';
 export 'src/net/udp_peers.dart';
+export 'src/pairing.dart';
 export 'src/peers/peer_service.dart';
 export 'src/peers/revocations.dart';
 export 'src/peers/speed_schedule.dart';

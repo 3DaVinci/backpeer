@@ -73,6 +73,31 @@ class ReachabilityStatus extends $pb.ProtobufEnum {
   const ReachabilityStatus._(super.value, super.name);
 }
 
+class NodePairStatus extends $pb.ProtobufEnum {
+  static const NodePairStatus NODE_PAIR_STATUS_UNSPECIFIED =
+      NodePairStatus._(0, _omitEnumNames ? '' : 'NODE_PAIR_STATUS_UNSPECIFIED');
+  static const NodePairStatus NODE_PAIR_STATUS_PENDING =
+      NodePairStatus._(1, _omitEnumNames ? '' : 'NODE_PAIR_STATUS_PENDING');
+  static const NodePairStatus NODE_PAIR_STATUS_SIGNED =
+      NodePairStatus._(2, _omitEnumNames ? '' : 'NODE_PAIR_STATUS_SIGNED');
+  static const NodePairStatus NODE_PAIR_STATUS_EXPIRED =
+      NodePairStatus._(3, _omitEnumNames ? '' : 'NODE_PAIR_STATUS_EXPIRED');
+
+  static const $core.List<NodePairStatus> values = <NodePairStatus>[
+    NODE_PAIR_STATUS_UNSPECIFIED,
+    NODE_PAIR_STATUS_PENDING,
+    NODE_PAIR_STATUS_SIGNED,
+    NODE_PAIR_STATUS_EXPIRED,
+  ];
+
+  static final $core.List<NodePairStatus?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static NodePairStatus? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
+
+  const NodePairStatus._(super.value, super.name);
+}
+
 /// Способ, которым клиент или узел соединился с узлом.
 class ConnectionMethod extends $pb.ProtobufEnum {
   static const ConnectionMethod CONNECTION_METHOD_UNSPECIFIED =

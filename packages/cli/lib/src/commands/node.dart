@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:args/command_runner.dart';
 import 'package:cli/src/context.dart';
+import 'package:core/core.dart';
 import 'package:node/node.dart';
+import 'package:protocol/protocol.dart' as pb;
 
 /// Управление демоном узла-хранителя на этом компьютере через его
 /// локальный API (задача 3.1.3; `docs/ops/node.md`, раздел «Локальный
@@ -15,6 +19,7 @@ final class NodeCommand extends CliCommand {
     addSubcommand(_NodeStateCommand(ctx, 'resume'));
     addSubcommand(_NodeStateCommand(ctx, 'stop'));
     addSubcommand(_NodeExitCommand(ctx));
+    addSubcommand(_NodePairCommand(ctx));
   }
 
   @override
@@ -374,3 +379,89 @@ String _size(Object? bytes) => bytes is int ? formatSize(bytes) : '?';
 
 String _rate(Object? bytesPerSecond) =>
     bytesPerSecond == 0 ? 'без предела' : '${_size(bytesPerSecond)}/с';
+
+/// `pair`: привязка узла-хранителя (на NAS, Raspberry Pi) к учётной записи
+/// по одноразовому коду (задачи 6.1.1, 6.1.2; protocol.md, раздел 4.17).
+/// Владелец вводит код, который показывает узел командой `node pair`,
+/// сверяет отпечаток ключа узла и подписывает сертификат ключом учётной
+/// записи; узел забирает его у координатора.
+final class _NodePairCommand extends CliCommand {
+  new(super.ctx) {
+    argParser.addFlag(
+      'yes',
+      negatable: false,
+      help: 'Подтвердить отпечаток узла без вопроса',
+    );
+  }
+
+  @override
+  String get name => 'pair';
+
+  @override
+  String get description =>
+      'Привязать узел к учётной записи по одноразовому коду.';
+
+  @override
+  Future<int> run() async {
+    final a = argResults!;
+    if (a.rest.length != 1) {
+      throw UsageException('cli node pair <код>', '');
+    }
+    final code = a.rest.single;
+    final config = ctx.config();
+    if (config.coordinator == null) {
+      throw const CliException(
+        'Координатор не настроен: cli config --coordinator URL',
+      );
+    }
+    final crypto = await ctx.crypto();
+    final keys = await ctx.unlock();
+    try {
+      final ops = await ctx.accountOps();
+      final client = ops.client(config);
+      try {
+        final lookup = await client.nodePairLookup(
+          pb.NodePairLookupRequest(code: code),
+          accountKey: keys.accountSign,
+        );
+        final nodeId = Uint8List.fromList(lookup.nodeId);
+        final nodeDh = Uint8List.fromList(lookup.nodeDh);
+        final fingerprint = nodeFingerprint(
+          crypto,
+          nodeId: nodeId,
+          nodeDh: nodeDh,
+        );
+        ctx.report
+          ..info('Узел: ${bytesToHex(nodeId).substring(0, 16)}…')
+          ..info('Отпечаток узла: $fingerprint');
+        if (!a.flag('yes')) {
+          final answer = ctx.console.ask(
+            'Отпечаток совпадает с тем, что показывает узел? (да/нет): ',
+          );
+          if (answer?.trim().toLowerCase() != 'да') {
+            throw const CliException('Привязка отменена', ExitCode.cancelled);
+          }
+        }
+        final signed = await NodeCertificates.issue(
+          crypto,
+          keys,
+          nodeId: nodeId,
+          nodeDh: nodeDh,
+          issuedAt: DateTime.now(),
+        );
+        await client.nodePairSign(
+          pb.NodePairSignRequest(code: code, nodeCertificate: signed),
+          accountKey: keys.accountSign,
+        );
+        ctx.report
+          ..info('Сертификат отправлен; узел заберёт его и привяжется.')
+          ..result({'nodeId': bytesToHex(nodeId)});
+        return ExitCode.ok;
+      } finally {
+        client.close();
+      }
+    } finally {
+      keys.dispose();
+    }
+  }
+}

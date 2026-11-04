@@ -276,6 +276,59 @@ enum ReachabilityStatus {
   REACHABILITY_STATUS_NOT_CHECKED = 5; // адрес не публичный (настройка координатора)
 }
 
+// --- Привязка узла к учётной записи (задачи 6.1.1, 6.1.2) -------------------
+//
+// protocol.md, раздел 4.17. Узел без сертификата генерирует ключи и
+// начинает привязку: координатор выдаёт короткий одноразовый код, который
+// узел показывает на своём экране (и QR в терминале). Пользователь на
+// устройстве, где уже вошёл в учётную запись, вводит код, сверяет отпечаток
+// ключа узла с тем, что видит на экране узла, и подписывает NodeCertificate
+// ключом учётной записи; узел забирает сертификат у координатора и
+// импортирует его. Код короткоживущий, с лимитом попыток.
+
+// Узел начинает привязку. Подписан ключом узла (ещё без сертификата, ключ
+// может быть неизвестен координатору).
+message NodePairStartRequest {
+  bytes node_dh = 1;             // открытый ключ X25519 узла, 32 байта
+}
+message NodePairStartResponse {
+  string code = 1;               // короткий одноразовый код
+  int64 expires_at_unix_ms = 2;  // код действует до этого времени
+}
+
+// Узел спрашивает, не подписан ли его сертификат. Подписан ключом узла.
+message NodePairStatusRequest {}
+message NodePairStatusResponse {
+  NodePairStatus status = 1;
+  Signed node_certificate = 2;   // NodeCertificate, когда status = SIGNED
+  int64 expires_at_unix_ms = 3;  // когда status = PENDING
+}
+enum NodePairStatus {
+  NODE_PAIR_STATUS_UNSPECIFIED = 0;
+  NODE_PAIR_STATUS_PENDING = 1;  // ждём, когда владелец введёт код
+  NODE_PAIR_STATUS_SIGNED = 2;   // сертификат подписан и лежит в ответе
+  NODE_PAIR_STATUS_EXPIRED = 3;  // код просрочен: начните привязку заново
+}
+
+// Владелец вводит код и узнаёт ключи узла, чтобы сверить отпечаток.
+// Подписан ключом учётной записи.
+message NodePairLookupRequest {
+  string code = 1;
+}
+message NodePairLookupResponse {
+  bytes node_id = 1;             // открытый ключ Ed25519 узла
+  bytes node_dh = 2;             // открытый ключ X25519 узла
+  int64 expires_at_unix_ms = 3;
+}
+
+// Владелец подтвердил отпечаток и передаёт подписанный сертификат узла.
+// Подписан ключом учётной записи.
+message NodePairSignRequest {
+  string code = 1;
+  Signed node_certificate = 2;   // NodeCertificate на ключи узла из lookup
+}
+message NodePairSignResponse {}
+
 // --- Канал команд координатора (задача 3.6.1) -------------------------------
 //
 // Узел держит исходящее соединение WebSocket к координатору:

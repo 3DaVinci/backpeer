@@ -58,6 +58,7 @@ void main() {
         'devices',
         'fragments',
         'login_attempts',
+        'node_pairings',
         'node_uptime',
         'nodes',
         'objects',

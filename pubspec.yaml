@@ -135,10 +135,3 @@ melos:
       description: macOS — Backpeer.app с программами внутри и .dmg (нужен Mac с Xcode, docs/ops/macos-packages.md).
       run: tool/macos_package/build.sh
 
-    site:check:
-      description: Сайт (apps/site, нужен Node.js 22+) — типы, сборка и тесты, как задание site в CI.
-      run: cd apps/site && npm ci && npm run check
-
-    site:dev:
-      description: Сайт в режиме разработки на http://127.0.0.1:5173/.
-      run: cd apps/site && npm run dev

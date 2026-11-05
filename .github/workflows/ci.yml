@@ -1,0 +1,233 @@
+# Проверки и сборка на раннерах GitHub (ADR-014).
+#
+# Зачем это здесь: на корпоративном GitLab есть только Linux x64, а для
+# задач 0.2.2, 0.2.3, 0.2.5 и 1.7.3 нужны Windows, macOS и Linux ARM64.
+# GitHub даёт их в одном пайплайне, и после открытия кода (ADR-013) чужой
+# инфраструктуры больше не надо избегать.
+#
+# Файл лежит в GitLab и попадает в публичное зеркало (publish/github/include.txt):
+# GitHub Actions работают только там. Тесты, покрытие и основная сборка
+# остаются в GitLab CI; здесь — то, чего в GitLab нет, и общая проверка,
+# что публичное дерево собирается.
+#
+# Ограничение: Flutter не выпускает SDK для Linux ARM64, поэтому на
+# ubuntu-24.04-arm собираются только Dart-пакеты и бинарники cli/node
+# (приложение из workspace на время сборки убирается).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint (Linux x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Форматирование, анализатор, правило зависимостей
+        run: dart run melos:melos run lint
+
+  test:
+    name: test (Linux x64, PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: fs_test
+          POSTGRES_PASSWORD: fs_test
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fs_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      FS_TEST_POSTGRES: postgres://fs_test:fs_test@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Тесты Dart-пакетов
+        run: dart run melos:melos run test-dart
+      - name: Тесты с замером памяти и времени
+        run: dart run melos:melos run test-serial
+      - name: Тесты приложения
+        run: dart run melos:melos run test-flutter
+
+  test-arm64:
+    name: test (Linux ARM64, Dart)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: Убрать приложение из workspace
+        shell: bash
+        run: |
+          # Flutter SDK для Linux ARM64 не выпускается, а apps/app — часть
+          # workspace. Для Dart-пакетов это единственная помеха.
+          python3 - <<'PY'
+          p = 'pubspec.yaml'
+          s = open(p, encoding='utf-8').read()
+          s = s.replace("  - apps/app\n", "")
+          open(p, 'w', encoding='utf-8').write(s)
+          PY
+      - name: Зависимости
+        run: dart pub get --enforce-lockfile
+      - name: Тесты Dart-пакетов
+        shell: bash
+        run: |
+          # melos здесь не используется: его sdkPath — это Flutter, которого
+          # для Linux ARM64 не выпускают.
+          for dir in packages/*/; do
+            [ -d "$dir/test" ] || continue
+            echo "=== $dir"
+            (cd "$dir" && dart test -j 4 -x serial)
+          done
+      - name: Тесты с замером памяти и времени
+        shell: bash
+        run: |
+          for dir in packages/core packages/node; do
+            echo "=== $dir"
+            (cd "$dir" && dart test -j 1 -t serial)
+          done
+
+  binaries-linux-x64:
+    name: binaries (Linux x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Сборка cli, node, agent
+        run: dart run tool/build_exe.dart
+      - name: Программы запускаются
+        shell: bash
+        run: |
+          build/bin/linux-x64/cli/bundle/bin/cli --version
+          build/bin/linux-x64/node/bundle/bin/node --version
+      - name: Полный цикл cli на собранной папке
+        run: tool/smoke_test.sh build/bin/linux-x64/cli/bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-linux-x64
+          path: build/bin/
+          retention-days: 14
+
+  binaries-linux-arm64:
+    name: binaries (Linux ARM64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      - name: Убрать приложение из workspace
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          p = 'pubspec.yaml'
+          s = open(p, encoding='utf-8').read()
+          s = s.replace("  - apps/app\n", "")
+          open(p, 'w', encoding='utf-8').write(s)
+          PY
+      - name: Зависимости
+        run: dart pub get --enforce-lockfile
+      - name: Сборка cli, node, agent
+        run: dart run tool/build_exe.dart
+      - name: Программы запускаются
+        shell: bash
+        run: |
+          build/bin/linux-arm64/cli/bundle/bin/cli --version
+          build/bin/linux-arm64/node/bundle/bin/node --version
+      - name: Полный цикл cli на собранной папке
+        run: tool/smoke_test.sh build/bin/linux-arm64/cli/bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-linux-arm64
+          path: build/bin/
+          retention-days: 14
+
+  binaries-macos:
+    name: binaries (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Сборка cli, node, agent
+        run: dart run tool/build_exe.dart
+      - name: Программы запускаются
+        shell: bash
+        run: |
+          for exe in build/bin/macos-*/*/bundle/bin/*; do "$exe" --version; done
+      - name: Полный цикл cli на собранной папке
+        shell: bash
+        run: tool/smoke_test.sh build/bin/macos-*/cli/bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-macos
+          path: build/bin/
+          retention-days: 14
+
+  binaries-windows:
+    name: binaries (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          linux-deps: "false"
+      - name: Сборка cli, node, agent
+        run: dart run tool/build_exe.dart
+      - name: Программы запускаются
+        shell: pwsh
+        run: |
+          .\build\bin\windows-x64\cli\bundle\bin\cli.exe --version
+          .\build\bin\windows-x64\node\bundle\bin\node.exe --version
+      - name: Полный цикл cli на собранной папке
+        shell: pwsh
+        run: powershell -File tool\smoke_test.ps1 build\bin\windows-x64\cli\bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-windows-x64
+          path: build/bin/
+          retention-days: 14
+
+  app:
+    name: app (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux, os: ubuntu-latest, target: linux }
+          - { name: macOS, os: macos-latest, target: macos }
+          - { name: Windows, os: windows-latest, target: windows }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          linux-deps: "true"
+      - name: Сборка приложения
+        working-directory: apps/app
+        run: flutter build ${{ matrix.target }} --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-app-${{ matrix.name }}
+          path: |
+            apps/app/build/linux/x64/release/bundle/
+            apps/app/build/macos/Build/Products/Release/Backpeer.app
+            apps/app/build/windows/x64/runner/Release/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,52 @@
+name: setup
+description: Flutter из .fvmrc, системные зависимости и pub get.
+
+# Общая подготовка для заданий GitHub Actions (ADR-014): версия Flutter
+# берётся из .fvmrc, чтобы совпадать с GitLab CI и с разработчиком.
+
+inputs:
+  linux-deps:
+    description: Ставить пакеты Linux для сборки (GTK, libsodium, libsecret, SQLite).
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Версия Flutter из .fvmrc
+      id: version
+      shell: bash
+      run: |
+        version=$(python3 -c "import json; print(json.load(open('.fvmrc'))['flutter'])")
+        echo "flutter=$version" >> "$GITHUB_OUTPUT"
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ steps.version.outputs.flutter }}
+        channel: stable
+        cache: true
+    # melos берёт SDK из `sdkPath: .fvm/flutter_sdk` в pubspec; на раннере
+    # FVM нет, поэтому ссылаемся на SDK из flutter-action. Каталог .fvm
+    # в .gitignore, создаём его здесь.
+    - name: Ссылка на SDK для melos
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        mkdir -p .fvm
+        ln -sfn "$(dirname "$(dirname "$(command -v flutter)")")" .fvm/flutter_sdk
+    - name: Ссылка на SDK для melos (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path .fvm | Out-Null
+        $sdk = Split-Path (Split-Path (Get-Command flutter).Source)
+        New-Item -ItemType Junction -Force -Path .fvm/flutter_sdk -Target $sdk | Out-Null
+    - name: Системные зависимости Linux
+      if: runner.os == 'Linux' && inputs.linux-deps == 'true'
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          libsodium-dev libsecret-1-dev libsqlite3-dev \
+          libgtk-3-dev liblzma-dev ninja-build
+    - name: Зависимости pub
+      shell: bash
+      run: dart pub get --enforce-lockfile

@@ -39,6 +39,7 @@ jobs:
       fail-fast: false
       matrix:
         image: [coordinator, node, relay, cli]
+        arch: [amd64, arm64]
         include:
           - arch: amd64
             runner: ubuntu-latest

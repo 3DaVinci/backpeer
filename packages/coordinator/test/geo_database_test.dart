@@ -142,15 +142,15 @@ range_start,range_end,country_code,country_name,region,city,latitude,longitude
   });
 
   test('папки нет — ошибка настроек', () async {
-    expect(
-      () => GeoDatabase.open('${dir.path}/нет'),
+    await expectLater(
+      GeoDatabase.open('${dir.path}/нет'),
       throwsA(isA<GeoDatabaseException>()),
     );
   });
 
   test('диапазоны не по возрастанию — ошибка', () async {
-    expect(
-      () => open(
+    await expectLater(
+      open(
         ['dbip-city-lite.csv'],
         '''
 3.0.0.0,3.0.0.255,OC,AU,,,-27.4679,153.0281
@@ -162,8 +162,8 @@ range_start,range_end,country_code,country_name,region,city,latitude,longitude
   });
 
   test('битый код страны и плохой адрес — ошибки', () async {
-    expect(
-      () => open(
+    await expectLater(
+      open(
         ['dbip-city-lite.csv'],
         '''
 1.0.0.0,1.0.0.255,EU,RUS,Russia,,,-27.4679,153.0281
@@ -174,8 +174,8 @@ range_start,range_end,country_code,country_name,region,city,latitude,longitude
     dir
       ..deleteSync(recursive: true)
       ..createSync();
-    expect(
-      () => open(
+    await expectLater(
+      open(
         ['dbip-city-lite.csv'],
         '''
 1.0.0.999,1.0.0.255,OC,AU,,,-27.4679,153.0281

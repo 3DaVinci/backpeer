@@ -1,3 +1,7 @@
+## 0.0.3-dev.2
+
+ - **FIX**(ci,node): матрица образов и запас в тестах скорости.
+
 ## 0.0.3-dev.1
 
  - Bump version to keep all packages in the workspace in lockstep.

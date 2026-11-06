@@ -1,6 +1,6 @@
 name: cli
 description: Консольный клиент. Без Flutter.
-version: 0.0.3-dev.1
+version: 0.0.3-dev.2
 publish_to: none
 resolution: workspace
 
@@ -10,10 +10,10 @@ environment:
 dependencies:
   # Разбор команд и флагов (BSD-3-Clause, пакет команды Dart).
   args: ^2.7.0
-  core: ^0.0.3-dev.1
+  core: ^0.0.3-dev.2
   # Клиент локального API демона узла (cli node …).
-  node: ^0.0.3-dev.1
-  protocol: ^0.0.3-dev.1
+  node: ^0.0.3-dev.2
+  protocol: ^0.0.3-dev.2
 
 dev_dependencies:
   test: ^1.31.1

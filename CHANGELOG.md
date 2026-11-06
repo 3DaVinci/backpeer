@@ -15,6 +15,42 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`node` - `v0.0.3-dev.2`](#node---v003-dev2)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `agent` - `v0.0.3-dev.2`
+ - `app` - `v0.0.3-dev.2`
+ - `bench` - `v0.0.3-dev.2`
+ - `cli` - `v0.0.3-dev.2`
+ - `coordinator` - `v0.0.3-dev.2`
+ - `core` - `v0.0.3-dev.2`
+ - `daemon_kit` - `v0.0.3-dev.2`
+ - `protocol` - `v0.0.3-dev.2`
+ - `relay` - `v0.0.3-dev.2`
+ - `test_vectors` - `v0.0.3-dev.2`
+
+---
+
+#### `node` - `v0.0.3-dev.2`
+
+ - **FIX**(ci,node): матрица образов и запас в тестах скорости.
+
+
+## 2026-11-06
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.3-dev.1`](#agent---v003-dev1)
 
 Packages versioned in lockstep only:

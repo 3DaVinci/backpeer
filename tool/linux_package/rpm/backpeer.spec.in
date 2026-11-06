@@ -2,7 +2,7 @@
 # упаковывает, ничего не собирает. Подстановки @…@ — inside.sh.
 Name:           backpeer
 Version:        @VERSION@
-Release:        1
+Release:        @RELEASE@
 Summary:        Encrypted backups on other people's computers
 License:        LicenseRef-proprietary
 BuildArch:      @RPM_ARCH@

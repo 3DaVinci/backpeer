@@ -62,7 +62,20 @@ appstreamcli validate --no-net --pedantic \
   "$stage/usr/share/metainfo/$id.metainfo.xml" || \
   appstreamcli validate --no-net "$stage/usr/share/metainfo/$id.metainfo.xml"
 
-name="backpeer_${VERSION}"
+# Debian и RPM не принимают SemVer-предрелиз как есть: у RPM дефис в
+# Version запрещён, у Debian предрелиз должен сортироваться раньше
+# стабильного (0.0.3~dev.0 < 0.0.3). Стабильные версии не меняются.
+if [ "${VERSION#*-}" != "$VERSION" ]; then
+  deb_version="${VERSION%%-*}~${VERSION#*-}"
+  rpm_version="${VERSION%%-*}"
+  rpm_release="0.${VERSION#*-}"
+else
+  deb_version="$VERSION"
+  rpm_version="$VERSION"
+  rpm_release=1
+fi
+
+name="backpeer_${deb_version}"
 mkdir -p /out
 
 # --- .deb ----------------------------------------------------------------
@@ -72,7 +85,7 @@ cp -a "$stage" "$deb"
 mkdir -p "$deb/DEBIAN"
 cat > "$deb/DEBIAN/control" <<CONTROL
 Package: backpeer
-Version: $VERSION
+Version: $deb_version
 Architecture: $deb_arch
 Maintainer: Backpeer <packages@backpeer.invalid>
 Installed-Size: $(du -sk "$stage" | cut -f1)
@@ -92,12 +105,13 @@ fakeroot dpkg-deb --build -Zxz "$deb" "/out/${name}_${deb_arch}.deb"
 rpmtop=/work/rpmbuild
 rm -rf "$rpmtop"
 mkdir -p "$rpmtop/SPECS"
-sed -e "s|@VERSION@|$VERSION|" -e "s|@RPM_ARCH@|$rpm_arch|" \
-  -e "s|@STAGE@|$stage|" "$here/rpm/backpeer.spec.in" \
-  > "$rpmtop/SPECS/backpeer.spec"
+sed -e "s|@VERSION@|$rpm_version|" -e "s|@RELEASE@|$rpm_release|" \
+  -e "s|@RPM_ARCH@|$rpm_arch|" -e "s|@STAGE@|$stage|" \
+  "$here/rpm/backpeer.spec.in" > "$rpmtop/SPECS/backpeer.spec"
 rpmbuild -bb --define "_topdir $rpmtop" --target "$rpm_arch" \
   "$rpmtop/SPECS/backpeer.spec" >/dev/null
-cp "$rpmtop/RPMS/$rpm_arch/"*.rpm "/out/backpeer-${VERSION}-1.${rpm_arch}.rpm"
+cp "$rpmtop/RPMS/$rpm_arch/"*.rpm \
+  "/out/backpeer-${rpm_version}-${rpm_release}.${rpm_arch}.rpm"
 
 # --- AppImage ------------------------------------------------------------
 appdir=/work/AppDir

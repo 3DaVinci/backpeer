@@ -1,4 +1,4 @@
-# Полный цикл собранного cli на Windows (задача 1.7.3): recover → backup →
+﻿# Полный цикл собранного cli на Windows (задача 1.7.3): recover → backup →
 # restore → verify --full, со сравнением восстановленных файлов. Запуск:
 #
 #   powershell -File tool\smoke_test.ps1 build\bin\windows-x64\cli\bundle

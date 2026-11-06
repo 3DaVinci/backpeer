@@ -85,7 +85,10 @@ jobs:
           open(p, 'w', encoding='utf-8').write(s)
           PY
       - name: Зависимости
-        run: dart pub get --enforce-lockfile
+        run: |
+          # apps/app убран из workspace, поэтому lockfile полного набора не
+          # сходится; --enforce-lockfile здесь невозможен.
+          dart pub get
       - name: Тесты Dart-пакетов
         shell: bash
         run: |
@@ -143,7 +146,10 @@ jobs:
           open(p, 'w', encoding='utf-8').write(s)
           PY
       - name: Зависимости
-        run: dart pub get --enforce-lockfile
+        run: |
+          # apps/app убран из workspace, поэтому lockfile полного набора не
+          # сходится; --enforce-lockfile здесь невозможен.
+          dart pub get
       - name: Сборка cli, node, agent
         run: dart run tool/build_exe.dart
       - name: Программы запускаются
@@ -197,7 +203,7 @@ jobs:
           .\build\bin\windows-x64\node\bundle\bin\node.exe --version
       - name: Полный цикл cli на собранной папке
         shell: pwsh
-        run: powershell -File tool\smoke_test.ps1 build\bin\windows-x64\cli\bundle
+        run: pwsh -NoProfile -File tool\smoke_test.ps1 build\bin\windows-x64\cli\bundle
       - uses: actions/upload-artifact@v4
         with:
           name: backpeer-windows-x64

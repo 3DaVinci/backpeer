@@ -14,8 +14,8 @@ import 'support/harness.dart';
 import 'support/postgres.dart';
 
 const _geo = '''
-1.0.0.0,1.0.0.255,AU,Australia,Queensland,Brisbane,-27.4679,153.0281
-2.0.0.0,2.0.0.255,DE,Germany,Berlin,Berlin,52.5244,13.4105
+1.0.0.0,1.0.0.255,OC,AU,Queensland,Brisbane,-27.4679,153.0281
+2.0.0.0,2.0.0.255,EU,DE,Berlin,Berlin,52.5244,13.4105
 ''';
 
 const _site = 'https://backpeer.test';

@@ -36,8 +36,8 @@ void main() {
     final db = await open(
       ['dbip-city-lite-2026-11.csv'],
       '''
-1.0.0.0,1.0.0.255,AU,Australia,Queensland,Brisbane,-27.4679,153.0281
-2.0.0.0,2.0.0.255,DE,Germany,Berlin,Berlin,52.5244,13.4105
+1.0.0.0,1.0.0.255,OC,AU,Queensland,Brisbane,-27.4679,153.0281
+2.0.0.0,2.0.0.255,EU,DE,Berlin,Berlin,52.5244,13.4105
 ''',
     );
     expect(db, isNotNull);
@@ -54,7 +54,7 @@ void main() {
     final db = await open(
       ['dbip-city-lite.csv'],
       '''
-1.0.0.0,1.0.0.255,AU,Australia,Queensland,Brisbane,-27.4679,153.0281
+1.0.0.0,1.0.0.255,OC,AU,Queensland,Brisbane,-27.4679,153.0281
 ''',
     );
     expect(db!.lookup('9.9.9.9'), isNull);
@@ -94,18 +94,33 @@ void main() {
     final db = await open(
       ['dbip-country-lite.csv', 'dbip-city-lite.csv'],
       '''
-1.0.0.0,1.0.0.255,AU,Australia,Queensland,Brisbane,-27.4679,153.0281
+1.0.0.0,1.0.0.255,OC,AU,Queensland,Brisbane,-27.4679,153.0281
 ''',
     );
     expect(db!.source, endsWith('dbip-city-lite.csv'));
     expect(db.lookup('1.0.0.1')!.city, 'Brisbane');
   });
 
+  test('строки IPv6 и неизвестная страна пропускаются', () async {
+    final db = await open(
+      ['dbip-city-lite.csv'],
+      '''
+1.0.0.0,1.0.0.255,OC,AU,Queensland,Brisbane,-27.4679,153.0281
+224.0.0.0,255.255.255.255,ZZ,ZZ,,,0,0
+::,1fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff,ZZ,ZZ,,,0,0
+2000::,2000:ffff:ffff:ffff:ffff:ffff:ffff:ffff,EU,CH,,Murten,46.9219,7.16595
+''',
+    );
+    expect(db!.ranges, 1);
+    expect(db.lookup('1.0.0.1')!.city, 'Brisbane');
+    expect(db.lookup('2000::1'), isNull);
+  });
+
   test('запятая в названии города в кавычках', () async {
     final db = await open(
       ['dbip-city-lite.csv'],
       '''
-8.0.0.0,8.0.0.255,US,United States,District of Columbia,"Washington, D.C.",38.8951,-77.0364
+8.0.0.0,8.0.0.255,NA,US,District of Columbia,"Washington, D.C.",38.8951,-77.0364
 ''',
     );
     expect(db!.lookup('8.0.0.1')!.city, 'Washington, D.C.');
@@ -116,7 +131,7 @@ void main() {
       ['dbip-city-lite.csv'],
       '''
 range_start,range_end,country_code,country_name,region,city,latitude,longitude
-1.0.0.0,1.0.0.255,AU,Australia,Queensland,Brisbane,-27.4679,153.0281
+1.0.0.0,1.0.0.255,OC,AU,Queensland,Brisbane,-27.4679,153.0281
 ''',
     );
     expect(db!.ranges, 1);
@@ -138,8 +153,8 @@ range_start,range_end,country_code,country_name,region,city,latitude,longitude
       () => open(
         ['dbip-city-lite.csv'],
         '''
-3.0.0.0,3.0.0.255,AU,Australia,,,-27.4679,153.0281
-2.0.0.0,2.0.0.255,DE,Germany,,,52.5244,13.4105
+3.0.0.0,3.0.0.255,OC,AU,,,-27.4679,153.0281
+2.0.0.0,2.0.0.255,EU,DE,,,52.5244,13.4105
 ''',
       ),
       throwsA(isA<GeoDatabaseException>()),
@@ -151,7 +166,7 @@ range_start,range_end,country_code,country_name,region,city,latitude,longitude
       () => open(
         ['dbip-city-lite.csv'],
         '''
-1.0.0.0,1.0.0.255,RUS,Russia,,,-27.4679,153.0281
+1.0.0.0,1.0.0.255,EU,RUS,Russia,,,-27.4679,153.0281
 ''',
       ),
       throwsA(isA<GeoDatabaseException>()),
@@ -163,7 +178,7 @@ range_start,range_end,country_code,country_name,region,city,latitude,longitude
       () => open(
         ['dbip-city-lite.csv'],
         '''
-1.0.0.999,1.0.0.255,AU,Australia,,,-27.4679,153.0281
+1.0.0.999,1.0.0.255,OC,AU,,,-27.4679,153.0281
 ''',
       ),
       throwsA(isA<GeoDatabaseException>()),

@@ -39,8 +39,9 @@ final class GeoLocation {
 /// Файл читается один раз при запуске; при обновлении справочника
 /// координатор перезапускают.
 ///
-/// Адреса IPv6 не разбираются: в базе Lite они есть не всегда, и узел без
-/// геоданных просто не попадает на карту.
+/// Строки IPv6 (они идут в конце файла) пропускаются: индекс строится по
+/// IPv4, узел без геоданных просто не попадает на карту. Строки с кодом
+/// `ZZ` (неизвестная страна: служебные диапазоны) тоже пропускаются.
 final class GeoDatabase {
   new _(this._ranges, this._countries, this._cities, this.source);
 
@@ -124,15 +125,26 @@ final class GeoDatabase {
       }
       final start = _ipv4(fields[0]);
       final end = _ipv4(fields[1]);
-      final code = fields[2].trim().toUpperCase();
-      if (start == null || end == null || start > end) {
+      if (start == null || end == null) {
+        // Файл DB-IP Lite после IPv4 идёт с IPv6 — его не разбираем.
+        if (fields[0].contains(':') || fields[1].contains(':')) continue;
         throw GeoDatabaseException(
           '$path:$lineNumber: плохой диапазон адресов',
         );
       }
+      if (start > end) {
+        throw GeoDatabaseException('$path:$lineNumber: диапазон наоборот');
+      }
+      // Форматы DB-IP Lite: страновой файл — start,end,country; городской —
+      // start,end,continent,country,region,city,lat,lon. В городском страна
+      // в четвёртом поле, а не в третьем (там континент).
+      final cityFormat = fields.length >= 8;
+      final code = (cityFormat ? fields[3] : fields[2]).trim().toUpperCase();
       if (!_countryCode.hasMatch(code)) {
         throw GeoDatabaseException('$path:$lineNumber: плохой код страны');
       }
+      // ZZ — «страна неизвестна» (служебные диапазоны): на карту не надо.
+      if (code == 'ZZ') continue;
       var country = countryIndex[code];
       if (country == null) {
         country = countries.length;
@@ -145,7 +157,7 @@ final class GeoDatabase {
       var city = -1;
       var latitude = double.nan;
       var longitude = double.nan;
-      if (fields.length >= 8) {
+      if (cityFormat) {
         final name = fields[5].trim();
         if (name.isNotEmpty) {
           final known = cityIndex[name];

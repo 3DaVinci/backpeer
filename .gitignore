@@ -31,3 +31,6 @@ __pycache__/
 
 # Node.js: сайт (apps/site)
 node_modules/
+
+# Справочник geoip (DB-IP Lite) для стенда: данные большие, лицензия CC BY
+/geoip/

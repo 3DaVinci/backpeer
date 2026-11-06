@@ -119,6 +119,13 @@ final class CoordinatorServer {
               onlineWindow: config.nodes.onlineWindow,
             )
           : null;
+      if (stats != null && config.stats.allowedOrigins.isEmpty) {
+        _log.warning(
+          const LogEvent('stats_no_origins', {
+            'note': 'сводка о сети недоступна браузеру: задайте stats.origins',
+          }),
+        );
+      }
       final handler = ApiHandler(
         methods: coordinatorMethods(coordinatorService),
         verifier: verifier,

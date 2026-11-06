@@ -200,6 +200,7 @@ final class CoordinatorServer {
           'repair': repair != null && config.repair.enabled,
           'geo': geo?.ranges,
           'stats': stats != null,
+          'forwarded_for': config.trustForwardedFor,
         }),
       );
       if (!config.placement.distinctSubnets) {

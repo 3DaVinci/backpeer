@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:coordinator/src/accounts/certificates.dart';
 import 'package:coordinator/src/auth/key_directory.dart';
 import 'package:coordinator/src/db/database.dart';
+import 'package:coordinator/src/geo/geo_database.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_address.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
@@ -27,6 +28,7 @@ final class NodeService {
     this._db,
     this._checks, {
     this.policy = const NodePolicy(),
+    this.geo,
     this._coordinatorKeys,
     this.probation = Duration.zero,
     DateTime Function()? clock,
@@ -35,6 +37,10 @@ final class NodeService {
   final Database _db;
   final CertificateChecks _checks;
   final NodePolicy policy;
+
+  /// Справочник geoip: место узла по адресу, с которого он обращается
+  /// (задача С.3.5). `null` — геоданные выключены, карта на сайте пуста.
+  final GeoDatabase? geo;
 
   /// Испытательный срок узлов (`PlacementPolicy.probation`) — для
   /// `standing` в ответе на heartbeat.
@@ -84,6 +90,7 @@ final class NodeService {
       throw _bad('software — до 64 печатных символов ASCII');
     }
     final subnet = _subnet(context);
+    final place = _place(context);
     final now = _clock();
 
     final created = await _db.transaction((tx) async {
@@ -127,16 +134,24 @@ final class NodeService {
         Sql.named('''
           INSERT INTO nodes
             (node_id, account_id, certificate, registered_at, capacity_bytes,
-             endpoints, versions, software, subnet)
+             endpoints, versions, software, subnet,
+             country, city, latitude, longitude, geo_at)
           VALUES (@n:bytea, @a:bytea, @c:bytea, @t:timestamptz, @cap:int8,
-                  @e:_text, @v:_int4, @sw:text, @sub:text)
+                  @e:_text, @v:_int4, @sw:text, @sub:text,
+                  @country:text, @city:text, @lat:float8, @lon:float8,
+                  @geo_at:timestamptz)
           ON CONFLICT (node_id) DO UPDATE
             SET certificate = excluded.certificate,
                 capacity_bytes = excluded.capacity_bytes,
                 endpoints = excluded.endpoints,
                 versions = excluded.versions,
                 software = excluded.software,
-                subnet = excluded.subnet
+                subnet = excluded.subnet,
+                country = coalesce(excluded.country, nodes.country),
+                city = coalesce(excluded.city, nodes.city),
+                latitude = coalesce(excluded.latitude, nodes.latitude),
+                longitude = coalesce(excluded.longitude, nodes.longitude),
+                geo_at = coalesce(excluded.geo_at, nodes.geo_at)
             WHERE nodes.account_id = excluded.account_id
               AND nodes.removed_at IS NULL
           RETURNING registered_at = @t:timestamptz'''),
@@ -150,6 +165,11 @@ final class NodeService {
           'v': request.versions.toList(),
           'sw': software,
           'sub': subnet,
+          'country': place?.country,
+          'city': place?.city,
+          'lat': place?.latitude,
+          'lon': place?.longitude,
+          'geo_at': place == null ? null : now,
         },
       );
       if (rows.isEmpty) {
@@ -198,13 +218,19 @@ final class NodeService {
     }
     _checkEndpoints(request.endpoints);
     final subnet = _subnet(context);
+    final place = _place(context);
     final now = _clock();
     final (reconcile, standing) = await _db.transaction((tx) async {
       final rows = await tx.execute(
         Sql.named('''
           UPDATE nodes SET capacity_bytes = @cap:int8, used_bytes = @u:int8,
                  free_bytes = @free:int8, endpoints = @e:_text,
-                 subnet = @sub:text
+                 subnet = @sub:text,
+                 country = coalesce(@country:text, country),
+                 city = coalesce(@city:text, city),
+                 latitude = coalesce(@lat:float8, latitude),
+                 longitude = coalesce(@lon:float8, longitude),
+                 geo_at = coalesce(@geo_at:timestamptz, geo_at)
             WHERE node_id = @n:bytea
             RETURNING reconcile_at IS NOT NULL'''),
         parameters: {
@@ -214,6 +240,11 @@ final class NodeService {
           'free': free,
           'e': request.endpoints.toList(),
           'sub': subnet,
+          'country': place?.country,
+          'city': place?.city,
+          'lat': place?.latitude,
+          'lon': place?.longitude,
+          'geo_at': place == null ? null : now,
         },
       );
       await _beat(tx, nodeId, now);
@@ -704,6 +735,11 @@ final class NodeService {
   }
 
   /// Подсеть — по адресу, с которого пришёл запрос, а не по заявленным
+  /// Место узла по адресу, с которого пришёл запрос; `null` — справочника
+  /// нет или адрес не в нём.
+  GeoLocation? _place(CallContext context) =>
+      geo?.lookup(context.clientAddress);
+
   /// `endpoints`: их узел может указать любые.
   static String _subnet(CallContext context) =>
       NodeAddresses.subnetOf(context.clientAddress) ??

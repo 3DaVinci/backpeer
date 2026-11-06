@@ -92,6 +92,53 @@ nodes:
     );
   });
 
+  test('сводка о сети и geoip (С.3.5)', () {
+    final c = CoordinatorConfig.parse('''
+stats:
+  enabled: false
+  origins:
+    - https://backpeer.test
+    - http://localhost:8080
+  per_minute: 10
+  max_age_seconds: 30
+  min_city_hosts: 3
+geoip:
+  dir: /var/lib/fs-coordinator/geoip
+''', {});
+    expect(c.stats.enabled, isFalse);
+    expect(c.stats.allowedOrigins, [
+      'https://backpeer.test',
+      'http://localhost:8080',
+    ]);
+    expect(c.stats.perMinute, 10);
+    expect(c.stats.maxAge, const Duration(seconds: 30));
+    expect(c.stats.minCityHosts, 3);
+    expect(c.stats.allows('https://backpeer.test'), isTrue);
+    expect(c.stats.allows('https://evil.test'), isFalse);
+    expect(c.geoIpDirectory, '/var/lib/fs-coordinator/geoip');
+  });
+
+  test('источники сводки из переменной окружения', () {
+    final c = CoordinatorConfig.parse('', {
+      'FS_COORDINATOR_STATS_ORIGINS':
+          'https://backpeer.test, http://localhost:8080',
+    });
+    expect(c.stats.allowedOrigins, [
+      'https://backpeer.test',
+      'http://localhost:8080',
+    ]);
+  });
+
+  test('плохой источник сводки — ошибка настроек', () {
+    expect(
+      () => CoordinatorConfig.parse(
+        'stats:\n  origins: [https://backpeer.test/]\n',
+        {},
+      ),
+      throwsA(isA<ConfigException>()),
+    );
+  });
+
   test('пример настроек из docs/ops разбирается', () {
     final c = CoordinatorConfig.parse(
       File('config/coordinator.example.yaml').readAsStringSync(),

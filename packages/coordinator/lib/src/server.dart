@@ -8,6 +8,7 @@ import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/migrations.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
+import 'package:coordinator/src/geo/geo_database.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
@@ -17,7 +18,8 @@ import 'package:coordinator/src/rpc/database_service.dart';
 import 'package:coordinator/src/rpc/methods.dart';
 import 'package:coordinator/src/rpc/service.dart';
 import 'package:coordinator/src/signer/ticket_signer.dart';
-import 'package:core/core.dart';
+import 'package:coordinator/src/stats/network_stats.dart';
+import 'package:core/core.dart' hide ConfigException;
 import 'package:fixnum/fixnum.dart';
 import 'package:logging/logging.dart';
 import 'package:protocol/protocol.dart' as pb;
@@ -71,6 +73,21 @@ final class CoordinatorServer {
         );
       }
       final limits = config.limits;
+      // Справочник geoip: без него узлы остаются без места, а карта на
+      // сайте пуста. Ошибка в файле — отказ запуска, а не тихие пустые
+      // города.
+      GeoDatabase? geo;
+      final geoDirectory = config.geoIpDirectory;
+      if (service == null && geoDirectory != null) {
+        try {
+          geo = await GeoDatabase.open(geoDirectory);
+        } on GeoDatabaseException catch (e) {
+          throw ConfigException('geoip.dir: ${e.message}');
+        }
+        if (geo == null) {
+          _log.warning(LogEvent('geoip_empty', {'dir': geoDirectory}));
+        }
+      }
       final coordinatorService =
           service?.call(db) ??
           DatabaseCoordinatorService(
@@ -79,6 +96,7 @@ final class CoordinatorServer {
             config: config,
             signer: signer,
             relayPassKey: relayPassKey,
+            geo: geo,
           );
       final verifier = RequestVerifier(
         crypto: crypto,
@@ -94,12 +112,26 @@ final class CoordinatorServer {
         perSecond: limits.keyPerSecond,
         burst: limits.keyBurst,
       );
+      final stats = config.stats.enabled
+          ? NetworkStatsService(
+              db,
+              policy: config.stats,
+              onlineWindow: config.nodes.onlineWindow,
+            )
+          : null;
       final handler = ApiHandler(
         methods: coordinatorMethods(coordinatorService),
         verifier: verifier,
         ipLimiter: ipLimiter,
         keyLimiter: keyLimiter,
         healthCheck: db.ping,
+        stats: stats,
+        statsLimiter: stats == null
+            ? null
+            : RateLimiter(
+                perSecond: config.stats.perMinute / 60,
+                burst: config.stats.perMinute.clamp(1, 1 << 30),
+              ),
         trustForwardedFor: config.trustForwardedFor,
       );
       final channels = NodeChannels(
@@ -159,6 +191,8 @@ final class CoordinatorServer {
           'relays': config.relay.servers.length,
           'audits': audits != null && config.audits.enabled,
           'repair': repair != null && config.repair.enabled,
+          'geo': geo?.ranges,
+          'stats': stats != null,
         }),
       );
       if (!config.placement.distinctSubnets) {

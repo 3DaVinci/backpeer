@@ -474,6 +474,21 @@ const List<Migration> schemaMigrations = [
       signed_at timestamptz
     )''',
   ]),
+  Migration(17, 'место узла по geoip', [
+    // Место хранителя для карты на сайте (задача С.3.5): только код
+    // страны, город и координаты — без точного адреса. Узлы, чей адрес
+    // не в справочнике, остаются без места и на карту не попадают.
+    r'''
+    ALTER TABLE nodes
+      ADD COLUMN country text CHECK (country ~ '^[A-Z]{2}$'),
+      ADD COLUMN city text CHECK (length(city) <= 128),
+      ADD COLUMN latitude double precision
+        CHECK (latitude BETWEEN -90 AND 90),
+      ADD COLUMN longitude double precision
+        CHECK (longitude BETWEEN -180 AND 180),
+      ADD COLUMN geo_at timestamptz''',
+    'CREATE INDEX nodes_country ON nodes (country) WHERE removed_at IS NULL',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

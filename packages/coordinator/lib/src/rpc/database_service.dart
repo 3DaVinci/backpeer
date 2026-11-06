@@ -5,6 +5,7 @@ import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
+import 'package:coordinator/src/geo/geo_database.dart';
 import 'package:coordinator/src/nodes/node_pairing.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/nodes/rendezvous.dart';
@@ -31,6 +32,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     TicketSigner? signer,
     Placement? placement,
     Ed25519KeyPair? relayPassKey,
+    GeoDatabase? geo,
     DateTime Function()? clock,
   }) : this._parts(
          db,
@@ -40,6 +42,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
          signer,
          placement,
          relayPassKey,
+         geo,
          clock,
        );
 
@@ -51,6 +54,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     TicketSigner? signer,
     Placement? placement,
     Ed25519KeyPair? relayPassKey,
+    GeoDatabase? geo,
     DateTime Function()? clock,
   ) : accounts = AccountService(
         db,
@@ -77,6 +81,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         db,
         checks,
         policy: config.nodes,
+        geo: geo,
         probation: config.placement.probation,
         coordinatorKeys: signer == null
             ? null

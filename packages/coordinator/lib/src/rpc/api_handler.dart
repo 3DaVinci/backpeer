@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -8,6 +9,7 @@ import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:coordinator/src/rpc/methods.dart';
+import 'package:coordinator/src/stats/network_stats.dart';
 import 'package:core/core.dart';
 import 'package:logging/logging.dart';
 import 'package:postgres/postgres.dart' show ServerException;
@@ -26,6 +28,8 @@ final class ApiHandler {
     required this.ipLimiter,
     required this.keyLimiter,
     required this.healthCheck,
+    this.stats,
+    this.statsLimiter,
     this.trustForwardedFor = false,
   }) : _methods = {for (final m in methods) m.path: m};
 
@@ -37,6 +41,13 @@ final class ApiHandler {
   /// `true` — база данных отвечает.
   final Future<bool> Function() healthCheck;
 
+  /// Публичная сводка о сети для сайта (задача С.3.5); `null` — выключена.
+  final NetworkStatsService? stats;
+
+  /// Предел частоты сводки по IP: отдельный, чтобы частые запросы с сайта
+  /// не выбирали общий предел API.
+  final RateLimiter? statsLimiter;
+
   /// Брать адрес клиента из последнего значения `X-Forwarded-For`
   /// (координатор за обратным прокси).
   final bool trustForwardedFor;
@@ -47,6 +58,9 @@ final class ApiHandler {
   Future<Response> call(Request request) async {
     final path = '/${request.url.path}';
     if (path == '/health') return await _health(request);
+    if (path == '/api/v1/NetworkStats') {
+      return await _networkStats(request);
+    }
     if (!path.startsWith(_apiPrefix)) {
       return _plainNotFound();
     }
@@ -192,6 +206,85 @@ final class ApiHandler {
     }
     final info = request.context['shelf.io.connection_info'];
     return info is HttpConnectionInfo ? info.remoteAddress.address : '';
+  }
+
+  /// `GET /api/v1/NetworkStats` — сводка о сети для сайта.
+  ///
+  /// Открыта без подписи: на сайте её читает браузер посетителя. Наружу
+  /// уходят только числа и города — без списка узлов и адресов. Источники,
+  /// которым браузер разрешает чтение, — `stats.origins`; ответ кешируется
+  /// на `stats.max_age_seconds`.
+  Future<Response> _networkStats(Request request) async {
+    final service = stats;
+    if (service == null || !service.policy.enabled) return _plainNotFound();
+    final policy = service.policy;
+    final origin = request.headers['origin'];
+    final allowed = origin != null && policy.allows(origin);
+    final cors = <String, String>{
+      HttpHeaders.varyHeader: 'Origin',
+      if (allowed) 'access-control-allow-origin': origin,
+    };
+    if (request.method == 'OPTIONS') {
+      return Response(
+        allowed ? 204 : 403,
+        headers: {
+          ...cors,
+          if (allowed) ...{
+            'access-control-allow-methods': 'GET, HEAD, OPTIONS',
+            'access-control-allow-headers': 'accept',
+            'access-control-max-age': '600',
+          },
+        },
+      );
+    }
+    if (request.method != 'GET' && request.method != 'HEAD') {
+      return Response(405, headers: {...cors, 'allow': 'GET, HEAD, OPTIONS'});
+    }
+    final limiter = statsLimiter;
+    if (limiter != null) {
+      final address = _clientAddress(request);
+      final wait = limiter.take(address);
+      if (wait != null) {
+        return Response(
+          429,
+          headers: {
+            ...cors,
+            HttpHeaders.retryAfterHeader:
+                '${(wait.inMilliseconds / 1000).ceil()}',
+            HttpHeaders.contentTypeHeader: 'application/json',
+          },
+          body: '{"error":"rate_limited"}',
+        );
+      }
+    }
+    try {
+      final snapshot = await service.snapshot();
+      final body = jsonEncode(snapshot);
+      return Response(
+        200,
+        body: request.method == 'HEAD' ? null : body,
+        headers: {
+          ...cors,
+          HttpHeaders.contentTypeHeader: 'application/json; charset=utf-8',
+          HttpHeaders.cacheControlHeader:
+              'public, max-age=${policy.maxAge.inSeconds}',
+          if (request.method == 'HEAD')
+            HttpHeaders.contentLengthHeader: '${utf8.encode(body).length}',
+          'x-content-type-options': 'nosniff',
+        },
+      );
+    } on Object catch (e, stack) {
+      _log.warning(const LogEvent('stats_failed'), e, stack);
+      return Response(
+        503,
+        body: '{"error":"unavailable"}',
+        headers: {
+          ...cors,
+          HttpHeaders.contentTypeHeader: 'application/json',
+          HttpHeaders.cacheControlHeader: 'no-store',
+        },
+      );
+    }
   }
 
   Future<Response> _health(Request request) async {

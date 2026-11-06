@@ -8,6 +8,7 @@ import 'package:coordinator/src/nodes/rendezvous.dart';
 import 'package:coordinator/src/placement/placement_policy.dart';
 import 'package:coordinator/src/relay/relay_policy.dart';
 import 'package:coordinator/src/repair/repair_service.dart';
+import 'package:coordinator/src/stats/network_stats.dart';
 import 'package:logging/logging.dart';
 import 'package:yaml/yaml.dart';
 
@@ -92,6 +93,8 @@ final class CoordinatorConfig {
     this.relay = const RelayPolicy(),
     this.audits = const AuditPolicy(),
     this.repair = const RepairPolicy(),
+    this.stats = const StatsPolicy(),
+    this.geoIpDirectory,
     this.signerSocket,
     this.adminRole = 'fs_admin',
     this.logLevel = Level.INFO,
@@ -225,6 +228,12 @@ final class CoordinatorConfig {
     'repair.suspend_hours',
     'repair.max_relocations',
     'repair.relocations_per_node',
+    'stats.enabled',
+    'stats.origins',
+    'stats.per_minute',
+    'stats.max_age_seconds',
+    'stats.min_city_hosts',
+    'geoip.dir',
     'signer.socket',
     'admin.role',
     'log.level',
@@ -273,6 +282,14 @@ final class CoordinatorConfig {
 
   /// Ремонт: когда узел потерян, очередь, пределы трафика.
   final RepairPolicy repair;
+
+  /// Публичная сводка о сети для сайта (задача С.3.5): источники,
+  /// предел частоты, кеш.
+  final StatsPolicy stats;
+
+  /// Папка с CSV-справочником geoip DB-IP Lite; без неё места узлов
+  /// неизвестны и карта на сайте пуста.
+  final String? geoIpDirectory;
 
   /// Unix-сокет подписанта талонов; без него методы размещения отвечают
   /// `UNAVAILABLE`.
@@ -450,6 +467,8 @@ final class _Reader {
       ),
       audits: _audits(ap),
       repair: _repair(),
+      stats: _stats(),
+      geoIpDirectory: _string('geoip.dir'),
       signerSocket: _string('signer.socket'),
       adminRole: _role('admin.role') ?? d.adminRole,
       logLevel:
@@ -564,6 +583,41 @@ final class _Reader {
       relocationsPerNode:
           _int('repair.relocations_per_node', 1, 64) ?? rp.relocationsPerNode,
     );
+  }
+
+  StatsPolicy _stats() {
+    const sp = StatsPolicy();
+    return StatsPolicy(
+      enabled: _bool('stats.enabled') ?? sp.enabled,
+      allowedOrigins: _origins(),
+      perMinute: _int('stats.per_minute', 1, 100000) ?? sp.perMinute,
+      maxAge: Duration(
+        seconds: _int('stats.max_age_seconds', 1, 3600) ?? sp.maxAge.inSeconds,
+      ),
+      minCityHosts: _int('stats.min_city_hosts', 1, 100000) ?? sp.minCityHosts,
+    );
+  }
+
+  /// `stats.origins`: список YAML или строка через запятую (переменная
+  /// окружения). Источник — точный адрес сайта без завершающего «/».
+  List<String> _origins() {
+    final v = _values['stats.origins'];
+    if (v == null) return const [];
+    final parts = v is YamlList
+        ? [for (final e in v) '$e']
+        : [
+            for (final part in '$v'.split(','))
+              if (part.trim().isNotEmpty) part.trim(),
+          ];
+    for (final origin in parts) {
+      if (!RegExp(r'^https?://[^/\s]+$').hasMatch(origin)) {
+        throw ConfigException(
+          'stats.origins: ожидается адрес вида https://example.org, '
+          'получено: $origin',
+        );
+      }
+    }
+    return parts;
   }
 
   /// `relay.servers`: список YAML или строка через запятую (переменная

@@ -31,6 +31,12 @@ final class DbHarness {
     CoordinatorConfig config = testConfig,
     bool withSigner = true,
     Ed25519KeyPair? relayPassKey,
+    GeoDatabase? geo,
+    bool stats = false,
+    StatsPolicy statsPolicy = const StatsPolicy(
+      maxAge: Duration.zero,
+      perMinute: 1000,
+    ),
   }) async {
     final crypto = await SodiumCryptoProvider.load();
     final clock = FakeClock();
@@ -62,6 +68,7 @@ final class DbHarness {
           config: config,
           signer: signer,
           relayPassKey: relayPassKey,
+          geo: geo,
           clock: clock.call,
         ),
       ),
@@ -75,6 +82,14 @@ final class DbHarness {
       ipLimiter: RateLimiter(perSecond: 1000, burst: 1000, clock: clock.call),
       keyLimiter: RateLimiter(perSecond: 1000, burst: 1000, clock: clock.call),
       healthCheck: db.ping,
+      stats: stats
+          ? NetworkStatsService(
+              db,
+              onlineWindow: config.nodes.onlineWindow,
+              policy: statsPolicy,
+              clock: clock.call,
+            )
+          : null,
       trustForwardedFor: true,
     );
     return DbHarness._(crypto, clock, testDb, db, handler, signerKey, signer);

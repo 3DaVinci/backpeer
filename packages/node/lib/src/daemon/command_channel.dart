@@ -315,7 +315,15 @@ final class CommandChannel {
     if (socket.readyState != WebSocket.open) {
       throw const ChannelUnavailableException('канал закрыт');
     }
-    socket.add(Uint8List.fromList(bytes));
+    try {
+      socket.add(Uint8List.fromList(bytes));
+      // dart:io бросает StateError, если соединение закрылось между
+      // проверкой readyState и записью. Для вызывающего это тот же
+      // закрытый канал, а не падение.
+      // ignore: avoid_catching_errors
+    } on StateError {
+      throw const ChannelUnavailableException('канал закрыт');
+    }
   }
 
   static Future<void> _abort(

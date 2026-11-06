@@ -374,7 +374,13 @@ void main() {
         onProgress: progress.add,
         progressInterval: const Duration(milliseconds: 50),
       );
-      await Future<void>.delayed(const Duration(seconds: 1));
+      // Под нагрузкой восстановление может не успеть сообщить о повторе за
+      // фиксированную секунду: ждём событие с nextRetry, но не дольше 10 с.
+      for (var i = 0; i < 200; i++) {
+        if (progress.isNotEmpty && progress.last.nextRetry != null) break;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      expect(progress, isNotEmpty, reason: 'нет событий о восстановлении');
       expect(progress.last.nextRetry, isNotNull);
       for (final n in nodes.take(3)) {
         await n.start(crypto, coordinator.publicKey);

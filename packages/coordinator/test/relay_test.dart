@@ -473,6 +473,13 @@ log:
         await Future<void>.delayed(const Duration(milliseconds: 50));
       }
       expect(relay.isListening(nodeId), isTrue);
+      // LISTEN на relay и статус «connected» у узла — разные события:
+      // дожидаемся второго, иначе тест ловит гонку на медленном раннере.
+      for (var i = 0; i < 100; i++) {
+        final state = daemon.status()['relay'];
+        if (state is Map && state['connected'] == true) break;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
     });
 
     tearDown(() async {

@@ -226,8 +226,10 @@ void main() {
   test('пауза останавливает бэкап с продолжением; resume продолжает', () async {
     await initHome(home.dir.path);
     final data = Directory('${dir.path}/big')..createSync();
-    // Несколько сегментов по 16 МиБ, чтобы пауза успела посреди бэкапа.
-    for (var i = 0; i < 4; i++) {
+    // Много сегментов по 16 МиБ: пауза должна прийти посреди бэкапа,
+    // даже если прогресс приходит раз в полсекунды (а на быстрой машине
+    // четыре файла успевали закончиться до неё).
+    for (var i = 0; i < 16; i++) {
       File('${data.path}/f$i.bin')
           .writeAsBytesSync(crypto.randomBytes(12 << 20));
     }
@@ -257,8 +259,9 @@ void main() {
     final record = await resumed;
     expect(record['outcome'], 'ok');
     final result = record['result']! as Map<String, Object?>;
-    // Часть сегментов уже была отправлена до паузы.
-    expect(result['newBytes']! as int, lessThan(48 << 20));
+    // Часть сегментов уже была отправлена до паузы: всего 16 файлов по
+    // 12 МиБ, после продолжения — меньше всех.
+    expect(result['newBytes']! as int, lessThan(16 * 12 << 20));
     expect((await client.call('status'))['interrupted'], isFalse);
   }, timeout: const Timeout(Duration(minutes: 4)));
 }

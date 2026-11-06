@@ -16,7 +16,7 @@ try {
   [System.IO.File]::WriteAllBytes("$work\data\random.bin", $bytes)
   Set-Content -Path "$work\data\sub\text.txt" -Value 'привет' -Encoding utf8
 
-  function Run { & $cli @args; if ($LASTEXITCODE -ne 0) { throw "cli $args: код $LASTEXITCODE" } }
+  function Run { & $cli @args; if ($LASTEXITCODE -ne 0) { throw "cli ${args}: код $LASTEXITCODE" } }
   Run --version
   Run recover
   Run backup "$work\data"

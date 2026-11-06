@@ -28,16 +28,26 @@ permissions:
   packages: write
 
 jobs:
+  # Каждая архитектура собирается на своём раннере: под QEMU сборка
+  # `dart build cli` с хуком sodium падала (qemu: uncaught target signal 6).
+  # На тег образы публикуются как <тег>-amd64 и <тег>-arm64, затем
+  # docker-manifest склеивает их в многоплатформенный тег.
   docker:
-    name: docker (${{ matrix.image }}, amd64 и arm64)
-    runs-on: ubuntu-latest
+    name: docker (${{ matrix.image }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
         image: [coordinator, node, relay, cli]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+            platform: linux/amd64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Имя образа в нижнем регистре
         id: image
@@ -54,19 +64,48 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Сборка образа для amd64 и arm64
+      - name: Сборка образа
         uses: docker/build-push-action@v6
         with:
           context: .
           file: packages/${{ matrix.image }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
           # На тег — публикуем в GHCR, иначе только собираем и проверяем.
           push: ${{ startsWith(github.ref, 'refs/tags/v') }}
-          tags: |
-            ${{ steps.image.outputs.name }}:${{ github.ref_name }}
-            ${{ steps.image.outputs.name }}:latest
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          tags: ${{ steps.image.outputs.name }}:${{ github.ref_name }}-${{ matrix.arch }}
+          cache-from: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}-${{ matrix.arch }}
+
+  docker-manifest:
+    name: манифест (${{ matrix.image }})
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: docker
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [coordinator, node, relay, cli]
+    steps:
+      - name: Имя образа в нижнем регистре
+        id: image
+        shell: bash
+        run: |
+          repo=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "name=ghcr.io/$repo/${{ matrix.image }}" >> "$GITHUB_OUTPUT"
+      - name: Вход в реестр
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Манифест amd64 + arm64
+        shell: bash
+        run: |
+          docker buildx imagetools create \
+            --tag "${{ steps.image.outputs.name }}:${{ github.ref_name }}" \
+            --tag "${{ steps.image.outputs.name }}:latest" \
+            "${{ steps.image.outputs.name }}:${{ github.ref_name }}-amd64" \
+            "${{ steps.image.outputs.name }}:${{ github.ref_name }}-arm64"
 
   linux-packages:
     name: пакеты Linux (amd64)
@@ -96,7 +135,7 @@ jobs:
   release:
     name: релиз GitHub
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [docker, linux-packages]
+    needs: [docker-manifest, linux-packages]
     runs-on: ubuntu-latest
     permissions:
       contents: write

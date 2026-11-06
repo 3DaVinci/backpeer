@@ -1,3 +1,7 @@
+## 0.0.3-dev.1
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.3-dev.0
 
  - **REFACTOR**(cli): операции с учётной записью без консоли (5.2).

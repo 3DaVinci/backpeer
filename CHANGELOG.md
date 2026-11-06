@@ -15,6 +15,42 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.3-dev.1`](#agent---v003-dev1)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `app` - `v0.0.3-dev.1`
+ - `bench` - `v0.0.3-dev.1`
+ - `cli` - `v0.0.3-dev.1`
+ - `coordinator` - `v0.0.3-dev.1`
+ - `core` - `v0.0.3-dev.1`
+ - `daemon_kit` - `v0.0.3-dev.1`
+ - `node` - `v0.0.3-dev.1`
+ - `protocol` - `v0.0.3-dev.1`
+ - `relay` - `v0.0.3-dev.1`
+ - `test_vectors` - `v0.0.3-dev.1`
+
+---
+
+#### `agent` - `v0.0.3-dev.1`
+
+ - **FIX**(ci): образы на своих архитектурах и smoke-тест Windows.
+
+
+## 2026-11-06
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.3-dev.0`](#agent---v003-dev0)
  - [`app` - `v0.0.3-dev.0`](#app---v003-dev0)
  - [`bench` - `v0.0.3-dev.0`](#bench---v003-dev0)

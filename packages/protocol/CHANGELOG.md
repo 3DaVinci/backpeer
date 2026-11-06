@@ -1,3 +1,7 @@
+## 0.0.3-dev.1
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.3-dev.0
 
  - **FEAT**(node): привязка узла по коду, Docker-образ и systemd (этап 6).

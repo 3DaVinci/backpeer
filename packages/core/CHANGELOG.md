@@ -1,3 +1,7 @@
+## 0.0.3-dev.1
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.3-dev.0
 
  - **PERF**(core): Reed–Solomon на словах u64 (задача 1.4.4).

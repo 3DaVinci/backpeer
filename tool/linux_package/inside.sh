@@ -67,15 +67,19 @@ appstreamcli validate --no-net --pedantic \
 # стабильного (0.0.3~dev.0 < 0.0.3). Стабильные версии не меняются.
 if [ "${VERSION#*-}" != "$VERSION" ]; then
   deb_version="${VERSION%%-*}~${VERSION#*-}"
+  # GitHub заменяет «~» в имени файла на «.», поэтому файл называем с
+  # точкой, а Version внутри оставляем по правилам Debian (~).
+  deb_name_version="${VERSION%%-*}.${VERSION#*-}"
   rpm_version="${VERSION%%-*}"
   rpm_release="0.${VERSION#*-}"
 else
   deb_version="$VERSION"
+  deb_name_version="$VERSION"
   rpm_version="$VERSION"
   rpm_release=1
 fi
 
-name="backpeer_${deb_version}"
+name="backpeer_${deb_name_version}"
 mkdir -p /out
 
 # --- .deb ----------------------------------------------------------------

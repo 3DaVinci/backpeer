@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:core/core.dart';
 import 'package:node/node.dart';
@@ -90,10 +91,24 @@ void main() {
         reason: key,
       );
     }
-    await expectLater(
-      NodeIdentity.importCertificate(dir, crypto, crypto.randomBytes(40)),
-      throwsA(isA<NodeIdentityException>()),
-    );
+    // Мусор: поле с неизвестным номером и длиной за границей буфера —
+    // здесь protobuf 6.1 бросает RangeError (Error, а не Exception), и
+    // раньше он вылетал наружу вместо NodeIdentityException (фаззинг 1.8.5).
+    for (final garbage in <List<int>>[
+      [0x2a, 0xff, 0xff, 0xff, 0xff, 0x0f],
+      List.filled(40, 0xff),
+      crypto.randomBytes(40),
+    ]) {
+      await expectLater(
+        NodeIdentity.importCertificate(
+          dir,
+          crypto,
+          Uint8List.fromList(garbage),
+        ),
+        throwsA(isA<NodeIdentityException>()),
+        reason: 'мусор ${bytesToHex(Uint8List.fromList(garbage))}',
+      );
+    }
     expect(
       File('${dir.path}/${NodeIdentity.certificateFile}').existsSync(),
       isFalse,

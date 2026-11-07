@@ -119,11 +119,23 @@ final class NodeIdentity {
     }
   }
 
+  /// Разбор конверта сертификата. Байты приходят из файла или из канала
+  /// привязки, то есть недоверенные: `protobuf` на длине за границей буфера
+  /// бросает `RangeError`, а это `Error`, а не `Exception` — ловим через
+  /// общий разборщик ядра (`ManifestObjects.parseMessage`, фаззинг 1.8.5).
   static pb.Signed _parse(List<int> bytes, String source) {
     try {
-      return pb.Signed.fromBuffer(bytes);
-    } on Exception {
-      throw NodeIdentityException('$source: не fs.v1.Signed');
+      return ManifestObjects.parseMessage(
+        source,
+        () => pb.Signed.fromBuffer(bytes),
+      );
+    } on DataFormatException catch (e) {
+      final detail = e.detail;
+      throw NodeIdentityException(
+        detail == null
+            ? '$source: не fs.v1.Signed'
+            : '$source: не fs.v1.Signed ($detail)',
+      );
     }
   }
 

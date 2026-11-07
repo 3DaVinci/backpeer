@@ -19,6 +19,7 @@ library;
 export 'src/account_api.dart' show AccountApi;
 export 'src/agent_keys.dart';
 export 'src/backup_agent.dart';
+export 'src/cli.dart' show runAgent;
 export 'src/desktop/notifier.dart';
 export 'src/desktop/power.dart';
 export 'src/desktop/system_events.dart';

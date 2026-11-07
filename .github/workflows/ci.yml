@@ -13,6 +13,10 @@
 # Ограничение: Flutter не выпускает SDK для Linux ARM64, поэтому на
 # ubuntu-24.04-arm собираются только Dart-пакеты и бинарники cli/node
 # (приложение из workspace на время сборки убирается).
+#
+# Установщик Windows собирается здесь же (задача 5.7.1): Inno Setup есть в
+# образе windows-latest, а проверка установки требует настоящей Windows.
+# Сборка неподписанная: ключ подписи — на машине подписи (П-3, 5.7.4).
 
 name: ci
 
@@ -208,6 +212,43 @@ jobs:
         with:
           name: backpeer-windows-x64
           path: build/bin/
+          retention-days: 14
+
+  # Установщик Windows (задачи 0.2.5, 5.7.1): сборка, установка на чистой
+  # Windows и удаление. Собирается без подписи — ключи Authenticode держат на
+  # машине подписи (П-3, 5.7.4, docs/ops/windows-signing.md). Проверяется то,
+  # чего не видно на Linux: раскладка daemons/ рядом с приложением, запуск
+  # программ из установленной папки, задание Планировщика и удаление.
+  installer-windows:
+    name: установщик (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          linux-deps: "false"
+      - name: Сборка установщика (неподписанного)
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File tool/windows_package/build.ps1
+      - name: Установка, запуск программ и удаление
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem build/packages/Backpeer-Setup-*-windows-x64.exe).FullName
+          pwsh -NoProfile -ExecutionPolicy Bypass -File tool/windows_package/test_install.ps1 $installer
+      - name: Контрольная сумма в SHA256SUMS сходится
+        shell: pwsh
+        run: |
+          $hash = ((Get-Content build/packages/SHA256SUMS) -split '\s+')[0]
+          $file = (Get-ChildItem build/packages/Backpeer-Setup-*-windows-x64.exe).FullName
+          $actual = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $hash) { throw "SHA256SUMS: $hash, файл: $actual" }
+          Write-Host "SHA-256: $actual"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-windows-installer
+          path: |
+            build/packages/*.exe
+            build/packages/SHA256SUMS
           retention-days: 14
 
   app:

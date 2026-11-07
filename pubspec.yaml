@@ -135,3 +135,7 @@ melos:
       description: macOS — Backpeer.app с программами внутри и .dmg (нужен Mac с Xcode, docs/ops/macos-packages.md).
       run: tool/macos_package/build.sh
 
+    windows:build:
+      description: Windows — установщик Backpeer-Setup-*.exe (нужны Windows, Visual Studio с C++ и Inno Setup 6.3+, docs/ops/windows-packages.md).
+      run: pwsh -NoProfile -ExecutionPolicy Bypass -File tool/windows_package/build.ps1
+

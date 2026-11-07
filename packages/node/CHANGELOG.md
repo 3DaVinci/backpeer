@@ -1,3 +1,7 @@
+## 0.0.3-dev.4
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.3-dev.3
 
  - **FIX**(linux-package): имя .deb без тильды под SHA256SUMS.

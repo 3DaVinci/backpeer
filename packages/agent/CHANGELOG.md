@@ -1,3 +1,7 @@
+## 0.0.3-dev.4
+
+ - **FEAT**(tool,repo): установщик Windows, подпись Authenticode и инструкция по сертификату.
+
 ## 0.0.3-dev.3
 
  - Bump version to keep all packages in the workspace in lockstep.

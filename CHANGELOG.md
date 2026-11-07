@@ -15,6 +15,42 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.3-dev.4`](#agent---v003-dev4)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `app` - `v0.0.3-dev.4`
+ - `bench` - `v0.0.3-dev.4`
+ - `cli` - `v0.0.3-dev.4`
+ - `coordinator` - `v0.0.3-dev.4`
+ - `core` - `v0.0.3-dev.4`
+ - `daemon_kit` - `v0.0.3-dev.4`
+ - `node` - `v0.0.3-dev.4`
+ - `protocol` - `v0.0.3-dev.4`
+ - `relay` - `v0.0.3-dev.4`
+ - `test_vectors` - `v0.0.3-dev.4`
+
+---
+
+#### `agent` - `v0.0.3-dev.4`
+
+ - **FEAT**(tool,repo): установщик Windows, подпись Authenticode и инструкция по сертификату.
+
+
+## 2026-11-07
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`node` - `v0.0.3-dev.3`](#node---v003-dev3)
 
 Packages versioned in lockstep only:

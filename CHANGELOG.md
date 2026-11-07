@@ -3,6 +3,42 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-07
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`node` - `v0.0.3-dev.3`](#node---v003-dev3)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `agent` - `v0.0.3-dev.3`
+ - `app` - `v0.0.3-dev.3`
+ - `bench` - `v0.0.3-dev.3`
+ - `cli` - `v0.0.3-dev.3`
+ - `coordinator` - `v0.0.3-dev.3`
+ - `core` - `v0.0.3-dev.3`
+ - `daemon_kit` - `v0.0.3-dev.3`
+ - `protocol` - `v0.0.3-dev.3`
+ - `relay` - `v0.0.3-dev.3`
+ - `test_vectors` - `v0.0.3-dev.3`
+
+---
+
+#### `node` - `v0.0.3-dev.3`
+
+ - **FIX**(linux-package): имя .deb без тильды под SHA256SUMS.
+
+
 ## 2026-11-06
 
 ### Changes

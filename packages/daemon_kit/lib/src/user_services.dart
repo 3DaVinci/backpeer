@@ -129,6 +129,12 @@ abstract interface class UserServices {
   Future<void> start(String name);
 
   Future<void> stop(String name);
+
+  /// Перезапускает работающую службу, не выгружая её: так приложение
+  /// поднимает зависшего агента, не оставляя службу незагруженной
+  /// (у launchd `bootout` + `bootstrap` подряд иногда отвечает
+  /// «Bootstrap failed: 5: Input/output error»).
+  Future<void> restart(String name);
 }
 
 /// Префикс имён служб и файлов. Название продукта ещё не выбрано
@@ -171,6 +177,10 @@ final class NoUserServices implements UserServices {
 
   @override
   Future<void> stop(String name) async {}
+
+  @override
+  Future<void> restart(String name) =>
+      throw ServiceException('службы ОС недоступны: $reason');
 }
 
 /// Linux: пользовательский юнит systemd (`systemctl --user`). Юнит
@@ -308,6 +318,9 @@ final class SystemdUserServices implements UserServices {
 
   @override
   Future<void> stop(String name) => _check(['stop', serviceName(name)]);
+
+  @override
+  Future<void> restart(String name) => _check(['restart', serviceName(name)]);
 }
 
 /// macOS: LaunchAgent в `~/Library/LaunchAgents` (`launchctl` в домене
@@ -470,6 +483,22 @@ final class LaunchAgentServices implements UserServices {
   Future<void> stop(String name) async {
     await _launchctl(['bootout', '${await _domain()}/${serviceName(name)}']);
   }
+
+  @override
+  Future<void> restart(String name) async {
+    final domain = await _domain();
+    final label = serviceName(name);
+    // `-k` — завершить текущий процесс и запустить заново, задание
+    // остаётся загруженным.
+    var result = await _launchctl(['kickstart', '-k', '$domain/$label']);
+    if (result.exitCode != 0) {
+      // Задание не загружено — загрузить из плиста, как [start].
+      result = await _launchctl(['bootstrap', domain, _plist(name).path]);
+    }
+    if (result.exitCode != 0) {
+      throw ServiceException('launchctl: ${'${result.stderr}'.trim()}');
+    }
+  }
 }
 
 /// Windows: задание Планировщика «при входе пользователя» с перезапуском
@@ -628,6 +657,12 @@ final class ScheduledTaskServices implements UserServices {
   @override
   Future<void> stop(String name) async {
     await _schtasks(['/End', '/TN', serviceName(name)]);
+  }
+
+  @override
+  Future<void> restart(String name) async {
+    await stop(name);
+    await start(name);
   }
 }
 

@@ -51,6 +51,9 @@ final class MemoryServices implements UserServices {
 
   @override
   Future<void> stop(String name) async => running.remove(name);
+
+  @override
+  Future<void> restart(String name) async => running.add(name);
 }
 
 void main() {

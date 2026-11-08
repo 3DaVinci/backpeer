@@ -68,13 +68,26 @@ final class DaemonBundle {
 /// в постоянное место, `~/.local/lib/backpeer/daemons` (задача 5.7.3).
 /// Копия заменяется целиком переименованием: работающие процессы
 /// дорабатывают со старыми файлами.
+///
+/// На macOS причина та же: пакет `.app` может лежать на смонтированном
+/// образе `.dmg`, в «Загрузках» (система переносит его во временную папку,
+/// App Translocation) или быть перенесён пользователем. Служба ОС, путь
+/// которой указывает внутрь пакета, после этого не запускается, а
+/// приложение показывает «служба запущена» — при этом подключаться не к
+/// чему (5.7.2, `Planning/Сборка под macOS - готовность.md`, Б-3). Копия —
+/// `~/Library/Application Support/backpeer/daemons`.
 final class PersistentDaemons {
   new({required this.target});
 
   factory forUser([Map<String, String>? environment]) {
     final env = environment ?? Platform.environment;
+    final home = env['HOME'] ?? '';
     return PersistentDaemons(
-      target: Directory('${env['HOME']}/.local/lib/$servicePrefix/daemons'),
+      target: Directory(
+        Platform.isMacOS
+            ? '$home/Library/Application Support/$servicePrefix/daemons'
+            : '$home/.local/lib/$servicePrefix/daemons',
+      ),
     );
   }
 
@@ -82,15 +95,41 @@ final class PersistentDaemons {
 
   File get _version => File('${target.path}/VERSION');
 
-  /// Нужна ли копия: программа запущена из AppImage (`APPIMAGE`).
-  static bool needed([Map<String, String>? environment]) =>
-      (environment ?? Platform.environment)['APPIMAGE'] != null;
+  /// Нужна ли копия: программа запущена из AppImage (`APPIMAGE`) или из
+  /// пакета macOS (там путь к программам не постоянный).
+  /// `FS_DAEMONS_PERSISTENT` переопределяет: `0` — выключить, `1` —
+  /// включить (тесты и запуск из исходников).
+  static bool needed([Map<String, String>? environment]) {
+    final env = environment ?? Platform.environment;
+    return switch (env['FS_DAEMONS_PERSISTENT']) {
+      '0' => false,
+      '1' => true,
+      _ => env['APPIMAGE'] != null || Platform.isMacOS,
+    };
+  }
 
-  /// Копирует [source], если в [target] другая версия; `true` — копия
-  /// обновлена (службы нужно перезапустить).
+  /// Отпечаток программ [source]: размер и время изменения каждого
+  /// исполняемого файла. Одной версии продукта мало: сборки одной версии
+  /// отличаются (и приложение показывает версию `dev` при запуске из
+  /// исходников), а служба должна получить новую программу.
+  static String fingerprint(DaemonBundle source) {
+    final parts = <String>[];
+    for (final program in const ['agent', 'node', 'cli']) {
+      final path = source.executable(program);
+      if (path == null) continue;
+      final file = File(path);
+      final modified = file.lastModifiedSync().millisecondsSinceEpoch;
+      parts.add('$program:${file.lengthSync()}:$modified');
+    }
+    return parts.join(',');
+  }
+
+  /// Копирует [source], если в [target] другая версия (или программы
+  /// изменились); `true` — копия обновлена (службы нужно перезапустить).
   bool sync(DaemonBundle source, String version) {
+    final stamp = '$version ${fingerprint(source)}';
     if (_version.existsSync() &&
-        _version.readAsStringSync().trim() == version &&
+        _version.readAsStringSync().trim() == stamp &&
         DaemonBundle(target.path).executable('agent') != null) {
       return false;
     }
@@ -98,7 +137,7 @@ final class PersistentDaemons {
     final fresh = Directory('${parent.path}/daemons.new-$pid');
     if (fresh.existsSync()) fresh.deleteSync(recursive: true);
     _copy(Directory(source.root), fresh);
-    File('${fresh.path}/VERSION').writeAsStringSync('$version\n');
+    File('${fresh.path}/VERSION').writeAsStringSync('$stamp\n');
     final old = Directory('${parent.path}/daemons.old-$pid');
     if (target.existsSync()) target.renameSync(old.path);
     fresh.renameSync(target.path);

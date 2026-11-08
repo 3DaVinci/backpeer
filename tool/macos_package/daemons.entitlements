@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Программы внутри Backpeer.app (agent, node, cli) — отдельные исполняемые
+     файлы, собранные `dart build cli`. У них не Flutter, а автономная среда
+     Dart, и она на месте выделяет исполняемую память под снимок и код.
+     Hardened runtime (флаг `options runtime`, нужен для нотаризации) такую
+     память запрещает: подписанная с ним программа убивается ядром при
+     запуске (SIGKILL, «Killed: 9») сразу, ещё до вывода версии. Разрешение
+     com.apple.security.cs.allow-unsigned-executable-memory — точечное
+     исключение из этого правила, без ослабления подписи в целом.
+     Проверка: программы внутри .app отвечают на аргумент версии, а не падают.
+     Самому приложению разрешение не нужно: его Release-сборка скомпилирована
+     заранее и исполняемую память не выделяет (ADR-012). -->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+</dict>
+</plist>

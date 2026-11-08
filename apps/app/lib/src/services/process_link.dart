@@ -129,8 +129,12 @@ final class ProcessLink extends ChangeNotifier implements BackgroundProcess {
     try {
       status = await client.call('status');
       notifyListeners();
-    } on ControlException {
-      // Разрыв обработает [_lost].
+    } on ControlException catch (e) {
+      // Соединение могло остаться открытым, а процесс — замолчать
+      // (завис, застрял на блокирующем вызове): тогда разрыва не будет, и
+      // [_lost] не сработает. Считаем это потерей связи и переподключаемся
+      // — так приложение замечает молчащий процесс и восстанавливается.
+      _fail(e.message);
     }
   }
 

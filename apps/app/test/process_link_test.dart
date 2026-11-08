@@ -85,6 +85,30 @@ void main() {
     expect(notified, greaterThan(3));
   });
 
+  test('молчащий процесс: опрос без ответа — потеря связи и '
+      'переподключение', () async {
+    // Зависший процесс соединение не рвёт и событий не шлёт: без проверки
+    // приложение считало бы связь живой и не перезапускало службу.
+    var silent = false;
+    final server = await ControlServer.bind(endpoint, (method, params) async {
+      if (silent) throw const ControlException('unavailable', 'не ответил');
+      return {'job': null};
+    });
+    addTearDown(server.close);
+    final link = ProcessLink(
+      connect: () => ControlClient.connect(endpoint),
+      poll: const Duration(milliseconds: 20),
+      retry: const Duration(milliseconds: 20),
+    )..start();
+    addTearDown(link.dispose);
+    await until(() => link.state == LinkState.connected, 'подключились');
+    silent = true;
+    await until(() => link.state != LinkState.connected, 'молчание замечено');
+    expect(link.problem, contains('не ответил'));
+    silent = false;
+    await until(() => link.state == LinkState.connected, 'переподключились');
+  });
+
   test('опрос status для процесса без событий', () async {
     var used = 0;
     final server = await ControlServer.bind(

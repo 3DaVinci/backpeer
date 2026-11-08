@@ -74,6 +74,10 @@ void main() {
         'systemctl --user start backpeer-agent.service',
       ]);
 
+      runner.calls.clear();
+      await services.restart('agent');
+      expect(runner.calls, ['systemctl --user restart backpeer-agent.service']);
+
       runner.answer = (c) => ProcessResult(
         0,
         c.contains('is-active') ? 3 : 0,
@@ -182,6 +186,39 @@ void main() {
         'launchctl bootout gui/501/org.backpeer.agent',
         'launchctl bootstrap gui/501 ${temp.path}/org.backpeer.agent.plist',
       ]);
+    });
+
+    test('перезапуск — kickstart -k, задание остаётся загруженным', () async {
+      final runner = FakeRunner()
+        ..answer = (c) => ProcessResult(0, 0, c == 'id -u' ? '501\n' : '', '');
+      final services = LaunchAgentServices(
+        agentsDir: temp.path,
+        runner: runner.call,
+      );
+      await services.restart('agent');
+      expect(runner.calls, [
+        'id -u',
+        'launchctl kickstart -k gui/501/org.backpeer.agent',
+      ]);
+    });
+
+    test('перезапуск: задание не загружено — bootstrap из плиста', () async {
+      final runner = FakeRunner()
+        ..answer = (c) => ProcessResult(
+          0,
+          c.contains('kickstart') ? 3 : 0,
+          c == 'id -u' ? '501\n' : '',
+          c.contains('kickstart') ? 'Unrecognized target' : '',
+        );
+      final services = LaunchAgentServices(
+        agentsDir: temp.path,
+        runner: runner.call,
+      );
+      await services.restart('agent');
+      expect(
+        runner.calls.last,
+        'launchctl bootstrap gui/501 ${temp.path}/org.backpeer.agent.plist',
+      );
     });
   });
 

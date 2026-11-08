@@ -21,6 +21,9 @@ void main() {
     connect: () => ControlClient.connect(endpoints.agent),
     // Все события агента: status, progress, job_finished, keys_required.
     subscribe: const [],
+    // События приходят и так, но опрос нужен, чтобы заметить молчащий
+    // процесс: зависший агент соединение не рвёт, а событий не шлёт.
+    poll: const Duration(seconds: 15),
   )..start();
   final node = ProcessLink(
     connect: () => ControlClient.connect(endpoints.node),
@@ -71,5 +74,12 @@ void main() {
       wantAutostart: preferences.trayAtLogin,
       trayAvailable: await tray.available(),
     );
+  });
+  // Связь с агентом пропала, а служба ОС числится работающей — перезапустить
+  // её: агент мог зависнуть или потерять свой сокет. Без этого приложение
+  // остаётся в состоянии «агент запущен, но подключиться не к чему» до
+  // перезапуска вручную.
+  Timer.periodic(OsBackground.healInterval, (_) {
+    unawaited(background.healAgent(agent.state));
   });
 }

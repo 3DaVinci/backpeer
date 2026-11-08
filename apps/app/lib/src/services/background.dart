@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:agent/agent.dart';
+import 'package:app/src/services/process_link.dart' show LinkState;
 import 'package:core/core.dart' show appVersion;
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/foundation.dart';
@@ -100,6 +102,56 @@ final class OsBackground extends ChangeNotifier implements BackgroundControl {
       problem = e.message;
     }
     notifyListeners();
+  }
+
+  /// Сколько проверок подряд связь с агентом должна быть недоступна,
+  /// прежде чем перезапускать службу.
+  static const healAfter = 3;
+
+  /// Как часто приложение проверяет связь для [healAgent].
+  static const healInterval = Duration(seconds: 15);
+
+  /// Не перезапускать службу чаще, чем раз в это время.
+  static const healCooldown = Duration(minutes: 1);
+
+  int _unavailable = 0;
+  DateTime? _lastHeal;
+
+  /// Служба ОС числится работающей, а связи с агентом нет: перезапускаем
+  /// её. Так приложение выходит из состояния «агент запущен, но
+  /// подключиться не к чему» — агент завис (не отвечает по сокету) или
+  /// потерял свой сокет (пакет отключили, файл удалили). [link] — состояние
+  /// связи ([LinkState.connected] — связь есть), [now] — для тестов.
+  /// `true` — служба перезапущена.
+  Future<bool> healAgent(LinkState link, {DateTime? now}) async {
+    if (link == LinkState.connected) {
+      _unavailable = 0;
+      return false;
+    }
+    _unavailable++;
+    if (_unavailable < healAfter) return false;
+    final at = now ?? DateTime.now();
+    if (_lastHeal case final last? when at.difference(last) < healCooldown) {
+      return false;
+    }
+    await refresh();
+    // Службы нет или она стоит — работу с ней делает сам пользователь.
+    if (agentState != ServiceState.running) return false;
+    _lastHeal = at;
+    _unavailable = 0;
+    try {
+      // Перезапуск, а не stop + start: у launchd `bootout` и `bootstrap`
+      // подряд иногда не срабатывают, и служба осталась бы выгруженной.
+      await services.restart(ClientServices.agentName);
+      problem = null;
+      return true;
+    } on ServiceException catch (e) {
+      problem = e.message;
+      return false;
+    } finally {
+      notifyListeners();
+      unawaited(refresh());
+    }
   }
 
   /// При запуске приложения: служба агента и значок при входе, если

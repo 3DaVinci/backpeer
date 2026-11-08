@@ -81,6 +81,7 @@ esac
 out="$root/build/packages"
 app="$root/apps/app/build/macos/Build/Products/Release/Backpeer.app"
 entitlements="$root/apps/app/macos/Runner/Release.entitlements"
+daemons_entitlements="$root/tool/macos_package/daemons.entitlements"
 dmg="$out/Backpeer-$version-macos-$arch.dmg"
 
 echo "macOS: версия $version ($commit), архитектура $arch, подпись: $identity"
@@ -91,7 +92,20 @@ mkdir -p "$out"
 dart run tool/build_exe.dart
 
 # --- 2. Приложение ---------------------------------------------------------
+# Версия и коммит для приложения: `flutter build` не знает `--define`, а
+# `dart build cli` вернул build_info_values.dart в исходное состояние.
+# Без этого приложение показывает версию «dev», а служба не понимает, что
+# постоянную копию программ пора обновить.
+values="packages/core/lib/src/build_info_values.dart"
+cp -a "$values" "$values.orig"
+trap 'mv -f "$values.orig" "$values"' EXIT
+sed -i '' \
+  -e "s/buildAppVersion = 'dev'/buildAppVersion = '$version'/" \
+  -e "s/buildGitCommit = 'unknown'/buildGitCommit = '$commit'/" \
+  "$values"
 (cd apps/app && flutter build macos --release)
+mv -f "$values.orig" "$values"
+trap - EXIT
 
 # --- 3. Раскладка внутри .app ---------------------------------------------
 # DaemonBundle.executable ищет <программа>/bin/<программа> и
@@ -173,9 +187,13 @@ while IFS= read -r file; do
     *.dylib) sign "$file" ;;
   esac
 done < <(machos "$app/Contents/MacOS/daemons")
+# Программам — ещё и daemons.entitlements: автономная среда Dart выделяет
+# исполняемую память, а с hardened runtime ядро убивает такую программу при
+# запуске (SIGKILL сразу после exec, до --version). Приложению это разрешение
+# не нужно — комментарий в файле.
 while IFS= read -r file; do
   case "$file" in
-    */bin/*) sign "$file" ;;
+    */bin/*) sign --entitlements "$daemons_entitlements" "$file" ;;
   esac
 done < <(machos "$app/Contents/MacOS/daemons")
 sign --entitlements "$entitlements" "$app"
@@ -187,12 +205,40 @@ if [ "$identity" != "-" ]; then
 fi
 
 # --- 6. .dmg ---------------------------------------------------------------
+# Том нового образа называется Backpeer; если образ прошлой сборки всё ещё
+# смонтирован под тем же именем, hdiutil отказывает «Ресурс занят» без
+# понятного объяснения. Отключать чужой том сами не будем: там может быть
+# запущенное приложение.
+other="$(ls -d /Volumes/Backpeer* 2>/dev/null || true)"
+if [ -n "$other" ]; then
+  echo "Том с именем Backpeer уже смонтирован, новый .dmg создать нельзя." >&2
+  echo "Отключите его (в Finder — «Извлечь», или командой) и повторите:" >&2
+  while IFS= read -r mounted; do
+    echo "  hdiutil detach \"$mounted\"" >&2
+  done <<< "$other"
+  exit 1
+fi
 stage="$out/dmg"
 mkdir -p "$stage"
 cp -a "$app" "$stage/"
 ln -sfn /Applications "$stage/Applications"
-hdiutil create -quiet -volname "Backpeer" -srcfolder "$stage" -ov \
-  -format UDZO "$dmg"
+# hdiutil -quiet скрывает и причину отказа («Ресурс занят» бывает, пока
+# предыдущий образ ещё выгружается), поэтому попыток несколько, а причина
+# печатается без -quiet.
+dmg_attempt=0
+until hdiutil create -quiet -volname "Backpeer" -srcfolder "$stage" -ov \
+  -format UDZO "$dmg"; do
+  dmg_attempt=$((dmg_attempt + 1))
+  if [ "$dmg_attempt" -ge 3 ]; then
+    echo "Собрать .dmg не удалось за 3 попытки, причина:" >&2
+    hdiutil create -volname "Backpeer" -srcfolder "$stage" -ov \
+      -format UDZO "$dmg" || true
+    rm -rf "$stage"
+    exit 1
+  fi
+  echo "hdiutil: попытка $dmg_attempt из 3 не удалась, повтор…" >&2
+  sleep 3
+done
 rm -rf "$stage"
 
 # --- 7. Нотаризация --------------------------------------------------------

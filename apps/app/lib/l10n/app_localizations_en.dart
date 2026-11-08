@@ -1345,7 +1345,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keeperQuotaMin =>
-      'The server usually accepts keepers sharing 100 GB or more';
+      'The server usually accepts keepers sharing 10 GB or more';
 
   @override
   String get keeperUpload => 'Upload';

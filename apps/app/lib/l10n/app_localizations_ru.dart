@@ -1365,7 +1365,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get keeperQuotaTooBig => 'Больше, чем свободно на диске';
 
   @override
-  String get keeperQuotaMin => 'Сервер обычно принимает хранителей от 100 ГБ';
+  String get keeperQuotaMin => 'Сервер обычно принимает хранителей от 10 ГБ';
 
   @override
   String get keeperUpload => 'Отдача';

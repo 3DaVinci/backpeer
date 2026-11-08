@@ -423,7 +423,7 @@
   "keeperQuotaLabel": "Сколько места отдать, ГБ",
   "keeperQuotaInvalid": "Введите число гигабайт",
   "keeperQuotaTooBig": "Больше, чем свободно на диске",
-  "keeperQuotaMin": "Сервер обычно принимает хранителей от 100 ГБ",
+  "keeperQuotaMin": "Сервер обычно принимает хранителей от 10 ГБ",
   "keeperUpload": "Отдача",
   "keeperDownload": "Приём",
   "keeperWorkHours": "В рабочие часы (пн–пт, 9–18)",

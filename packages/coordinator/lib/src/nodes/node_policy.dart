@@ -1,7 +1,7 @@
 /// Настройки реестра узлов.
 final class NodePolicy {
   const new({
-    this.minCapacityBytes = 100 * 1000 * 1000 * 1000,
+    this.minCapacityBytes = 10 * 1000 * 1000 * 1000,
     this.maxPerAccount = 20,
     this.heartbeatInterval = const Duration(minutes: 5),
     this.checkPrivateAddresses = false,
@@ -9,7 +9,7 @@ final class NodePolicy {
     this.maxReachabilityChecks = 64,
   });
 
-  /// Минимум места у хранителя (`mvp-scope.md`: 100 ГБ).
+  /// Минимум места у хранителя (`mvp-scope.md`: 10 ГБ).
   final int minCapacityBytes;
 
   /// Действующих узлов на учётную запись владельца.

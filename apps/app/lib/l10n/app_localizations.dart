@@ -2315,7 +2315,7 @@ abstract class AppLocalizations {
   /// No description provided for @keeperQuotaMin.
   ///
   /// In ru, this message translates to:
-  /// **'Сервер обычно принимает хранителей от 100 ГБ'**
+  /// **'Сервер обычно принимает хранителей от 10 ГБ'**
   String get keeperQuotaMin;
 
   /// No description provided for @keeperUpload.

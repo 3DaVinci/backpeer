@@ -369,7 +369,7 @@
   "keeperQuotaLabel": "Space to share, GB",
   "keeperQuotaInvalid": "Enter a number of gigabytes",
   "keeperQuotaTooBig": "More than is free on the disk",
-  "keeperQuotaMin": "The server usually accepts keepers sharing 100 GB or more",
+  "keeperQuotaMin": "The server usually accepts keepers sharing 10 GB or more",
   "keeperUpload": "Upload",
   "keeperDownload": "Download",
   "keeperWorkHours": "During work hours (Mon–Fri, 9–18)",

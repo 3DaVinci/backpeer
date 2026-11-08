@@ -16,7 +16,7 @@ void main() {
     expect(c.database.ssl, DatabaseSsl.disable);
     expect(c.limits.ipBurst, 200);
     expect(c.maxObjectBytesPerAccount, 1 << 30);
-    expect(c.nodes.minCapacityBytes, 100000000000);
+    expect(c.nodes.minCapacityBytes, 10000000000);
     expect(c.nodes.heartbeatInterval, const Duration(minutes: 5));
     expect(c.logLevel, Level.INFO);
   });

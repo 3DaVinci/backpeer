@@ -49,6 +49,7 @@ jobs:
             platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Имя образа в нижнем регистре
         id: image

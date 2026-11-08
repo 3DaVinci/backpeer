@@ -1,6 +1,6 @@
 name: agent
 description: Агент бэкапа — фоновый процесс клиента по ADR-008 (расписание, бэкап, проверка и восстановление в фоне). Без Flutter.
-version: 0.0.3-dev.4
+version: 0.0.3-dev.5
 publish_to: none
 resolution: workspace
 
@@ -11,18 +11,18 @@ dependencies:
   # Команды агента (BSD-3-Clause, как в cli и node).
   args: ^2.7.0
   # Каталог программы, config.json и сборка хранилищ — общие с CLI.
-  cli: ^0.0.3-dev.4
-  core: ^0.0.3-dev.4
+  cli: ^0.0.3-dev.5
+  core: ^0.0.3-dev.5
   # Локальный API, журнал, блокировка папки — общие с node.
-  daemon_kit: ^0.0.3-dev.4
+  daemon_kit: ^0.0.3-dev.5
   # libsecret и GLib для Secret Service на Linux (BSD-3-Clause, уже в core).
   ffi: ^2.1.0
   # Журнал JSON Lines (BSD-3-Clause, как у node).
   logging: ^1.3.0
   # Ключи и сертификат узла, настройки и свободное место — при включении
   # роли хранителя из приложения (5.5.1). Свой пакет.
-  node: ^0.0.3-dev.4
-  protocol: ^0.0.3-dev.4
+  node: ^0.0.3-dev.5
+  protocol: ^0.0.3-dev.5
 
 dev_dependencies:
   test: ^1.31.1

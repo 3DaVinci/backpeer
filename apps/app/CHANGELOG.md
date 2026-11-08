@@ -1,3 +1,8 @@
+## 0.0.3-dev.5
+
+ - **FIX**(app,agent,daemon_kit): подключение к агенту на macOS, службы из постоянной копии, нотаризация.
+ - **FEAT**(coordinator,app): минимум ёмкости хранителя 10 ГБ вместо 100 ГБ.
+
 ## 0.0.3-dev.4
 
  - Bump version to keep all packages in the workspace in lockstep.

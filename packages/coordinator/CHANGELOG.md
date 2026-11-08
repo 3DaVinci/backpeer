@@ -1,3 +1,7 @@
+## 0.0.3-dev.5
+
+ - **FEAT**(coordinator,app): минимум ёмкости хранителя 10 ГБ вместо 100 ГБ.
+
 ## 0.0.3-dev.4
 
  - Bump version to keep all packages in the workspace in lockstep.

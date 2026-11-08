@@ -3,6 +3,56 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-08
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`agent` - `v0.0.3-dev.5`](#agent---v003-dev5)
+ - [`app` - `v0.0.3-dev.5`](#app---v003-dev5)
+ - [`coordinator` - `v0.0.3-dev.5`](#coordinator---v003-dev5)
+ - [`daemon_kit` - `v0.0.3-dev.5`](#daemon_kit---v003-dev5)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.3-dev.5`
+ - `cli` - `v0.0.3-dev.5`
+ - `core` - `v0.0.3-dev.5`
+ - `node` - `v0.0.3-dev.5`
+ - `protocol` - `v0.0.3-dev.5`
+ - `relay` - `v0.0.3-dev.5`
+ - `test_vectors` - `v0.0.3-dev.5`
+
+---
+
+#### `agent` - `v0.0.3-dev.5`
+
+ - **FIX**(app,agent,daemon_kit): подключение к агенту на macOS, службы из постоянной копии, нотаризация.
+ - **FEAT**(coordinator,app): минимум ёмкости хранителя 10 ГБ вместо 100 ГБ.
+
+#### `app` - `v0.0.3-dev.5`
+
+ - **FIX**(app,agent,daemon_kit): подключение к агенту на macOS, службы из постоянной копии, нотаризация.
+ - **FEAT**(coordinator,app): минимум ёмкости хранителя 10 ГБ вместо 100 ГБ.
+
+#### `coordinator` - `v0.0.3-dev.5`
+
+ - **FEAT**(coordinator,app): минимум ёмкости хранителя 10 ГБ вместо 100 ГБ.
+
+#### `daemon_kit` - `v0.0.3-dev.5`
+
+ - **FIX**(app,agent,daemon_kit): подключение к агенту на macOS, службы из постоянной копии, нотаризация.
+
+
 ## 2026-11-07
 
 ### Changes

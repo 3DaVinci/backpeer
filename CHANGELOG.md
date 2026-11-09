@@ -15,6 +15,54 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.5-dev.0`](#agent---v005-dev0)
+ - [`app` - `v0.0.5-dev.0`](#app---v005-dev0)
+ - [`core` - `v0.0.5-dev.0`](#core---v005-dev0)
+ - [`daemon_kit` - `v0.0.5-dev.0`](#daemon_kit---v005-dev0)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.5-dev.0`
+ - `cli` - `v0.0.5-dev.0`
+ - `coordinator` - `v0.0.5-dev.0`
+ - `node` - `v0.0.5-dev.0`
+ - `protocol` - `v0.0.5-dev.0`
+ - `relay` - `v0.0.5-dev.0`
+ - `test_vectors` - `v0.0.5-dev.0`
+
+---
+
+#### `agent` - `v0.0.5-dev.0`
+
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+#### `app` - `v0.0.5-dev.0`
+
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+#### `core` - `v0.0.5-dev.0`
+
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+#### `daemon_kit` - `v0.0.5-dev.0`
+
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+
+## 2026-11-09
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.4`](#agent---v004)
  - [`app` - `v0.0.4`](#app---v004)
  - [`bench` - `v0.0.4`](#bench---v004)

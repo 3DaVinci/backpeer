@@ -1,3 +1,7 @@
+## 0.0.5-dev.0
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.4
 
  - Bump "test_vectors" to `0.0.4`.

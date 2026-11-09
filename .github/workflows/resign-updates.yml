@@ -1,0 +1,93 @@
+# Переподписать манифест автообновления уже опубликованного релиза (5.8.2).
+#
+# Зачем: macOS `.dmg` собирается и нотаризуется вручную и загружается в релиз
+# после того, как `packages.yml` создал `stable.json`/`beta.json`. Без
+# пересборки манифеста macOS-клиенты не увидят новую версию. Этот workflow
+# скачивает все assets тега, заново собирает и подписывает манифесты с учётом
+# загруженного `.dmg` и заменяет их в релизе.
+#
+# Запуск: Actions → «обновления: переподписать манифест» → Run workflow →
+# стабильный тег (например, v0.0.4). Нужны те же `UPDATE_SIGNING_KEY`
+# (секрет окружения release-signing) и `UPDATE_PUBLIC_KEY` (переменная
+# репозитория), что и у `packages.yml`; публичный ключ должен совпадать с
+# ключом, вшитым в приложение этого релиза.
+name: 'обновления: переподписать манифест'
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Стабильный тег релиза, например v0.0.4
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: resign-updates-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  resign:
+    name: манифест ${{ inputs.tag }}
+    runs-on: ubuntu-latest
+    # Ключ подписи — в защищённом окружении (П-3, docs/ops/github.md).
+    environment: release-signing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Проверить тег и релиз
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "$TAG" in
+            *-*)
+              echo "::error::нужен стабильный тег vX.Y.Z, а не $TAG"
+              exit 1
+              ;;
+          esac
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null || {
+            echo "::error::релиз $TAG не найден"
+            exit 1
+          }
+
+      - name: Скачать assets релиза
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+          --dir assets --clobber
+
+      - name: Пересобрать и подписать манифесты
+        env:
+          TAG: ${{ inputs.tag }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::error::не задан секрет UPDATE_SIGNING_KEY (docs/ops/github.md, «Автообновление»)"
+            exit 1
+          fi
+          if [ -z "$UPDATE_PUBLIC_KEY" ]; then
+            echo "::error::не задана переменная UPDATE_PUBLIC_KEY (docs/ops/github.md, «Автообновление»)"
+            exit 1
+          fi
+          dart run tool/updates/release.dart \
+            --files assets --tag "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --channel stable
+          dart run tool/updates/release.dart \
+            --files assets --tag "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --channel beta
+
+      - name: Заменить манифесты в релизе
+        env:
+          TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$TAG" \
+            assets/stable.json assets/stable.json.sig \
+            assets/beta.json assets/beta.json.sig \
+            --repo "$GITHUB_REPOSITORY" --clobber

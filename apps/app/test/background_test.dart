@@ -3,6 +3,7 @@
 
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
+import 'package:daemon_kit/daemon_kit.dart' show ServiceState;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -136,6 +137,77 @@ void main() {
     await tester.pumpAndSettle();
     expect(background.calls.last, 'autostart true');
     expect(background.autostart, isTrue);
+  });
+
+  testWidgets('фоновая работа: службы запускаются, останавливаются и '
+      'перезапускаются', (tester) async {
+    final background = FakeBackground(agentState: ServiceState.stopped);
+    await openSettings(
+      tester,
+      background: background,
+      preferences: Preferences(),
+      tray: FakeTray(),
+    );
+
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('service-agent-start')),
+    );
+    await tester.tap(find.byKey(const ValueKey('service-agent-start')));
+    await tester.pumpAndSettle();
+    expect(background.calls.last, 'start agent');
+    expect(background.agentState, ServiceState.running);
+
+    IconButton button(String key) =>
+        tester.widget<IconButton>(find.byKey(ValueKey(key)));
+    // Запущенная служба не запускается повторно, но останавливается и
+    // перезапускается.
+    expect(button('service-agent-start').onPressed, isNull);
+    expect(button('service-agent-stop').onPressed, isNotNull);
+
+    await tester.tap(find.byKey(const ValueKey('service-agent-stop')));
+    await tester.pumpAndSettle();
+    expect(background.calls.last, 'stop agent');
+    expect(background.agentState, ServiceState.stopped);
+
+    await tester.tap(find.byKey(const ValueKey('service-agent-restart')));
+    await tester.pumpAndSettle();
+    expect(background.calls.last, 'restart agent');
+    expect(background.agentState, ServiceState.running);
+
+    await tester.tap(find.byKey(const ValueKey('service-node-stop')));
+    await tester.pumpAndSettle();
+    expect(background.calls.last, 'stop node');
+    expect(background.nodeState, ServiceState.stopped);
+  });
+
+  testWidgets('фоновая работа: службы не установлены — кнопки неактивны, '
+      'подсказка про хранителя', (tester) async {
+    final background = FakeBackground(
+      agentState: ServiceState.notInstalled,
+      nodeState: ServiceState.notInstalled,
+    );
+    await openSettings(
+      tester,
+      background: background,
+      preferences: Preferences(),
+      tray: FakeTray(),
+    );
+    expect(find.textContaining('Роль хранителя выключена'), findsOneWidget);
+    for (final key in [
+      'service-agent-start',
+      'service-agent-stop',
+      'service-agent-restart',
+      'service-node-start',
+      'service-node-stop',
+      'service-node-restart',
+    ]) {
+      expect(
+        tester.widget<IconButton>(find.byKey(ValueKey(key))).onPressed,
+        isNull,
+        reason: key,
+      );
+    }
+    expect(find.byKey(const ValueKey('service-install')), findsOneWidget);
   });
 
   testWidgets('фоновая работа: служб нет, трея нет — подсказки', (

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-/// Запуск внешней программы: `systemctl`, `launchctl`, `schtasks`. В тестах
-/// — подделка, которая записывает вызовы.
+/// Запуск внешней программы: `systemctl`, `launchctl`, `schtasks`,
+/// `powershell.exe`. В тестах — подделка, которая записывает вызовы.
 typedef CommandRunner = Future<ProcessResult> Function(
   String executable,
   List<String> arguments,
@@ -144,6 +144,37 @@ const servicePrefix = 'backpeer';
 /// Идентификатор для macOS (обратная запись домена), временный, как
 /// [servicePrefix].
 const serviceBundleId = 'org.backpeer';
+
+/// Windows: запускатель без консольного окна (`backpeer-launcher.exe`,
+/// `tool/windows_package/launcher.cs`). `dart build cli` собирает
+/// консольные программы, а задание Планировщика запускает их в сеансе
+/// пользователя — окно консоли висело бы всё время работы демона. Задание
+/// запускает этот запускатель (подсистема WINDOWS), а он — программу
+/// службы с `CREATE_NO_WINDOW`: окна нет, а stdin/stdout/stderr — каналы
+/// запускателя, поэтому демон может писать в stderr и с `--log -`.
+final class QuietLauncher {
+  /// Имя файла рядом с программой службы (`agent.exe`, `node.exe`).
+  static const fileName = 'backpeer-launcher.exe';
+
+  /// `FS_QUIET_LAUNCHER` — явный путь (`''` — не использовать); иначе
+  /// [fileName] рядом с [executable]. `null` — запускателя нет: служба
+  /// запускает программу напрямую (запуск из исходников без упаковки).
+  static String? find(
+    String executable, {
+    Map<String, String>? environment,
+    bool windows = true,
+  }) {
+    final env = environment ?? Platform.environment;
+    if (env['FS_QUIET_LAUNCHER'] case final String override) {
+      return override.isEmpty ? null : override;
+    }
+    if (!windows) return null;
+    final candidate = File(
+      '${File(executable).parent.path}${Platform.pathSeparator}$fileName',
+    );
+    return candidate.existsSync() ? candidate.path : null;
+  }
+}
 
 /// Менеджера служб нет: [available] — `false`, методы бросают
 /// [ServiceException].
@@ -511,13 +542,16 @@ final class ScheduledTaskServices implements UserServices {
     required this.user,
     required this.tempDir,
     this.prefix = servicePrefix,
+    Map<String, String>? environment,
     CommandRunner? runner,
-  }) : _runner = runner ?? _run;
+  }) : _env = environment ?? Platform.environment,
+       _runner = runner ?? _run;
 
   /// `DOMAIN\user` — для триггера входа и принципала задания.
   final String user;
   final String tempDir;
   final String prefix;
+  final Map<String, String> _env;
   final CommandRunner _runner;
 
   @override
@@ -532,7 +566,12 @@ final class ScheduledTaskServices implements UserServices {
   /// XML задания (схема Task Scheduler 1.2): вход пользователя, без
   /// ограничения времени, без остановки от батареи, перезапуск раз в
   /// минуту после сбоя, один экземпляр.
-  static String taskXml(String user, ServiceSpec spec) {
+  ///
+  /// [launcher] — запускатель без консольного окна ([QuietLauncher]): тогда
+  /// действие задания — он, а программа службы и её аргументы идут ему
+  /// аргументами. Без запускателя действие — сама программа (запуск из
+  /// исходников; на Windows это окно консоли).
+  static String taskXml(String user, ServiceSpec spec, {String? launcher}) {
     String esc(String s) =>
         const HtmlEscape(HtmlEscapeMode.attribute).convert(s);
     String arg(String s) => s.isEmpty || s.contains(RegExp(r'[\s"]'))
@@ -540,6 +579,10 @@ final class ScheduledTaskServices implements UserServices {
         : s;
     // Переменных окружения у действия задания нет — через cmd не идём,
     // FS_HOME передаётся аргументом `--home` (его добавляет вызывающий).
+    final command = launcher ?? spec.executable;
+    final arguments = launcher == null
+        ? spec.arguments
+        : [spec.executable, ...spec.arguments];
     return '<?xml version="1.0" encoding="UTF-16"?>\n'
         '<Task version="1.2" '
         'xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">\n'
@@ -577,8 +620,8 @@ final class ScheduledTaskServices implements UserServices {
         '  </Settings>\n'
         '  <Actions Context="Author">\n'
         '    <Exec>\n'
-        '      <Command>${esc(spec.executable)}</Command>\n'
-        '      <Arguments>${esc(spec.arguments.map(arg).join(' '))}'
+        '      <Command>${esc(command)}</Command>\n'
+        '      <Arguments>${esc(arguments.map(arg).join(' '))}'
         '</Arguments>\n'
         '    </Exec>\n'
         '  </Actions>\n'
@@ -593,12 +636,49 @@ final class ScheduledTaskServices implements UserServices {
     }
   }
 
+  /// Состояние задания. `schtasks` печатает состояние словами на языке
+  /// Windows («Running», «Выполняется»), поэтому спрашиваем PowerShell:
+  /// `Get-ScheduledTask` возвращает перечисление, одинаковое на всех
+  /// языках. PowerShell недоступен — запасной разбор CSV (английская
+  /// Windows).
   @override
   Future<ServiceState> state(String name) async {
+    final task = serviceName(name);
+    final sep = task.lastIndexOf(r'\');
+    final path = task.substring(0, sep + 1);
+    final taskName = task.substring(sep + 1);
+    final script = StringBuffer()
+      ..write(r'$t = Get-ScheduledTask -TaskPath ')
+      ..write("'${_psString(path)}'")
+      ..write(' -TaskName ')
+      ..write("'${_psString(taskName)}'")
+      ..write(' -ErrorAction SilentlyContinue; ')
+      ..write(r"if ($null -eq $t) { 'none' } else { [int]$t.State }");
+    ProcessResult? ps;
+    try {
+      ps = await _runner('powershell.exe', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        script.toString(),
+      ]);
+    } on ProcessException {
+      ps = null;
+    }
+    switch ('${ps?.stdout}'.trim()) {
+      case 'none':
+        return ServiceState.notInstalled;
+      // Disabled (1), Ready (3) — задание есть, процесс не работает.
+      case '1' || '3':
+        return ServiceState.stopped;
+      // Queued (2) — запускается, Running (4) — работает.
+      case '2' || '4':
+        return ServiceState.running;
+    }
     final result = await _schtasks([
       '/Query',
       '/TN',
-      serviceName(name),
+      task,
       '/FO',
       'CSV',
       '/NH',
@@ -609,11 +689,17 @@ final class ScheduledTaskServices implements UserServices {
         : ServiceState.stopped;
   }
 
+  /// Строка PowerShell в одинарных кавычках: кавычка удваивается.
+  static String _psString(String s) => s.replaceAll("'", "''");
+
   @override
   Future<void> install(ServiceSpec spec, {bool start = true}) async {
     final xml = File('$tempDir\\$prefix-${spec.name}-$pid.xml');
+    // Запускатель рядом с программой — без окна консоли (Б-2). Нет его
+    // (запуск из исходников) — задание запускает программу напрямую.
+    final launcher = QuietLauncher.find(spec.executable, environment: _env);
     // schtasks читает XML в UTF-16 LE с BOM.
-    final units = '﻿${taskXml(user, spec)}'.codeUnits;
+    final units = '﻿${taskXml(user, spec, launcher: launcher)}'.codeUnits;
     final bytes = <int>[
       for (final u in units) ...[u & 0xFF, u >> 8],
     ];
@@ -662,6 +748,10 @@ final class ScheduledTaskServices implements UserServices {
   @override
   Future<void> restart(String name) async {
     await stop(name);
+    // `/End` завершает задание, но не обязательно дожидается выхода
+    // процессов: `/Run` сразу после него иногда получает «уже
+    // выполняется». Небольшая пауза — и запуск заново.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     await start(name);
   }
 }

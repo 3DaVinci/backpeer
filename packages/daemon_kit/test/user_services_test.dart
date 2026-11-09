@@ -242,11 +242,56 @@ void main() {
       );
     });
 
+    test('XML: запускатель без окна — команда он, программа в аргументах', () {
+      final xml = ScheduledTaskServices.taskXml(
+        r'PC\user',
+        spec,
+        launcher:
+            'C:/Program Files/Backpeer/daemons/agent/bin/backpeer-launcher.exe',
+      );
+      expect(xml, contains('C:/Program Files/Backpeer/daemons/agent/bin/'));
+      expect(xml, contains('backpeer-launcher.exe</Command>'));
+      expect(
+        xml,
+        contains(
+          '&quot;/opt/my apps/backpeer/daemons/agent/bin/agent&quot; run '
+          '--home &quot;/home/u/50% ',
+        ),
+      );
+    });
+
+    test('запускатель: рядом с программой, FS_QUIET_LAUNCHER важнее', () {
+      final bin = Directory('${temp.path}/bin')..createSync();
+      final exe = File('${bin.path}/agent.exe')..writeAsStringSync('');
+      expect(QuietLauncher.find(exe.path, environment: {}), isNull);
+
+      final launcher = File('${bin.path}/backpeer-launcher.exe')
+        ..writeAsStringSync('');
+      expect(QuietLauncher.find(exe.path, environment: {}), launcher.path);
+      expect(
+        QuietLauncher.find(
+          exe.path,
+          environment: {'FS_QUIET_LAUNCHER': r'C:\other\launcher.exe'},
+        ),
+        r'C:\other\launcher.exe',
+      );
+      expect(
+        QuietLauncher.find(exe.path, environment: {'FS_QUIET_LAUNCHER': ''}),
+        isNull,
+        reason: 'пустое значение выключает запускатель',
+      );
+      expect(
+        QuietLauncher.find(exe.path, environment: {}, windows: false),
+        isNull,
+      );
+    });
+
     test('установка: /Create из XML и /Run', () async {
       final runner = FakeRunner();
       final services = ScheduledTaskServices(
         user: r'PC\user',
         tempDir: temp.path,
+        environment: {},
         runner: runner.call,
       );
       await services.install(spec);
@@ -257,6 +302,99 @@ void main() {
       expect(runner.calls.last, r'schtasks /Run /TN \backpeer\agent');
       // Временный XML удалён.
       expect(temp.listSync(), isEmpty);
+    });
+
+    test('установка: запускатель рядом с программой попадает в XML', () async {
+      final bin = Directory('${temp.path}/bin')..createSync();
+      final exe = File('${bin.path}/agent.exe')..writeAsStringSync('');
+      File('${bin.path}/backpeer-launcher.exe').writeAsStringSync('');
+      String? xmlText;
+      final runner = FakeRunner()
+        ..answer = (command) {
+          if (command.startsWith('schtasks /Create')) {
+            final match = RegExp('/XML (.+) /F').firstMatch(command);
+            if (match != null) {
+              // XML записан в UTF-16 LE с BOM.
+              final bytes = File(match.group(1)!).readAsBytesSync();
+              xmlText = String.fromCharCodes([
+                for (var i = 0; i + 1 < bytes.length; i += 2) bytes[i],
+              ]);
+            }
+          }
+          return ProcessResult(0, 0, '', '');
+        };
+      final services = ScheduledTaskServices(
+        user: r'PC\user',
+        tempDir: temp.path,
+        environment: {},
+        runner: runner.call,
+      );
+      await services.install(
+        ServiceSpec(
+          name: 'agent',
+          description: 'агент',
+          executable: exe.path,
+          arguments: ['run'],
+        ),
+      );
+      expect(xmlText, isNotNull);
+      expect(xmlText, contains('backpeer-launcher.exe</Command>'));
+      expect(xmlText, contains('agent.exe run</Arguments>'));
+    });
+
+    test('состояние: PowerShell, без языка Windows', () async {
+      final runner = FakeRunner()
+        ..answer = (c) => ProcessResult(0, 0, '4\n', '');
+      final services = ScheduledTaskServices(
+        user: r'PC\user',
+        tempDir: temp.path,
+        environment: {},
+        runner: runner.call,
+      );
+      expect(await services.state('agent'), ServiceState.running);
+      expect(
+        runner.calls.single,
+        contains(r"Get-ScheduledTask -TaskPath '\backpeer\' "),
+      );
+      expect(runner.calls.single, contains("-TaskName 'agent'"));
+
+      runner.answer = (c) => ProcessResult(0, 0, '3\n', '');
+      expect(await services.state('agent'), ServiceState.stopped);
+      runner.answer = (c) => ProcessResult(0, 0, 'none\n', '');
+      expect(await services.state('agent'), ServiceState.notInstalled);
+    });
+
+    test('состояние: PowerShell недоступен — запасной разбор CSV', () async {
+      final runner = FakeRunner()
+        ..answer = (c) => c.startsWith('powershell')
+            ? throw const ProcessException('powershell.exe', [])
+            : ProcessResult(0, 0, r'"\backpeer\agent","Running","N/A"', '');
+      final services = ScheduledTaskServices(
+        user: r'PC\user',
+        tempDir: temp.path,
+        environment: {},
+        runner: runner.call,
+      );
+      expect(await services.state('agent'), ServiceState.running);
+    });
+
+    test('запуск, остановка и перезапуск', () async {
+      final runner = FakeRunner();
+      final services = ScheduledTaskServices(
+        user: r'PC\user',
+        tempDir: temp.path,
+        environment: {},
+        runner: runner.call,
+      );
+      await services.start('agent');
+      await services.stop('agent');
+      await services.restart('agent');
+      expect(runner.calls, [
+        r'schtasks /Run /TN \backpeer\agent',
+        r'schtasks /End /TN \backpeer\agent',
+        r'schtasks /End /TN \backpeer\agent',
+        r'schtasks /Run /TN \backpeer\agent',
+      ]);
     });
   });
 

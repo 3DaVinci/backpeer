@@ -255,7 +255,7 @@ void main() {
         },
       );
       final m = await client.fetchManifest(
-        Uri.parse('https://u.example/updates/stable.json'),
+        Uri.parse('https://u.example/stable.json'),
         channel: UpdateChannel.stable,
       );
       expect(m.version, ProductVersion.parse('0.0.3'));
@@ -270,7 +270,7 @@ void main() {
       );
       await expectLater(
         wrongChannel.fetchManifest(
-          Uri.parse('https://u.example/updates/beta.json'),
+          Uri.parse('https://u.example/beta.json'),
           channel: UpdateChannel.beta,
         ),
         throwsA(isA<PreconditionException>()),

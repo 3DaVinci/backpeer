@@ -175,7 +175,8 @@ final class PersistentDaemons {
 /// которые останутся на месте: в пакете или в постоянной копии
 /// ([PersistentDaemons]).
 final class ClientServices {
-  new({required this.services, this.home});
+  new({required this.services, this.home, Map<String, String>? environment})
+    : _env = environment ?? Platform.environment;
 
   /// Агент — `agent` служба; хранитель — `node`.
   static const agentName = 'agent';
@@ -186,6 +187,30 @@ final class ClientServices {
   /// Каталог программы не по умолчанию (`FS_HOME`, `--home`) — передаётся
   /// агенту аргументом.
   final String? home;
+  final Map<String, String> _env;
+
+  /// Остановить работающий агент через его локальный API (а не только
+  /// `schtasks /End`/`systemctl`): демон успевает закрыть сокет, базу и
+  /// сегмент. `true` — процесс был запущен.
+  Future<bool> stopAgentProcess({
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    final paths = AgentPaths(AppHome.resolve(env: _env, override: home));
+    return stopViaControl(paths.endpoint(), paths.lock, timeout: timeout);
+  }
+
+  /// То же для хранителя: папка данных — `FS_NODE_DATA_DIR` или
+  /// стандартная (та же, что у [KeeperApi.defaultDataDir]).
+  Future<bool> stopNodeProcess({
+    Duration timeout = const Duration(seconds: 15),
+  }) {
+    final dataDir = KeeperApi.defaultDataDir(_env);
+    return stopViaControl(
+      ControlEndpoint.forDataDir(dataDir, process: 'хранитель'),
+      File('$dataDir/node.lock'),
+      timeout: timeout,
+    );
+  }
 
   ServiceSpec agentSpec(String executable) => ServiceSpec(
     name: agentName,
@@ -321,8 +346,13 @@ Future<List<String>> uninstallClient({
 }
 
 /// Остановить процесс методом `stop` и дождаться, пока он отпустит
-/// блокировку; `true` — был запущен.
-Future<bool> stopViaControl(ControlEndpoint endpoint, File lock) async {
+/// блокировку; `true` — был запущен. [timeout] — сколько ждать освобождения
+/// папки: в приложении меньше, чем при удалении.
+Future<bool> stopViaControl(
+  ControlEndpoint endpoint,
+  File lock, {
+  Duration timeout = const Duration(seconds: 60),
+}) async {
   final ControlClient client;
   try {
     client = await ControlClient.connect(endpoint);
@@ -336,7 +366,8 @@ Future<bool> stopViaControl(ControlEndpoint endpoint, File lock) async {
   } finally {
     await client.close();
   }
-  for (var i = 0; i < 300; i++) {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
     try {
       DirLock.acquire(lock, busy: '').release();
       return true;

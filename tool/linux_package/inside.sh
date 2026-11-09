@@ -28,7 +28,20 @@ sed -i -e "s/buildAppVersion = 'dev'/buildAppVersion = '$VERSION'/" \
   packages/core/lib/src/build_info_values.dart
 flutter config --no-analytics >/dev/null
 flutter pub get --offline >/dev/null 2>&1 || flutter pub get
-(cd apps/app && flutter build linux --release)
+# Адрес и ключ обновлений (5.8.2) — в сборку приложения. Пусто — сборка без
+# автообновления (локальная сборка, стенд).
+defines=()
+if [ -n "${UPDATE_PUBLIC_KEY:-}" ]; then
+  defines+=("--dart-define=UPDATE_PUBLIC_KEY=$UPDATE_PUBLIC_KEY")
+fi
+if [ -n "${UPDATE_BASE_URL:-}" ]; then
+  defines+=("--dart-define=UPDATE_BASE_URL=$UPDATE_BASE_URL")
+fi
+if [ ${#defines[@]} -gt 0 ]; then
+  (cd apps/app && flutter build linux --release "${defines[@]}")
+else
+  (cd apps/app && flutter build linux --release)
+fi
 CI_COMMIT_SHORT_SHA="$COMMIT" dart run tool/build_exe.dart
 
 # --- Раскладка: /opt/backpeer и файлы рабочего стола -------------------

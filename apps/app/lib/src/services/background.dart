@@ -20,6 +20,9 @@ abstract interface class BackgroundControl implements Listenable {
   /// `null` — ещё не узнали.
   ServiceState? get agentState;
 
+  /// Служба хранителя; `notInstalled` — роль не включалась.
+  ServiceState? get nodeState;
+
   /// Значок запускается при входе.
   bool get autostart;
 
@@ -31,6 +34,16 @@ abstract interface class BackgroundControl implements Listenable {
   Future<void> installAgent();
 
   Future<void> uninstallAgent();
+
+  /// Запустить установленную службу ([ClientServices.agentName] или
+  /// [ClientServices.nodeName]).
+  Future<void> startService(String name);
+
+  /// Остановить: сначала нормально, через локальный API процесса, затем
+  /// менеджером служб (зависший процесс).
+  Future<void> stopService(String name);
+
+  Future<void> restartService(String name);
 
   Future<void> setAutostart({required bool enabled});
 }
@@ -81,6 +94,9 @@ final class OsBackground extends ChangeNotifier implements BackgroundControl {
   ServiceState? agentState;
 
   @override
+  ServiceState? nodeState;
+
+  @override
   String? problem;
 
   @override
@@ -92,12 +108,14 @@ final class OsBackground extends ChangeNotifier implements BackgroundControl {
   @override
   bool get autostart => loginItem.enabled;
 
-  ClientServices get _client => ClientServices(services: services, home: home);
+  ClientServices get _client =>
+      ClientServices(services: services, home: home, environment: _env);
 
   @override
   Future<void> refresh() async {
     try {
       agentState = await _client.agentState();
+      nodeState = await _client.nodeState();
     } on ServiceException catch (e) {
       problem = e.message;
     }
@@ -225,6 +243,77 @@ final class OsBackground extends ChangeNotifier implements BackgroundControl {
     } on ServiceException catch (e) {
       problem = e.message;
     }
+    await refresh();
+  }
+
+  @override
+  Future<void> startService(String name) => _act(() async {
+    if (await services.state(name) == ServiceState.notInstalled) {
+      throw ServiceException(
+        name == ClientServices.agentName
+            ? 'служба агента бэкапа не установлена'
+            : 'служба хранителя не установлена — включите роль на экране '
+                  '«Хранитель»',
+      );
+    }
+    await services.start(name);
+  });
+
+  @override
+  Future<void> stopService(String name) => _act(() async {
+    await _stopProcess(name);
+    // Менеджер служб — на случай зависшего процесса: у Windows это
+    // `schtasks /End`, у systemd/launchd — остановка, если она ещё идёт.
+    try {
+      await services.stop(name);
+    } on ServiceException {
+      // Служба не установлена или уже остановлена.
+    }
+  });
+
+  @override
+  Future<void> restartService(String name) => _act(() async {
+    if (await services.state(name) == ServiceState.notInstalled) {
+      throw ServiceException(
+        name == ClientServices.agentName
+            ? 'служба агента бэкапа не установлена'
+            : 'служба хранителя не установлена — включите роль на экране '
+                  '«Хранитель»',
+      );
+    }
+    // Нормальная остановка через локальный API, затем менеджер служб:
+    // так демон успевает дописать сегмент и отпустить папку. Если он
+    // завис, менеджер завершит его принудительно.
+    await _stopProcess(name);
+    await services.restart(name);
+  });
+
+  /// Останавливает процесс через локальный API. `false` — процесса нет
+  /// или API недоступен; принудительная остановка — за менеджером служб.
+  Future<bool> _stopProcess(String name) async {
+    try {
+      return switch (name) {
+        ClientServices.agentName => await _client.stopAgentProcess(),
+        ClientServices.nodeName => await _client.stopNodeProcess(),
+        _ => false,
+      };
+    } on Object {
+      return false;
+    }
+  }
+
+  /// Выполнить действие со службой, записать ошибку и обновить состояние.
+  Future<void> _act(Future<void> Function() body) async {
+    try {
+      await body();
+      problem = null;
+    } on ServiceException catch (e) {
+      problem = e.message;
+    }
+    // Дать службе перейти в новое состояние. На Windows состояние задания
+    // спрашивается через PowerShell, поэтому не опрашиваем в цикле: одна
+    // пауза и одно обновление.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
     await refresh();
   }
 

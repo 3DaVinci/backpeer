@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Проверка установщика Windows на настоящей системе (задача 5.7.1).
 
@@ -49,6 +49,28 @@ function Wait-For([scriptblock] $condition, [string] $what, [int] $seconds = 180
     throw "не дождались: $what"
 }
 
+# Подсистема PE: 2 — WINDOWS (без консоли), 3 — CONSOLE. У запускателя
+# должна быть 2, иначе он сам покажет чёрное окно (Б-2).
+function Get-PeSubsystem([string] $Path) {
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -lt 0x100 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+        throw "$Path не похож на .exe (нет MZ)"
+    }
+    $pe = [BitConverter]::ToInt32($bytes, 0x3C)
+    if ($pe -le 0 -or $pe + 0x5E -ge $bytes.Length -or
+        $bytes[$pe] -ne 0x50 -or $bytes[$pe + 1] -ne 0x45) {
+        throw "$Path не похож на PE-файл"
+    }
+    return [BitConverter]::ToUInt16($bytes, $pe + 0x5C)
+}
+
+function Get-TaskState([string] $Name) {
+    $task = Get-ScheduledTask -TaskName $Name -TaskPath '\backpeer\' `
+        -ErrorAction SilentlyContinue
+    if (-not $task) { return 'NotFound' }
+    return [string]$task.State
+}
+
 $found = @(Get-Item $Installer -ErrorAction Stop)
 if ($found.Count -ne 1) {
     throw "ожидался один установщик, найдено $($found.Count)"
@@ -92,6 +114,18 @@ foreach ($program in @('agent', 'node', 'cli')) {
 }
 Assert-Path (Join-Path $dir 'daemons\node\lib\sqlite3.dll') 'SQLite для хранителя'
 
+# Запускатель без консольного окна: именно его, а не консольный agent.exe,
+# запускает задание Планировщика (Б-2, 5.7.1).
+foreach ($program in @('agent', 'node')) {
+    $launcher = Join-Path $dir "daemons\$program\bin\backpeer-launcher.exe"
+    Assert-Path $launcher "запускатель без окна для $program"
+    $subsystem = Get-PeSubsystem $launcher
+    if ($subsystem -ne 2) {
+        throw "у $launcher подсистема $subsystem, а нужна WINDOWS (2)"
+    }
+    Write-Host "  $program: подсистема WINDOWS (2), окна консоли нет"
+}
+
 $shortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Backpeer.lnk'
 Assert-Path $shortcut 'ярлык в меню «Пуск»'
 
@@ -126,9 +160,33 @@ if (-not $SkipService) {
     if ($LASTEXITCODE -ne 0) { throw 'задание \backpeer\agent не создано' }
     Write-Host '  задание \backpeer\agent создано'
 
+    # Задание запускает запускатель, а не консольную программу.
+    $taskXml = (& schtasks /Query /TN '\backpeer\agent' /XML) -join "`n"
+    if ($LASTEXITCODE -ne 0) { throw 'не удалось прочитать XML задания' }
+    if ($taskXml -notmatch 'backpeer-launcher\.exe') {
+        throw 'задание запускает не backpeer-launcher.exe: будет окно консоли'
+    }
+    Write-Host '  задание запускает backpeer-launcher.exe'
+
     $status = & $agent service status 2>&1
     if ($LASTEXITCODE -ne 0) { throw "agent service status: $status" }
     Write-Host "  состояние: $($status -join ' ' | Out-String)"
+
+    # Запуск, остановка и перезапуск из CLI (app/service management).
+    & $agent service stop
+    if ($LASTEXITCODE -ne 0) { throw 'agent service stop завершилась с ошибкой' }
+    Wait-For { (Get-TaskState 'agent') -ne 'Running' } 'задание остановлено'
+    Write-Host '  задание остановлено'
+
+    & $agent service start
+    if ($LASTEXITCODE -ne 0) { throw 'agent service start завершилась с ошибкой' }
+    Wait-For { (Get-TaskState 'agent') -eq 'Running' } 'задание запущено'
+    Write-Host '  задание запущено'
+
+    & $agent service restart
+    if ($LASTEXITCODE -ne 0) { throw 'agent service restart завершилась с ошибкой' }
+    Wait-For { (Get-TaskState 'agent') -eq 'Running' } 'задание перезапущено'
+    Write-Host '  задание перезапущено'
 
     & $agent service uninstall
     if ($LASTEXITCODE -ne 0) { throw 'agent service uninstall завершилась с ошибкой' }

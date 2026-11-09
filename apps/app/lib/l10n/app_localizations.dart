@@ -2606,6 +2606,48 @@ abstract class AppLocalizations {
   /// **'Служба агента бэкапа'**
   String get backgroundService;
 
+  /// No description provided for @backgroundServices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Службы'**
+  String get backgroundServices;
+
+  /// No description provided for @serviceAgent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Агент бэкапа'**
+  String get serviceAgent;
+
+  /// No description provided for @serviceKeeper.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранитель'**
+  String get serviceKeeper;
+
+  /// No description provided for @serviceStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить'**
+  String get serviceStart;
+
+  /// No description provided for @serviceStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановить'**
+  String get serviceStop;
+
+  /// No description provided for @serviceRestart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезапустить'**
+  String get serviceRestart;
+
+  /// No description provided for @serviceKeeperOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Роль хранителя выключена — включите её на экране «Хранитель».'**
+  String get serviceKeeperOff;
+
   /// No description provided for @serviceRunning.
   ///
   /// In ru, this message translates to:
@@ -2693,7 +2735,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoUpdate.
   ///
   /// In ru, this message translates to:
-  /// **'Проверять обновления автоматически'**
+  /// **'Проверять и устанавливать обновления автоматически'**
   String get autoUpdate;
 
   /// No description provided for @betaChannel.
@@ -2701,6 +2743,72 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Бета-канал обновлений'**
   String get betaChannel;
+
+  /// No description provided for @updateCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить обновления'**
+  String get updateCheck;
+
+  /// No description provided for @updateChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка обновлений…'**
+  String get updateChecking;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна версия {version}'**
+  String updateAvailable(String version);
+
+  /// No description provided for @updateInstall.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать и установить'**
+  String get updateInstall;
+
+  /// No description provided for @updateApplying.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка и установка…'**
+  String get updateApplying;
+
+  /// No description provided for @updateUpToDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установлена последняя версия.'**
+  String get updateUpToDate;
+
+  /// No description provided for @updateNeverChecked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления ещё не проверялись.'**
+  String get updateNeverChecked;
+
+  /// No description provided for @updateFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось обновить: {error}'**
+  String updateFailed(String error);
+
+  /// No description provided for @updateRestarting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление установлено, приложение перезапустится.'**
+  String get updateRestarting;
+
+  /// No description provided for @updateManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новая версия доступна вручную: {url}'**
+  String updateManual(String url);
+
+  /// No description provided for @updateWaitingBackup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление установится после окончания бэкапа.'**
+  String get updateWaitingBackup;
 
   /// No description provided for @crashReports.
   ///

@@ -1534,6 +1534,28 @@ class AppLocalizationsRu extends AppLocalizations {
   String get backgroundService => 'Служба агента бэкапа';
 
   @override
+  String get backgroundServices => 'Службы';
+
+  @override
+  String get serviceAgent => 'Агент бэкапа';
+
+  @override
+  String get serviceKeeper => 'Хранитель';
+
+  @override
+  String get serviceStart => 'Запустить';
+
+  @override
+  String get serviceStop => 'Остановить';
+
+  @override
+  String get serviceRestart => 'Перезапустить';
+
+  @override
+  String get serviceKeeperOff =>
+      'Роль хранителя выключена — включите её на экране «Хранитель».';
+
+  @override
   String get serviceRunning => 'работает';
 
   @override
@@ -1580,10 +1602,51 @@ class AppLocalizationsRu extends AppLocalizations {
   String get updateTitle => 'Обновления';
 
   @override
-  String get autoUpdate => 'Проверять обновления автоматически';
+  String get autoUpdate => 'Проверять и устанавливать обновления автоматически';
 
   @override
   String get betaChannel => 'Бета-канал обновлений';
+
+  @override
+  String get updateCheck => 'Проверить обновления';
+
+  @override
+  String get updateChecking => 'Проверка обновлений…';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Доступна версия $version';
+  }
+
+  @override
+  String get updateInstall => 'Скачать и установить';
+
+  @override
+  String get updateApplying => 'Загрузка и установка…';
+
+  @override
+  String get updateUpToDate => 'Установлена последняя версия.';
+
+  @override
+  String get updateNeverChecked => 'Обновления ещё не проверялись.';
+
+  @override
+  String updateFailed(String error) {
+    return 'Не удалось обновить: $error';
+  }
+
+  @override
+  String get updateRestarting =>
+      'Обновление установлено, приложение перезапустится.';
+
+  @override
+  String updateManual(String url) {
+    return 'Новая версия доступна вручную: $url';
+  }
+
+  @override
+  String get updateWaitingBackup =>
+      'Обновление установится после окончания бэкапа.';
 
   @override
   String get crashReports => 'Отправлять отчёты о сбоях';

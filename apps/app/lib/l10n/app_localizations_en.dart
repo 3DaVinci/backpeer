@@ -1514,6 +1514,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backgroundService => 'Backup agent service';
 
   @override
+  String get backgroundServices => 'Services';
+
+  @override
+  String get serviceAgent => 'Backup agent';
+
+  @override
+  String get serviceKeeper => 'Keeper';
+
+  @override
+  String get serviceStart => 'Start';
+
+  @override
+  String get serviceStop => 'Stop';
+
+  @override
+  String get serviceRestart => 'Restart';
+
+  @override
+  String get serviceKeeperOff =>
+      'The keeper role is off — enable it on the Keeper screen.';
+
+  @override
   String get serviceRunning => 'running';
 
   @override
@@ -1560,10 +1582,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateTitle => 'Updates';
 
   @override
-  String get autoUpdate => 'Check for updates automatically';
+  String get autoUpdate => 'Check for and install updates automatically';
 
   @override
   String get betaChannel => 'Beta update channel';
+
+  @override
+  String get updateCheck => 'Check for updates';
+
+  @override
+  String get updateChecking => 'Checking for updates…';
+
+  @override
+  String updateAvailable(String version) {
+    return 'Version $version is available';
+  }
+
+  @override
+  String get updateInstall => 'Download and install';
+
+  @override
+  String get updateApplying => 'Downloading and installing…';
+
+  @override
+  String get updateUpToDate => 'You have the latest version.';
+
+  @override
+  String get updateNeverChecked => 'Updates have not been checked yet.';
+
+  @override
+  String updateFailed(String error) {
+    return 'Update failed: $error';
+  }
+
+  @override
+  String get updateRestarting => 'Update installed; the app will restart.';
+
+  @override
+  String updateManual(String url) {
+    return 'A new version is available manually: $url';
+  }
+
+  @override
+  String get updateWaitingBackup =>
+      'The update will install after the backup finishes.';
 
   @override
   String get crashReports => 'Send crash reports';

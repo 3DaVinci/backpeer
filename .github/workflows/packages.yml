@@ -113,6 +113,11 @@ jobs:
   linux-packages:
     name: пакеты Linux (amd64)
     runs-on: ubuntu-latest
+    # Ключ обновлений — публичный (переменная репозитория), им приложение
+    # проверяет подпись манифеста. База — latest-релиз этого репозитория.
+    env:
+      UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
+      UPDATE_BASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -138,6 +143,9 @@ jobs:
   windows-installer:
     name: установщик Windows (x64, без подписи)
     runs-on: windows-latest
+    env:
+      UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
+      UPDATE_BASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -170,9 +178,15 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [docker-manifest, linux-packages, windows-installer]
     runs-on: ubuntu-latest
+    # Защищённое окружение для ключа подписи: в настройках GitHub можно
+    # потребовать ручное подтверждение перед выдачей секрета (П-3,
+    # docs/ops/github.md, «Автообновление»).
+    environment: release-signing
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
       - uses: actions/download-artifact@v4
         with:
           name: backpeer-linux-amd64
@@ -196,6 +210,32 @@ jobs:
           cd release/files
           ls -lh
           sha256sum -c SHA256SUMS
+      - name: Манифест обновлений и подпись
+        # Только стабильные теги: dev-теги — предварительные и в манифест не
+        # идут (docs/spec/updates.md, раздел 7). Закрытый ключ — в секрете
+        # защищённого environment (П-3); публичный — в переменной репозитория,
+        # им же собрано приложение.
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
+        run: |
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "::error::не задан секрет UPDATE_SIGNING_KEY (docs/ops/github.md, «Автообновление»)"
+            exit 1
+          fi
+          if [ -z "$UPDATE_PUBLIC_KEY" ]; then
+            echo "::error::не задана переменная UPDATE_PUBLIC_KEY (docs/ops/github.md, «Автообновление»)"
+            exit 1
+          fi
+          dart run tool/updates/release.dart \
+            --files release/files --tag "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" --channel stable
+          # Бета-канал пока получает тот же стабильный релиз: иначе у
+          # включившего бету клиента был бы 404 до появления beta-манифеста.
+          dart run tool/updates/release.dart \
+            --files release/files --tag "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" --channel beta
       - name: Публикация
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

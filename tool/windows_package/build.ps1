@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Установщик Backpeer для Windows (задачи 0.2.5, 5.7.1).
 
@@ -73,6 +73,37 @@ function Resolve-Tool {
     throw "$Name не найден: $Hint"
 }
 
+# Компилятор C# входит в .NET Framework 4, то есть в Windows 10/11; отдельная
+# установка не нужна. Запускатель — единственный .cs в сборке (5.7.1, Б-2).
+function Resolve-Csc {
+    $candidates = @(
+        (Join-Path ${env:WINDIR} 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'),
+        (Join-Path ${env:WINDIR} 'Microsoft.NET\Framework\v4.0.30319\csc.exe')
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) { return (Resolve-Path $candidate).Path }
+    }
+    $command = Get-Command 'csc.exe' -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+    throw ('csc.exe не найден: нужен .NET Framework 4 (входит в Windows '
+        + '10/11), см. docs/ops/windows-packages.md')
+}
+
+# Подсистема PE: 2 — WINDOWS (без консоли), 3 — CONSOLE. У запускателя
+# должна быть 2, иначе он сам покажет чёрное окно.
+function Get-PeSubsystem([string] $Path) {
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -lt 0x100 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+        throw "$Path не похож на .exe (нет MZ)"
+    }
+    $pe = [BitConverter]::ToInt32($bytes, 0x3C)
+    if ($pe -le 0 -or $pe + 0x5E -ge $bytes.Length -or
+        $bytes[$pe] -ne 0x50 -or $bytes[$pe + 1] -ne 0x45) {
+        throw "$Path не похож на PE-файл"
+    }
+    return [BitConverter]::ToUInt16($bytes, $pe + 0x5C)
+}
+
 # --- Версия и коммит -------------------------------------------------------
 
 if (-not $Version) {
@@ -126,11 +157,29 @@ if ($SkipApp) {
 }
 else {
     Write-Step 'Приложение (flutter build windows --release)'
+    # Версия и коммит в приложении: от версии зависит проверка обновлений
+    # (5.8.2), а `flutter build` не знает `--define` для core. Значения
+    # подставляются на время сборки, как в tool/macos_package/build.sh.
+    $values = Join-Path $root 'packages\core\lib\src\build_info_values.dart'
+    $original = [IO.File]::ReadAllText($values)
+    $utf8 = New-Object System.Text.UTF8Encoding -ArgumentList $false
+    $appInfo = $original.Replace(
+        "buildAppVersion = 'dev'", "buildAppVersion = '$Version'").Replace(
+        "buildGitCommit = 'unknown'", "buildGitCommit = '$commit'")
+    $defines = @()
+    if ($env:UPDATE_PUBLIC_KEY) {
+        $defines += "--dart-define=UPDATE_PUBLIC_KEY=$env:UPDATE_PUBLIC_KEY"
+    }
+    if ($env:UPDATE_BASE_URL) {
+        $defines += "--dart-define=UPDATE_BASE_URL=$env:UPDATE_BASE_URL"
+    }
     Push-Location (Join-Path $root 'apps\app')
     try {
-        Invoke-Native $flutter @('build', 'windows', '--release')
+        [IO.File]::WriteAllText($values, $appInfo, $utf8)
+        Invoke-Native $flutter (@('build', 'windows', '--release') + $defines)
     }
     finally {
+        [IO.File]::WriteAllText($values, $original, $utf8)
         Pop-Location
     }
 }
@@ -156,6 +205,33 @@ foreach ($program in $bundles.Keys) {
     Copy-Item -Path (Join-Path $bundles[$program] '*') -Destination $target -Recurse -Force
 }
 
+# Запускатель без консольного окна: задание Планировщика запускает не сам
+# agent.exe/node.exe (подсистема CONSOLE — окно висело бы всё время работы),
+# а backpeer-launcher.exe (подсистема WINDOWS), который запускает демон с
+# CREATE_NO_WINDOW. Копия — рядом с каждой программой: так её ищет
+# ScheduledTaskServices (packages/daemon_kit/lib/src/user_services.dart).
+Write-Step 'Запускатель фоновых процессов без окна (C#)'
+$launcherSource = Join-Path $PSScriptRoot 'launcher.cs'
+$csc = Resolve-Csc
+$launcherTemp = Join-Path $packages 'windows\backpeer-launcher.exe'
+Invoke-Native $csc @(
+    '/nologo',
+    '/target:winexe',
+    '/optimize+',
+    '/codepage:65001',
+    "/out:$launcherTemp",
+    $launcherSource
+)
+if ((Get-PeSubsystem $launcherTemp) -ne 2) {
+    throw "запускатель $launcherTemp собрался не подсистемой WINDOWS"
+}
+foreach ($program in @('agent', 'node')) {
+    Copy-Item -Path $launcherTemp `
+        -Destination (Join-Path $stage "daemons\$program\bin\backpeer-launcher.exe") `
+        -Force
+}
+Remove-Item -Path $launcherTemp -Force
+
 # Проверка раскладки до сборки установщика: без libsodium программа не
 # запустится, а установщик собрался бы и упал только у пользователя.
 $required = @(
@@ -163,8 +239,10 @@ $required = @(
     'flutter_windows.dll',
     'data\app.so',
     'daemons\agent\bin\agent.exe',
+    'daemons\agent\bin\backpeer-launcher.exe',
     'daemons\agent\lib\libsodium.dll',
     'daemons\node\bin\node.exe',
+    'daemons\node\bin\backpeer-launcher.exe',
     'daemons\node\lib\libsodium.dll',
     'daemons\cli\bin\cli.exe'
 )

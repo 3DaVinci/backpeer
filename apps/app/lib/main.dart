@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:agent/agent.dart' show ClientServices;
 import 'package:app/src/app.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/background.dart';
@@ -10,6 +11,9 @@ import 'package:app/src/services/endpoints.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/services/tray.dart';
+import 'package:app/src/services/update_config.dart';
+import 'package:app/src/services/update_control.dart';
+import 'package:app/src/services/update_controller.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
 
@@ -35,6 +39,33 @@ void main() {
   );
   final tray = ChannelTrayHost();
   final background = OsBackground.forPlatform();
+
+  // Автообновление (5.8.2): адрес и ключ вшиты в сборку. Нет их (запуск из
+  // исходников) или версия не стабильная — обновления не проверяются.
+  final updateConfig = UpdateConfig.resolve();
+  final updates = updateConfig == null
+      ? null
+      : UpdateController(
+          control: OsUpdater(
+            baseUri: updateConfig.baseUri,
+            currentVersion: updateConfig.currentVersion,
+            preferences: preferences,
+            acceptedKeys: updateConfig.acceptedKeys,
+            stopServices: () async {
+              await background.stopService(ClientServices.agentName);
+              await background.stopService(ClientServices.nodeName);
+            },
+            appExecutable: Platform.resolvedExecutable,
+          ),
+          preferences: preferences,
+          canApply: () {
+            final status = agent.status;
+            // Нет связи — бэкап не идёт; первый запуск без учётной записи и
+            // идущий бэкап обновление не прерывают.
+            if (status == null) return true;
+            return status['configured'] == true && status['job'] == null;
+          },
+        );
 
   // Отчёты о сбоях (5.9.3): только с согласия пользователя и без путей и
   // ключей — очистка внутри CrashReporter.
@@ -63,6 +94,7 @@ void main() {
         preferences: preferences,
         tray: tray,
         background: background,
+        updates: updates,
       ),
     ),
   );
@@ -74,6 +106,7 @@ void main() {
       wantAutostart: preferences.trayAtLogin,
       trayAvailable: await tray.available(),
     );
+    updates?.start();
   });
   // Связь с агентом пропала, а служба ОС числится работающей — перезапустить
   // её: агент мог зависнуть или потерять свой сокет. Без этого приложение

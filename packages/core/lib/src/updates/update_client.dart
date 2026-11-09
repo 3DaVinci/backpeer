@@ -162,9 +162,13 @@ final class UpdateClient {
   }
 
   /// Полная проверка «есть ли для меня обновление»: манифест по адресу
-  /// [baseUri]`updates/{channel}.json`, затем применимость к [currentVersion]
-  /// и раскатка по [installId]. Нет обновления или не в доле — `null`
-  /// (не ошибка); подмена — [IntegrityException] / [DataFormatException].
+  /// [baseUri]`{channel}.json`, затем применимость к [currentVersion] и
+  /// раскатка по [installId]. Нет обновления или не в доле — `null` (не
+  /// ошибка); подмена — [IntegrityException] / [DataFormatException].
+  ///
+  /// База для GitHub Releases — `https://github.com/OWNER/REPO/releases/latest/download`:
+  /// в релизе лежат `stable.json` и `stable.json.sig` рядом с пакетами
+  /// (`docs/spec/updates.md`, раздел 8).
   Future<UpdateManifest?> check({
     required Uri baseUri,
     required UpdateChannel channel,
@@ -172,9 +176,7 @@ final class UpdateClient {
     required Uint8List installId,
   }) async {
     final manifest = await fetchManifest(
-      baseUri.replace(
-        path: '${_trimSlash(baseUri.path)}/updates/${channel.name}.json',
-      ),
+      baseUri.replace(path: '${_trimSlash(baseUri.path)}/${channel.name}.json'),
       channel: channel,
     );
     try {

@@ -1,8 +1,9 @@
-import 'package:agent/agent.dart' show ClientServices;
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/updater.dart';
 import 'package:core/core.dart';
-import 'package:daemon_kit/daemon_kit.dart' show UserServices;
 
 /// Управление обновлениями для приложения (задача 5.8.2): проверка по
 /// [UpdateClient] из `core` и применение через [Updater]. В тестах —
@@ -14,19 +15,22 @@ abstract interface class UpdateControl {
 
   /// Загружает пакет, проверяет хэш, корректно останавливает фоновые
   /// процессы, ставит и перезапускает.
-  Future<String> apply(UpdateManifest manifest);
+  Future<UpdateOutcome> apply(UpdateManifest manifest);
 }
 
 /// Настоящее управление обновлениями: клиент из `core` с ключом обновлений
-/// ([UpdateKeys]) и установка на этой ОС. [baseUri] — адрес обновлений;
-/// `null` — обновления не настроены ([check] отвечает «нет»).
+/// из сборки приложения (`UPDATE_PUBLIC_KEY`, см. `update_config.dart`) и
+/// установка на этой ОС. [baseUri] — база обновлений (`UPDATE_BASE_URL`,
+/// для GitHub — `.../releases/latest/download`); `null` — обновления не
+/// настроены.
 final class OsUpdater implements UpdateControl {
   new({
     required this.baseUri,
     required this.currentVersion,
     required this.preferences,
-    required this.services,
-    required this.installAgent,
+    required this.acceptedKeys,
+    required this.stopServices,
+    required this.appExecutable,
     this.platform,
     this.arch,
   });
@@ -34,29 +38,37 @@ final class OsUpdater implements UpdateControl {
   final Uri? baseUri;
   final ProductVersion currentVersion;
   final Preferences preferences;
-  final UserServices services;
 
-  /// Переустановка службы агента после замены программ (из фоновой работы
-  /// приложения, `OsBackground`).
-  final Future<void> Function() installAgent;
+  /// Допустимые открытые ключи обновлений (обычно один; при ротации —
+  /// текущий и следующий, docs/spec/updates.md, раздел 2).
+  final List<Uint8List> acceptedKeys;
+
+  /// Останавливает фоновые процессы перед заменой программ. Приложение
+  /// после установки запускает установщик (Windows/macOS) или новый образ
+  /// AppImage; службы ставит уже новая версия.
+  final Future<void> Function() stopServices;
+
+  /// Путь к `backpeer.exe` в установленной папке (Windows) или к
+  /// `.../Backpeer.app/Contents/MacOS/backpeer` (macOS).
+  final String appExecutable;
 
   final UpdatePlatform? platform;
   final String? arch;
 
   UpdateInstaller _installer() {
-    if ((platform ?? Updater.currentPlatform()) == UpdatePlatform.linux) {
-      return AppImageInstaller();
-    }
-    // .deb/.rpm и до готовности установщиков macOS/Windows — уведомление.
-    return const NotifyingInstaller();
+    return switch (platform ?? Updater.currentPlatform()) {
+      UpdatePlatform.windows => WindowsInstaller(appExecutable: appExecutable),
+      UpdatePlatform.macos => MacDmgInstaller(appExecutable: appExecutable),
+      UpdatePlatform.linux =>
+        Platform.environment['APPIMAGE'] != null
+            ? AppImageInstaller()
+            : const NotifyingInstaller(),
+    };
   }
 
   Future<Updater> _updater() async {
     final crypto = await SodiumCryptoProvider.load();
-    final client = UpdateClient(
-      crypto: crypto,
-      acceptedKeys: [UpdateKeys.devPublicKey()],
-    );
+    final client = UpdateClient(crypto: crypto, acceptedKeys: acceptedKeys);
     return Updater(
       client: client,
       currentVersion: currentVersion,
@@ -64,18 +76,8 @@ final class OsUpdater implements UpdateControl {
       platform: platform ?? Updater.currentPlatform(),
       arch: arch ?? Updater.currentArch(),
       installer: _installer(),
-      restart: _restart,
+      stop: stopServices,
     );
-  }
-
-  /// Корректная остановка фоновых процессов перед заменой программ:
-  /// службы получают SIGTERM, агент отменяет задание (бэкап продолжится при
-  /// следующем запуске — ADR-008), затем агент ставится заново.
-  Future<void> _restart() async {
-    for (final name in [ClientServices.nodeName, ClientServices.agentName]) {
-      await services.stop(name).catchError((_) {});
-    }
-    await installAgent();
   }
 
   @override
@@ -85,10 +87,21 @@ final class OsUpdater implements UpdateControl {
     final channel = preferences.betaChannel
         ? UpdateChannel.beta
         : UpdateChannel.stable;
-    return await (await _updater()).check(baseUri: uri, channel: channel);
+    final updater = await _updater();
+    try {
+      return await updater.check(baseUri: uri, channel: channel);
+    } finally {
+      updater.client.close();
+    }
   }
 
   @override
-  Future<String> apply(UpdateManifest manifest) async =>
-      await (await _updater()).apply(manifest);
+  Future<UpdateOutcome> apply(UpdateManifest manifest) async {
+    final updater = await _updater();
+    try {
+      return await updater.apply(manifest);
+    } finally {
+      updater.client.close();
+    }
+  }
 }

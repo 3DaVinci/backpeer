@@ -103,7 +103,20 @@ sed -i '' \
   -e "s/buildAppVersion = 'dev'/buildAppVersion = '$version'/" \
   -e "s/buildGitCommit = 'unknown'/buildGitCommit = '$commit'/" \
   "$values"
-(cd apps/app && flutter build macos --release)
+# Адрес и ключ обновлений (5.8.2) — в сборку приложения. На машине сборки
+# их задают переменными; без них приложение не проверяет обновления.
+defines=()
+if [ -n "${UPDATE_PUBLIC_KEY:-}" ]; then
+  defines+=("--dart-define=UPDATE_PUBLIC_KEY=$UPDATE_PUBLIC_KEY")
+fi
+if [ -n "${UPDATE_BASE_URL:-}" ]; then
+  defines+=("--dart-define=UPDATE_BASE_URL=$UPDATE_BASE_URL")
+fi
+if [ ${#defines[@]} -gt 0 ]; then
+  (cd apps/app && flutter build macos --release "${defines[@]}")
+else
+  (cd apps/app && flutter build macos --release)
+fi
 mv -f "$values.orig" "$values"
 trap - EXIT
 

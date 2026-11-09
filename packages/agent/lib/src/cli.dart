@@ -62,6 +62,9 @@ Future<int> runAgent(
   final service = ArgParser()
     ..addCommand('install', withHome())
     ..addCommand('uninstall', withHome())
+    ..addCommand('start', withHome())
+    ..addCommand('stop', withHome())
+    ..addCommand('restart', withHome())
     ..addCommand('status', withHome());
   final uninstall = withHome()
     ..addFlag(
@@ -102,7 +105,10 @@ Future<int> runAgent(
       )
       ..writeln('agent backup                            бэкап сейчас')
       ..writeln('agent stop                              остановить агента')
-      ..writeln('agent service install|uninstall|status  служба ОС для агента')
+      ..writeln(
+        'agent service install|uninstall|start|stop|restart|status  служба '
+        'ОС для агента',
+      )
       ..writeln(
         'agent uninstall [--purge] [--yes]       удалить службы '
         '(--purge — и данные)',
@@ -123,7 +129,9 @@ Future<int> runAgent(
   if (command.name == 'service') {
     final sub = command.command;
     if (sub == null) {
-      stderr.writeln('agent service install|uninstall|status');
+      stderr.writeln(
+        'agent service install|uninstall|start|stop|restart|status',
+      );
       return _Exit.usage;
     }
     return await _service(
@@ -224,9 +232,9 @@ Future<int> _call(
 String? _homeOverride(ArgResults args, Map<String, String> env) =>
     args.option('home') ?? env['FS_HOME'];
 
-/// `agent service install|uninstall|status` (задача 5.6.1): служба ОС
-/// для этого исполняемого файла агента. Хранителя ставит сам агент при
-/// включённой роли.
+/// `agent service install|uninstall|start|stop|restart|status` (задача
+/// 5.6.1): служба ОС для этого исполняемого файла агента. Хранителя ставит
+/// сам агент при включённой роли.
 Future<int> _service(
   AppHome home,
   ArgResults args,
@@ -236,6 +244,7 @@ Future<int> _service(
   final client = ClientServices(
     services: services,
     home: _homeOverride(args, env),
+    environment: env,
   );
   try {
     switch (args.name) {
@@ -252,6 +261,15 @@ Future<int> _service(
         await client.installAgent(Platform.resolvedExecutable);
       case 'uninstall':
         await services.uninstall(ClientServices.agentName);
+      case 'start':
+        await services.start(ClientServices.agentName);
+      case 'stop':
+        // Нормально, через локальный API, затем менеджер служб.
+        await client.stopAgentProcess();
+        await services.stop(ClientServices.agentName);
+      case 'restart':
+        await client.stopAgentProcess();
+        await services.restart(ClientServices.agentName);
       case 'status':
         break;
     }

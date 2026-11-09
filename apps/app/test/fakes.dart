@@ -7,6 +7,7 @@ import 'package:app/src/services/folder_picker.dart';
 import 'package:app/src/services/preferences.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/services/tray.dart';
+import 'package:app/src/services/update_controller.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
 
@@ -115,6 +116,7 @@ Widget testApp(
   FolderPicker? pickFolder,
   TrayHost? tray,
   BackgroundControl? background,
+  UpdateController? updates,
 }) => App(
   services: AppServices(
     agent: agent,
@@ -123,6 +125,7 @@ Widget testApp(
     pickFolder: pickFolder ?? ({initialDirectory}) async => null,
     tray: tray,
     background: background,
+    updates: updates,
   ),
 );
 
@@ -156,13 +159,20 @@ final class FakeTray implements TrayHost {
 
 /// Службы ОС для тестов.
 final class FakeBackground extends ChangeNotifier implements BackgroundControl {
-  new({this.available = true, this.agentState = ServiceState.running});
+  new({
+    this.available = true,
+    this.agentState = ServiceState.running,
+    this.nodeState = ServiceState.running,
+  });
 
   @override
   bool available;
 
   @override
   ServiceState? agentState;
+
+  @override
+  ServiceState? nodeState;
 
   @override
   bool autostart = false;
@@ -190,6 +200,36 @@ final class FakeBackground extends ChangeNotifier implements BackgroundControl {
     calls.add('uninstall');
     agentState = ServiceState.notInstalled;
     notifyListeners();
+  }
+
+  @override
+  Future<void> startService(String name) async {
+    calls.add('start $name');
+    _set(name, ServiceState.running);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> stopService(String name) async {
+    calls.add('stop $name');
+    _set(name, ServiceState.stopped);
+    notifyListeners();
+  }
+
+  @override
+  Future<void> restartService(String name) async {
+    calls.add('restart $name');
+    _set(name, ServiceState.running);
+    notifyListeners();
+  }
+
+  void _set(String name, ServiceState state) {
+    switch (name) {
+      case 'agent':
+        agentState = state;
+      case 'node':
+        nodeState = state;
+    }
   }
 
   @override

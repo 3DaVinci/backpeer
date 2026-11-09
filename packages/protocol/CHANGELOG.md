@@ -1,3 +1,7 @@
+## 0.0.4
+
+ - Bump "protocol" to `0.0.4`.
+
 ## 0.0.3-dev.5
 
  - Bump version to keep all packages in the workspace in lockstep.

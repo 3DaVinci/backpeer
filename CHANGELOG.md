@@ -3,6 +3,77 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-09
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`agent` - `v0.0.4`](#agent---v004)
+ - [`app` - `v0.0.4`](#app---v004)
+ - [`bench` - `v0.0.4`](#bench---v004)
+ - [`cli` - `v0.0.4`](#cli---v004)
+ - [`coordinator` - `v0.0.4`](#coordinator---v004)
+ - [`core` - `v0.0.4`](#core---v004)
+ - [`daemon_kit` - `v0.0.4`](#daemon_kit---v004)
+ - [`node` - `v0.0.4`](#node---v004)
+ - [`protocol` - `v0.0.4`](#protocol---v004)
+ - [`relay` - `v0.0.4`](#relay---v004)
+ - [`test_vectors` - `v0.0.4`](#test_vectors---v004)
+
+---
+
+#### `agent` - `v0.0.4`
+
+ - Bump "agent" to `0.0.4`.
+
+#### `app` - `v0.0.4`
+
+ - Bump "app" to `0.0.4`.
+
+#### `bench` - `v0.0.4`
+
+ - Bump "bench" to `0.0.4`.
+
+#### `cli` - `v0.0.4`
+
+ - Bump "cli" to `0.0.4`.
+
+#### `coordinator` - `v0.0.4`
+
+ - Bump "coordinator" to `0.0.4`.
+
+#### `core` - `v0.0.4`
+
+ - Bump "core" to `0.0.4`.
+
+#### `daemon_kit` - `v0.0.4`
+
+ - Bump "daemon_kit" to `0.0.4`.
+
+#### `node` - `v0.0.4`
+
+ - Bump "node" to `0.0.4`.
+
+#### `protocol` - `v0.0.4`
+
+ - Bump "protocol" to `0.0.4`.
+
+#### `relay` - `v0.0.4`
+
+ - Bump "relay" to `0.0.4`.
+
+#### `test_vectors` - `v0.0.4`
+
+ - Bump "test_vectors" to `0.0.4`.
+
+
 ## 2026-11-08
 
 ### Changes

@@ -1,5 +1,6 @@
 # Сборка артефактов на раннерах GitHub (ADR-014): мультиархитектурные
-# образы (задача 6.2.2) и пакеты Linux (6.3.2).
+# образы (задача 6.2.2), пакеты Linux (6.3.2) и установщик Windows (5.7.1,
+# без подписи).
 #
 # Запускается вручную или на тег: сборка артефактов не должна тратить
 # минуты на каждой правке. Образы копятся в GitHub Container Registry
@@ -130,14 +131,44 @@ jobs:
           path: build/packages/
           retention-days: 14
 
-  # Релиз GitHub для страницы загрузок (С.5.1): файлы Linux и SHA256SUMS.
-  # macOS .dmg подписывается на своём Mac и добавляется в релиз вручную
-  # (5.7.2); установщик Windows появится после 5.7.1. Теги с `-` (dev) —
-  # предварительные: сайт берёт только стабильный latest.
+  # Установщик Windows (5.7.1) — без подписи: сертификат Authenticode
+  # остаётся на машине подписи (П-3, 5.7.4, docs/ops/windows-signing.md).
+  # Установку на чистой системе проверяет задание `installer-windows` в
+  # ci.yml на каждый push; здесь нужен только файл для релиза.
+  windows-installer:
+    name: установщик Windows (x64, без подписи)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+        with:
+          linux-deps: "false"
+      - name: Сборка установщика
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File tool/windows_package/build.ps1
+      - name: Контрольная сумма в SHA256SUMS сходится
+        shell: pwsh
+        run: |
+          $hash = ((Get-Content build/packages/SHA256SUMS) -split '\s+')[0]
+          $file = (Get-ChildItem build/packages/Backpeer-Setup-*-windows-x64.exe).FullName
+          $actual = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $hash) { throw "SHA256SUMS: $hash, файл: $actual" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backpeer-windows-x64
+          path: |
+            build/packages/*.exe
+            build/packages/SHA256SUMS
+          retention-days: 14
+
+  # Релиз GitHub для страницы загрузок (С.5.1): файлы Linux и Windows,
+  # общий SHA256SUMS. macOS .dmg подписывается на своём Mac и добавляется
+  # в релиз вручную (5.7.2). Теги с `-` (dev) — предварительные: сайт берёт
+  # только стабильный latest.
   release:
     name: релиз GitHub
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [docker-manifest, linux-packages]
+    needs: [docker-manifest, linux-packages, windows-installer]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -145,12 +176,25 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: backpeer-linux-amd64
-          path: release
-      - name: Проверка файлов и хэшей
+          path: release/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: backpeer-windows-x64
+          path: release/windows
+      - name: Собрать файлы и общий SHA256SUMS
         run: |
-          cd release
+          mkdir -p release/files
+          cp release/linux/* release/files/
+          cp release/windows/*.exe release/files/
+          # У каждого набора свой SHA256SUMS; в релизе — один на все файлы.
+          # Windows пишет файл с CRLF — убираем \r, иначе sha256sum -c
+          # считает имя файла частью строки с возвратом каретки.
+          {
+            cat release/linux/SHA256SUMS
+            tr -d '\r' < release/windows/SHA256SUMS
+          } > release/files/SHA256SUMS
+          cd release/files
           ls -lh
-          test -f SHA256SUMS
           sha256sum -c SHA256SUMS
       - name: Публикация
         env:
@@ -165,4 +209,4 @@ jobs:
             --title "Backpeer $GITHUB_REF_NAME" \
             --generate-notes \
             $prerelease \
-            release/*
+            release/files/*

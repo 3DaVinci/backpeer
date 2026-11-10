@@ -58,8 +58,12 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
-          --dir assets --clobber
+        # Блочная запись, а не строка с «\»: в YAML простой многострочный
+        # скаляр склеивается через пробел, обратный слэш не продолжает
+        # команду, и gh получал лишние аргументы (первый прогон 10.11.2026).
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --dir assets --clobber
 
       - name: Пересобрать и подписать манифесты
         env:

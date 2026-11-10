@@ -3,6 +3,50 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-10
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`agent` - `v0.0.6`](#agent---v006)
+ - [`app` - `v0.0.6`](#app---v006)
+ - [`core` - `v0.0.6`](#core---v006)
+ - [`daemon_kit` - `v0.0.6`](#daemon_kit---v006)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.6`
+ - `cli` - `v0.0.6`
+ - `coordinator` - `v0.0.6`
+ - `node` - `v0.0.6`
+ - `protocol` - `v0.0.6`
+ - `relay` - `v0.0.6`
+ - `test_vectors` - `v0.0.6`
+
+---
+
+#### `agent` - `v0.0.6`
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+#### `app` - `v0.0.6`
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+#### `core` - `v0.0.6`
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+#### `daemon_kit` - `v0.0.6`
+ - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.
+
+
 ## 2026-11-09
 
 ### Changes

@@ -123,7 +123,7 @@ foreach ($program in @('agent', 'node')) {
     if ($subsystem -ne 2) {
         throw "у $launcher подсистема $subsystem, а нужна WINDOWS (2)"
     }
-    Write-Host "  $program: подсистема WINDOWS (2), окна консоли нет"
+    Write-Host "  ${program}: подсистема WINDOWS (2), окна консоли нет"
 }
 
 $shortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Backpeer.lnk'

@@ -85,8 +85,11 @@ function Resolve-Csc {
     }
     $command = Get-Command 'csc.exe' -ErrorAction SilentlyContinue
     if ($command) { return $command.Source }
-    throw ('csc.exe не найден: нужен .NET Framework 4 (входит в Windows '
-        + '10/11), см. docs/ops/windows-packages.md')
+    # Продолжение строки в PowerShell — оператором в конце строки: «+» в
+    # начале следующей строки разборщик не принимает (Missing closing ')')
+    # и задание сборки установщика падало ещё до компиляции (10.11.2026).
+    throw ('csc.exe не найден: нужен .NET Framework 4 (входит в Windows ' +
+        '10/11), см. docs/ops/windows-packages.md')
 }
 
 # Подсистема PE: 2 — WINDOWS (без консоли), 3 — CONSOLE. У запускателя

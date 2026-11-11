@@ -175,6 +175,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
+      # Задача 5.9.6: настоящая связка ключей macOS. Временная связка с
+      # пустым паролем — чтобы шаг не зависел от того, заперта ли связка
+      # пользователя runner (и не трогать её).
+      - name: Ключи в Keychain (5.1.5, 5.9.6)
+        working-directory: packages/agent
+        env:
+          FS_TEST_KEYCHAIN: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/backpeer-test.keychain-db"
+          old_default=$(security default-keychain -d user | tr -d '"')
+          old_list=$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')
+          cleanup() {
+            security list-keychains -d user -s $old_list || true
+            security default-keychain -s "$old_default" || true
+            security delete-keychain "$keychain" || true
+          }
+          trap cleanup EXIT
+          security create-keychain -p "" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "" "$keychain"
+          security list-keychains -d user -s "$keychain" $old_list
+          security default-keychain -s "$keychain"
+          dart test test/agent_keys_test.dart
       - name: Сборка cli, node, agent
         run: dart run tool/build_exe.dart
       - name: Программы запускаются
@@ -198,6 +223,12 @@ jobs:
       - uses: ./.github/actions/setup
         with:
           linux-deps: "false"
+      # Задача 5.9.6: настоящий диспетчер учётных данных Windows.
+      - name: Ключи в диспетчере учётных данных (5.1.5, 5.9.6)
+        working-directory: packages/agent
+        env:
+          FS_TEST_CREDENTIAL_MANAGER: "1"
+        run: dart test test/agent_keys_test.dart
       - name: Сборка cli, node, agent
         run: dart run tool/build_exe.dart
       - name: Программы запускаются

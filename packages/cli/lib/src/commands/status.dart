@@ -137,7 +137,9 @@ final class StatusCommand extends CliCommand {
         final result = r.isHealthy
             ? 'всё в порядке'
             : 'есть проблемы — в риске ${r.atRisk}, не восстановить '
-                  '${r.unrecoverable}, фрагментов с ошибками ${r.problems}';
+                  '${r.unrecoverable}, фрагментов с ошибками ${r.problems}'
+                  '${r.unchecked == 0 ? '' : ', не удалось проверить '
+                            'сегментов ${r.unchecked}'}';
         ctx.report.info(
           '  ${formatTime(r.at)} ${verifyModeName(r.mode)}: $result '
           '(сегментов ${r.segments})',

@@ -898,6 +898,92 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String progressPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String backupReading(String path) {
+    return 'Reading: $path';
+  }
+
+  @override
+  String get backupReadingFiles => 'Reading files';
+
+  @override
+  String get backupStoring => 'Sending data to hosts';
+
+  @override
+  String backupStoringSegments(int count) {
+    return 'Sending data to hosts (segments: $count)';
+  }
+
+  @override
+  String get backupCleaning => 'Cleaning up old snapshots';
+
+  @override
+  String get deleteSnapshot => 'Delete snapshot';
+
+  @override
+  String get deleteSnapshotTitle => 'Delete this snapshot?';
+
+  @override
+  String deleteSnapshotNote(String date) {
+    return 'The snapshot from $date and its data will be deleted from the hosts. It cannot be restored.';
+  }
+
+  @override
+  String get deleteBackup => 'Delete backup data';
+
+  @override
+  String get deleteAllSnapshots => 'Delete all snapshots of this computer';
+
+  @override
+  String get deleteAllSnapshotsTitle =>
+      'Delete all snapshots of this computer?';
+
+  @override
+  String get deleteAllSnapshotsNote =>
+      'All snapshots of this computer and their data on the hosts will be deleted. They cannot be restored.';
+
+  @override
+  String get deleteStarted => 'Deletion started';
+
+  @override
+  String get jobForget => 'Deleting snapshots';
+
+  @override
+  String get networkSection => 'Network';
+
+  @override
+  String get networkLimitsHint =>
+      'Speed limit for backup, verification and restore over the network on this computer. The keeper has its own limits on the Keeper screen.';
+
+  @override
+  String get networkUpload => 'Upload';
+
+  @override
+  String get networkDownload => 'Download';
+
+  @override
+  String get keeperSpeedLimits => 'Speed limits';
+
+  @override
+  String get deleteBackupHint =>
+      'All snapshots of this computer and their data on the hosts are deleted permanently. Snapshots of other computers of the account are not touched.';
+
+  @override
+  String forgetSnapshotsDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count snapshots deleted',
+      one: '$count snapshot deleted',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get addFolder => 'Add folder';
 
   @override

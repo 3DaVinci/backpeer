@@ -64,6 +64,11 @@ final class GarbageReport {
   int fragmentsDeleted = 0;
   int indexesRewritten = 0;
 
+  /// Сегментов недописанного бэкапа отброшено (с [collectGarbage] и
+  /// `discardInterrupted`: их фрагменты на узлы не попали или остались
+  /// без ссылок).
+  int discardedSegments = 0;
+
   /// Байт фрагментов (заголовок и тело) удалено с узлов.
   int bytesFreed = 0;
 
@@ -97,6 +102,14 @@ final class GarbageReport {
 /// другом устройстве той же учётной записи — его новый снимок может
 /// сослаться на чанк сегмента, который сборка сочла ненужным (блокировки
 /// учётной записи — после MVP).
+///
+/// [discardInterrupted] — не считать недописанный бэкап препятствием:
+/// недописанные сегменты (с `stored = 0`) отбрасываются, а сохранённые, но
+/// не попавшие ни в один индекс, собираются как обычный мусор, если их
+/// чанки не нужны ни одному снимку. Так `forget` освобождает место и после
+/// неудачного бэкапа, когда завершить его нельзя (нет связи, кончился
+/// суточный предел relay). Вызывающий обещает, что бэкап сейчас не идёт:
+/// агент выполняет задания по одному, а CLI — отдельный процесс.
 Future<GarbageReport> collectGarbage({
   required CryptoProvider crypto,
   required AccountKeys keys,
@@ -106,14 +119,24 @@ Future<GarbageReport> collectGarbage({
   required SegmentReleaser releaser,
   SegmentLocator? locator,
   bool dryRun = false,
+  bool discardInterrupted = false,
 }) async {
-  if (index.pendingSegments().isNotEmpty ||
-      index.segmentsNotInIndex().isNotEmpty) {
+  final interrupted =
+      index.pendingSegments().isNotEmpty ||
+      index.segmentsNotInIndex().isNotEmpty;
+  if (interrupted && !discardInterrupted) {
     throw const PreconditionException(
       'есть недописанный бэкап: сначала завершите backup',
     );
   }
   final report = GarbageReport();
+  if (interrupted && !dryRun) {
+    // Недописанные сегменты не попали на узлы (или попали частично):
+    // следующий бэкап их всё равно отбрасывает. Сохранённые, но не
+    // попавшие в индексы сегменты ниже соберутся как мусор, если они не
+    // нужны ни одному снимку.
+    report.discardedSegments = index.discardPendingSegments();
+  }
 
   // 1. Индексы и снимки.
   final recovered = await recoverIndex(

@@ -132,6 +132,69 @@ void main() {
     ]);
   }, timeout: const Timeout(Duration(minutes: 3)));
 
+  test('удаление снимка и всех снимков: данные уходят с узлов', () async {
+    final data = sampleData('${dir.path}/data');
+    final client = await start();
+    await client.call('settings', {
+      'paths': [data.path],
+      'intervalMinutes': null,
+      'retention': null,
+    });
+    int fragments() =>
+        Directory('${home.dir.path}/nodes')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.frag'))
+            .length;
+
+    final first = await backup(client);
+    expect(first['outcome'], 'ok');
+    expect(fragments(), greaterThan(0));
+    final id =
+        (first['result']! as Map<String, Object?>)['snapshotId']! as String;
+
+    final forget = finished(client, 'forget');
+    expect(
+      (await client.call('forget', {
+        'snapshot': id.substring(0, 8),
+      }))['started'],
+      isTrue,
+    );
+    final result = await forget;
+    expect(result['outcome'], 'ok');
+    expect((result['result']! as Map<String, Object?>)['snapshots'], 1);
+    expect((await client.call('snapshots'))['snapshots'], isEmpty);
+    expect(fragments(), 0, reason: 'сегменты удалены сборкой мусора');
+
+    // Неизвестный снимок — задание падает с понятной ошибкой.
+    final missing = finished(client, 'forget');
+    expect(
+      (await client.call('forget', {'snapshot': 'deadbeef'}))['started'],
+      isTrue,
+    );
+    final failed = await missing;
+    expect(failed['outcome'], 'failed');
+    expect('${failed['error']}', contains('не найден'));
+
+    // Слишком короткое начало — отказ до запуска задания.
+    await expectLater(
+      client.call('forget', {'snapshot': 'ab'}),
+      throwsA(
+        isA<ControlException>().having((e) => e.code, 'code', 'bad_request'),
+      ),
+    );
+
+    // Второй бэкап, затем удаление всех снимков.
+    expect((await backup(client))['outcome'], 'ok');
+    final all = finished(client, 'forget');
+    expect((await client.call('forget', {'all': true}))['started'], isTrue);
+    final allResult = await all;
+    expect(allResult['outcome'], 'ok');
+    expect((allResult['result']! as Map<String, Object?>)['snapshots'], 1);
+    expect((await client.call('snapshots'))['snapshots'], isEmpty);
+    expect(fragments(), 0);
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
   test('оценка объёма, пропущенные файлы, история, очистка по политике '
       'хранения', () async {
     final data = sampleData('${dir.path}/data');

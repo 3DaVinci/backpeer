@@ -136,6 +136,17 @@ String jobSummary(AppLocalizations l10n, Map<String, Object?> job) {
       if (r['retention'] case {'forgotten': final int n} when n > 0) {
         parts.add(l10n.retentionResult(n));
       }
+      if (job['kind'] == 'forget') {
+        if (r['snapshots'] case final int n) {
+          parts.add(l10n.forgetSnapshotsDeleted(n));
+        }
+        if (r['bytesFreed'] case final int b when b > 0) {
+          parts.add(l10n.freed(formatSize(l10n, b)));
+        }
+        // Снимки забыты, а мусор не убран (например, недописанный бэкап):
+        // повторить удаление стоит после бэкапа.
+        if (r['gcError'] case final String error) parts.add(l10n.failed(error));
+      }
   }
   return parts.join(', ');
 }

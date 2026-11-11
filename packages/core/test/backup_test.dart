@@ -269,7 +269,24 @@ void main() {
         unavailableNodes: {'node-01', 'node-05', 'node-09', 'node-13'},
       ),
     );
-    await expectLater(backup(bad), throwsA(isA<InsufficientShardsException>()));
+    await expectLater(
+      backup(bad),
+      throwsA(
+        isA<InsufficientShardsException>()
+            // Причина отказа видна пользователю: узел недоступен, а не
+            // просто «доступно фрагментов 0».
+            .having(
+              (e) => e.cause,
+              'cause',
+              isA<StorageException>().having(
+                (e) => e.problem,
+                'problem',
+                StorageProblem.unavailable,
+              ),
+            )
+            .having((e) => e.message, 'message', contains('недоступно')),
+      ),
+    );
     expect(await bad.objects.list(ObjectKind.snapshot), isEmpty);
     bad.index.close();
   });
@@ -400,6 +417,21 @@ void main() {
       reason: 'сделано не больше обработанного',
     );
     expect(progress.last.doneBytes, progress.last.bytes);
+    // Ход бэкапа: пока читаем — файл, который обрабатывается; после
+    // обхода — «сохраняем», файла нет.
+    expect(
+      progress.any(
+        (p) => p.stage == BackupStage.walking && p.currentPath != null,
+      ),
+      isTrue,
+    );
+    expect(
+      progress.any((p) => p.currentPath?.startsWith(data.path) ?? false),
+      isTrue,
+      reason: 'виден файл, который читается',
+    );
+    expect(progress.last.stage, BackupStage.storing);
+    expect(progress.last.currentPath, isNull);
     s.index.close();
   });
 

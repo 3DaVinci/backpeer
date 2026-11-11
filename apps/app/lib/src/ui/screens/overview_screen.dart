@@ -38,6 +38,7 @@ class OverviewScreen extends StatelessWidget {
 String jobName(AppLocalizations l10n, Object? kind) => switch (kind) {
   'verify' => l10n.jobVerify,
   'restore' => l10n.jobRestore,
+  'forget' => l10n.jobForget,
   _ => l10n.jobBackup,
 };
 

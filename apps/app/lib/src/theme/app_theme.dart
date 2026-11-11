@@ -55,6 +55,15 @@ abstract final class AppTheme {
         ),
         unselectedLabelTextStyle: label.copyWith(color: c.textMuted),
       ),
+      // Полоса хода: заполненная часть заметно темнее дорожки. Без этого
+      // дорожка (secondaryContainer = secondary, тёмно-зелёный) почти не
+      // отличалась от заполнения (primary) — «полоска целая» читалась хуже.
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: c.accent,
+        linearTrackColor: c.accentSoft,
+        linearMinHeight: 8,
+        circularTrackColor: c.accentSoft,
+      ),
       focusColor: c.focus.withValues(alpha: 0.24),
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),

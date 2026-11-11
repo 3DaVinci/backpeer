@@ -460,6 +460,8 @@ final class VerifyCommand extends CliCommand {
         'problems': report.problems.length,
         'atRisk': report.atRisk.length,
         'unrecoverable': report.unrecoverable.length,
+        'unchecked': report.unchecked.length,
+        'uncheckedFragments': report.uncheckedFragments,
         if (mode == VerifyMode.sample) 'sampled': sampled,
         if (mode == VerifyMode.audits) ...{
           'unaudited': report.unaudited.length,
@@ -484,6 +486,19 @@ final class VerifyCommand extends CliCommand {
       ctx.report.info(
         '  с фрагментами, проверенными аудитом за 30 суток: $audited из '
         '${report.segments}; ремонтируются: ${report.repairing}',
+      );
+    }
+    if (report.unchecked.isNotEmpty) {
+      // Не потеря данных: часть фрагментов на недоступных узлах. Причину
+      // показываем одну — она общая для всех сегментов.
+      ctx.report.warn(
+        'Не удалось проверить сегментов: ${report.unchecked.length} '
+        '(фрагментов ${report.uncheckedFragments}): '
+        '${report.unchecked.first.$2.message}',
+        {
+          'unchecked': report.unchecked.length,
+          'uncheckedFragments': report.uncheckedFragments,
+        },
       );
     }
     for (final p in report.problems) {
@@ -630,11 +645,20 @@ final class ForgetCommand extends CliCommand {
 /// на которые не ссылается ни один снимок.
 final class GcCommand extends CliCommand {
   new(super.ctx) {
-    argParser.addFlag(
-      'dry-run',
-      negatable: false,
-      help: 'Только посчитать, ничего не удалять',
-    );
+    argParser
+      ..addFlag(
+        'dry-run',
+        negatable: false,
+        help: 'Только посчитать, ничего не удалять',
+      )
+      ..addFlag(
+        'discard-interrupted',
+        negatable: false,
+        help:
+            'Не считать недописанный бэкап препятствием: недописанные '
+            'сегменты отбросить, сохранённые — собрать как мусор, если они '
+            'не нужны ни одному снимку. Бэкап сейчас не должен идти',
+      );
   }
 
   @override
@@ -648,6 +672,7 @@ final class GcCommand extends CliCommand {
   @override
   Future<int> run() async {
     final dryRun = argResults!.flag('dry-run');
+    final discardInterrupted = argResults!.flag('discard-interrupted');
     final session = await ctx.session(ctx.config());
     try {
       final report = await collectGarbage(
@@ -659,6 +684,7 @@ final class GcCommand extends CliCommand {
         releaser: session.releaser,
         locator: session.locator,
         dryRun: dryRun,
+        discardInterrupted: discardInterrupted,
       );
       for (final (location, e) in report.fragmentErrors) {
         ctx.report.warn(
@@ -674,7 +700,10 @@ final class GcCommand extends CliCommand {
             : 'Снимков ${report.snapshots}; удалено сегментов '
                   '${report.segmentsDeleted}, фрагментов '
                   '${report.fragmentsDeleted} (${report.bytesFreed} байт); '
-                  'осталось сегментов ${report.segmentsLive}.',
+                  'осталось сегментов ${report.segmentsLive}.'
+                  '${report.discardedSegments == 0 ? '' : ' Отброшено '
+                            'недописанных сегментов: '
+                            '${report.discardedSegments}.'}',
       );
       final code = report.fragmentErrors.isEmpty
           ? ExitCode.ok
@@ -683,6 +712,7 @@ final class GcCommand extends CliCommand {
         'dryRun': dryRun,
         'snapshots': report.snapshots,
         'segmentsDeleted': report.segmentsDeleted,
+        'discardedSegments': report.discardedSegments,
         'segmentsLive': report.segmentsLive,
         'fragmentsDeleted': report.fragmentsDeleted,
         'bytesFreed': report.bytesFreed,

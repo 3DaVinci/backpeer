@@ -24,11 +24,13 @@ class JobProgress extends StatelessWidget {
     final fraction = totalBytes == null || totalBytes == 0
         ? null
         : (done / totalBytes).clamp(0.0, 1.0);
+    final percent = fraction == null ? null : (fraction * 100).round();
     final lines = <String>[
       if (files != null && totalFiles != null && totalBytes != null)
         [
           l10n.progressOf(l10n.filesCount(files), '$totalFiles'),
           l10n.progressOf(formatSize(l10n, done), formatSize(l10n, totalBytes)),
+          if (percent != null) l10n.progressPercent(percent),
         ].join(', ')
       else if (files != null && totalBytes != null)
         // Восстановление: число файлов заранее не известно, объём — да.
@@ -50,6 +52,7 @@ class JobProgress extends StatelessWidget {
       ] else if (p['etaMs'] case final int eta)
         l10n.progressEta(formatRemaining(l10n, eta)),
     ];
+    final detail = job['kind'] == 'backup' ? _backupDetail(l10n, p) : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -73,7 +76,35 @@ class JobProgress extends StatelessWidget {
             ),
           ),
         ],
+        if (detail != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            detail,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
     );
+  }
+
+  /// Что бэкап делает сейчас: читает файл или уже отправляет сегменты
+  /// (этап `stage`, файл — `currentFile` в `progress`).
+  static String? _backupDetail(AppLocalizations l10n, Map<String, Object?> p) {
+    final file = p['currentFile'] as String?;
+    final segments = p['segmentsStored'] as int?;
+    return switch (p['stage']) {
+      'walking' =>
+        file == null ? l10n.backupReadingFiles : l10n.backupReading(file),
+      'storing' =>
+        segments == null
+            ? l10n.backupStoring
+            : l10n.backupStoringSegments(segments),
+      'cleaning' => l10n.backupCleaning,
+      _ => file == null ? null : l10n.backupReading(file),
+    };
   }
 }

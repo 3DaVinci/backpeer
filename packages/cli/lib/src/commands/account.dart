@@ -386,6 +386,22 @@ String _fragmentsLine(AppConfig config) {
       : 'Фрагменты: по сети (подсети узлов не проверяются)';
 }
 
+/// Предел скорости для вывода: «без предела» или байт в секунду.
+String _limit(int bytesPerSecond) =>
+    bytesPerSecond <= 0 ? 'без предела' : '$bytesPerSecond Б/с';
+
+/// Предел скорости из командной строки: 0 — без предела, не больше 1 ГиБ/с.
+int _limitOption(ArgResults a, String name) {
+  final value = _int(a, name);
+  if (value < 0 || value > 1 << 30) {
+    throw CliException(
+      '--$name: от 0 до ${1 << 30} байт в секунду (0 — без предела)',
+      ExitCode.usage,
+    );
+  }
+  return value;
+}
+
 final class ConfigCommand extends CliCommand {
   new(super.ctx) {
     argParser
@@ -422,6 +438,14 @@ final class ConfigCommand extends CliCommand {
         'clear-excludes',
         help: 'Убрать все правила исключения',
         negatable: false,
+      )
+      ..addOption(
+        'upload-limit',
+        help: 'Предел отдачи в сеть, байт в секунду (0 — без предела)',
+      )
+      ..addOption(
+        'download-limit',
+        help: 'Предел приёма из сети, байт в секунду (0 — без предела)',
       );
     for (final (name, what) in _keepOptions) {
       argParser.addOption(
@@ -491,6 +515,14 @@ final class ConfigCommand extends CliCommand {
       config.distinctSubnets = v == 'on';
       changed = true;
     }
+    if (a.option('upload-limit') != null) {
+      config.uploadBytesPerSecond = _limitOption(a, 'upload-limit');
+      changed = true;
+    }
+    if (a.option('download-limit') != null) {
+      config.downloadBytesPerSecond = _limitOption(a, 'download-limit');
+      changed = true;
+    }
     if (a.flag('clear-excludes')) {
       config.excludes = [];
       changed = true;
@@ -537,6 +569,12 @@ final class ConfigCommand extends CliCommand {
       ..info('Надёжность: ${config.durability}')
       ..info('Устройство: ${bytesToHex(config.deviceId).substring(0, 16)}…')
       ..info('Хранение снимков: ${config.retention ?? 'все'}')
+      ..info(
+        config.usesNetwork
+            ? 'Пределы сети: отдача ${_limit(config.uploadBytesPerSecond)}, '
+                  'приём ${_limit(config.downloadBytesPerSecond)}'
+            : 'Пределы сети: не действуют (фрагменты в папках-«узлах»)',
+      )
       ..info(
         'Исключения: '
         '${config.excludes.isEmpty ? 'нет' : config.excludes.join(', ')}',

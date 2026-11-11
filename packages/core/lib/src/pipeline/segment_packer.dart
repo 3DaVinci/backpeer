@@ -226,6 +226,11 @@ final class SegmentPacker implements ChunkSink {
         ],
       ),
     );
+    // Ошибки записи не прерывают остальные загрузки, но первая из них
+    // объясняет, почему фрагментов не хватило: «нет связи», «исчерпан
+    // суточный предел relay» и т. п. Без неё пользователь видел только
+    // «доступно фрагментов 0».
+    final errors = <CoreException>[];
     final written = await Future.wait([
       for (var i = 0; i < params.n; i++)
         if (targets[i] case final FragmentTarget target)
@@ -235,12 +240,18 @@ final class SegmentPacker implements ChunkSink {
                 encoded.fragments[i],
                 expectedFragmentId: encoded.fragmentIds[i],
               )
-              .then((_) {
-                // Фрагмент лёг: доля работы внутри сегмента растёт, пока
-                // остальные ещё загружаются (прогресс бэкапа).
-                flying.acked++;
-                return true;
-              }, onError: (Object _) => false)
+              .then(
+                (_) {
+                  // Фрагмент лёг: доля работы внутри сегмента растёт, пока
+                  // остальные ещё загружаются (прогресс бэкапа).
+                  flying.acked++;
+                  return true;
+                },
+                onError: (Object e) {
+                  if (e is CoreException) errors.add(e);
+                  return false;
+                },
+              )
         else
           Future.value(false),
     ]);
@@ -250,6 +261,7 @@ final class SegmentPacker implements ChunkSink {
         available: ok,
         required: params.minStoredFragments,
         segmentId: segmentId,
+        cause: _putCause(errors),
       );
     }
     await placer.commit(segmentId, [
@@ -269,6 +281,18 @@ final class SegmentPacker implements ChunkSink {
   void _rethrow() {
     final failure = _failure;
     if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
+  }
+
+  /// Причина, которую стоит показать: «узел недоступен» важнее прочих
+  /// ошибок — она объясняет отказ всех узлов сразу (нет связи, кончился
+  /// суточный предел relay).
+  static CoreException? _putCause(List<CoreException> errors) {
+    for (final e in errors) {
+      if (e is StorageException && e.problem == StorageProblem.unavailable) {
+        return e;
+      }
+    }
+    return errors.isEmpty ? null : errors.first;
   }
 }
 

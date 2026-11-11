@@ -103,16 +103,26 @@ final class IntegrityException extends CoreException {
 
 /// Для восстановления сегмента не хватает фрагментов.
 final class InsufficientShardsException extends CoreException {
-  const new({required this.available, required this.required, this.segmentId});
+  const new({
+    required this.available,
+    required this.required,
+    this.segmentId,
+    this.cause,
+  });
 
   final int available;
   final int required;
   final Uint8List? segmentId;
 
+  /// Первая ошибка записи фрагментов, если они не сохранились из-за неё
+  /// (узел недоступен, исчерпан суточный предел relay и т. п.).
+  final CoreException? cause;
+
   @override
   String get message {
     final id = segmentId == null ? '' : ' ${_shortId(segmentId!)}';
-    return 'сегмент$id: доступно фрагментов $available, нужно $required';
+    final why = cause == null ? '' : ' (${cause!.message})';
+    return 'сегмент$id: доступно фрагментов $available, нужно $required$why';
   }
 }
 

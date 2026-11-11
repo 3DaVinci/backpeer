@@ -35,6 +35,10 @@ final class TreeStats {
   /// уже сделана прошлым бэкапом — для доли сделанного.
   int knownBytes = 0;
 
+  /// Файл, который обрабатывается сейчас (`null` — ещё не начали или уже
+  /// прошли): для хода бэкапа в приложении.
+  String? currentPath;
+
   pb.SnapshotStats toProto() => pb.SnapshotStats(
     files: Int64(files),
     directories: Int64(directories),
@@ -132,6 +136,7 @@ final class TreeBuilder {
     );
     switch (entry.kind) {
       case EntryKind.file:
+        stats.currentPath = _show(path);
         final content = await _fileContent(path, entry);
         if (content == null) return null;
         stats.files++;

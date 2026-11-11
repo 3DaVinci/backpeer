@@ -168,6 +168,17 @@ void main() {
     expect(find.textContaining('испытательный срок до'), findsOneWidget);
     expect(find.text('пройдено 12, провалено 1'), findsOneWidget);
     expect(find.textContaining('баланс бартера'), findsOneWidget);
+    // Пределы сети видны в статистике и меняются тем же диалогом.
+    expect(find.text('Пределы скорости'), findsOneWidget);
+    expect(
+      find.text('Отдача: без предела, Приём: без предела'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('keeper-limits-edit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Настройки хранителя'), findsOneWidget);
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
     // Выход с переносом фрагментов — позже (4.4.1): кнопка недоступна.
     final leave = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, 'Выйти из роли'),

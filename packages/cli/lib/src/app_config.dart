@@ -52,6 +52,8 @@ final class AppConfig {
     this.fragments = FragmentsMode.folders,
     this.distinctSubnets = true,
     this.retention = RetentionPolicy.defaults,
+    this.uploadBytesPerSecond = 0,
+    this.downloadBytesPerSecond = 0,
   });
 
   /// Чтение с проверкой; ошибки — [ConfigException].
@@ -120,6 +122,8 @@ final class AppConfig {
         ),
         _ => RetentionPolicy.defaults,
       },
+      uploadBytesPerSecond: _speed('uploadBytesPerSecond', map),
+      downloadBytesPerSecond: _speed('downloadBytesPerSecond', map),
     )..check();
     return config;
   }
@@ -168,6 +172,13 @@ final class AppConfig {
   /// хранить все снимки. Нет в файле — [RetentionPolicy.defaults].
   RetentionPolicy? retention;
 
+  /// Предел отдачи в сеть, байт в секунду (0 — без предела): бэкап,
+  /// проверка и восстановление по сети делят один предел.
+  int uploadBytesPerSecond;
+
+  /// Предел приёма из сети, байт в секунду (0 — без предела).
+  int downloadBytesPerSecond;
+
   bool get usesCoordinator => coordinator != null;
 
   /// Фрагменты по сети на настоящие узлы.
@@ -208,6 +219,9 @@ final class AppConfig {
     if (fragments != FragmentsMode.folders) 'fragments': fragments.name,
     if (!distinctSubnets) 'distinctSubnets': false,
     'retention': retention?.toJson(),
+    if (uploadBytesPerSecond > 0) 'uploadBytesPerSecond': uploadBytesPerSecond,
+    if (downloadBytesPerSecond > 0)
+      'downloadBytesPerSecond': downloadBytesPerSecond,
   };
 
   void save(AppHome home) {
@@ -217,6 +231,18 @@ final class AppConfig {
     File('${home.configFile.path}.tmp')
       ..writeAsStringSync('$text\n')
       ..renameSync(home.configFile.path);
+  }
+
+  /// Предел скорости из файла: нет поля — 0 (без предела), иначе
+  /// целое от 0 до 1 ГиБ/с.
+  static int _speed(String key, Map<String, Object?> map) {
+    final value = map[key];
+    if (value == null) return 0;
+    if (value is int && value >= 0 && value <= 1 << 30) return value;
+    throw ConfigException(
+      key: key,
+      reason: 'целое число байт в секунду от 0 до ${1 << 30}',
+    );
   }
 
   static Uint8List _hex(String key, String value) {

@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'fakes.dart';
 
 const _id = 'a1b2c3d4e5f6';
+const _other = 'ffeeddccbbaa';
 const _root = '/home/user/Документы';
 
 Map<String, Object?> _snapshot() => {
@@ -20,6 +21,16 @@ Map<String, Object?> _snapshot() => {
   'paths': [_root],
   'files': 1000000,
   'bytes': 40 << 30,
+};
+
+Map<String, Object?> _otherSnapshot() => {
+  'id': _other,
+  'sequence': 2,
+  'createdAt': '2026-10-26T10:00:00Z',
+  'hostname': 'laptop',
+  'paths': [_root],
+  'files': 10,
+  'bytes': 1 << 20,
 };
 
 /// Каталог `big` на миллион файлов, остальное — маленькое.
@@ -140,6 +151,57 @@ void main() {
     expect(sourcePath(['/home/u', 'a', 'b.txt']), '/home/u/a/b.txt');
     expect(sourcePath(['/', 'etc']), '/etc');
     expect(sourcePath([r'C:\Users\u', 'a']), r'C:\Users\u/a');
+  });
+
+  testWidgets('удаление блокирует корзины других снимков', (tester) async {
+    final a = FakeProcess(
+      status: agentStatus(),
+      answer: (method, params) async => switch (method) {
+        'snapshots' => {
+          'snapshots': [_snapshot(), _otherSnapshot()],
+          'warnings': <Object?>[],
+        },
+        'forget' => {'started': true},
+        _ => const {},
+      },
+    );
+    await openRestore(tester, a);
+    await tester.tap(find.byKey(const ValueKey('snapshot-delete-$_id')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('snapshot-delete-confirm')));
+    // Не pumpAndSettle: индикатор хода в строке анимируется вечно.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(a.last('forget'), {'snapshot': _id});
+    expect(a.calls.where((c) => c.$1 == 'forget'), hasLength(1));
+
+    // Удаляемая строка показывает ход, у другого снимка корзина заблокирована
+    // сразу, не дожидаясь `job` в status.
+    expect(find.byKey(const ValueKey('snapshot-deleting')), findsOneWidget);
+    final other = tester.widget<IconButton>(
+      find.byKey(const ValueKey('snapshot-delete-$_other')),
+    );
+    expect(other.onPressed, isNull);
+
+    // Задание закончилось — корзины снова доступны.
+    a.emit('job_finished', {'kind': 'forget'});
+    await tester.pumpAndSettle();
+    final again = tester.widget<IconButton>(
+      find.byKey(const ValueKey('snapshot-delete-$_other')),
+    );
+    expect(again.onPressed, isNotNull);
+  });
+
+  testWidgets('удаление снимка: подтверждение и метод forget', (tester) async {
+    final a = agent();
+    await openRestore(tester, a);
+    await tester.tap(find.byKey(const ValueKey('snapshot-delete-$_id')));
+    await tester.pumpAndSettle();
+    expect(find.text('Удалить снимок?'), findsOneWidget);
+    expect(find.textContaining('Восстановить их не получится'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('snapshot-delete-confirm')));
+    await tester.pumpAndSettle();
+    expect(a.last('forget'), {'snapshot': _id});
   });
 
   testWidgets('каталог на миллион файлов читается постранично', (tester) async {

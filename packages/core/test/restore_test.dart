@@ -336,5 +336,70 @@ void main() {
       expect(report.problems.single.error, isA<IntegrityException>());
       expect(report.unrecoverable, isEmpty);
     });
+
+    test('недоступные узлы — неполная проверка, а не потеря данных', () async {
+      final offline = LocalFolderStore(
+        Directory('${dir.path}/nodes'),
+        crypto,
+        nodeCount: 20,
+        faults: FaultPlan(
+          unavailableNodes: {
+            for (var i = 0; i < 20; i++) 'node-${i.toString().padLeft(2, '0')}',
+          },
+        ),
+      );
+      for (final full in [false, true]) {
+        final report = await runVerify(
+          crypto: crypto,
+          keys: keys,
+          index: s.index,
+          fragments: offline,
+          full: full,
+        );
+        expect(
+          report.problems,
+          isEmpty,
+          reason: 'недоступность узла — не ошибка фрагмента',
+        );
+        expect(report.unrecoverable, isEmpty);
+        expect(report.unchecked, hasLength(backup.segmentsStored));
+        expect(report.uncheckedFragments, backup.segmentsStored * 20);
+        expect(report.isHealthy, isFalse, reason: 'проверка неполная');
+      }
+    });
+
+    test(
+      'потерянные и недоступные: невосстановим, если не хватает и их',
+      () async {
+        final segmentId = s.index.storedSegments().first;
+        final placed = s.index.fragments(segmentId);
+        // 13 фрагментов потеряны, 2 узла из оставшихся 7 не отвечают:
+        // подтверждённых 5, неизвестных 2, вместе меньше k = 10.
+        for (final f in placed.take(13)) {
+          await s.nodes.delete(f.node!, f.fragmentId);
+        }
+        final offline = LocalFolderStore(
+          Directory('${dir.path}/nodes'),
+          crypto,
+          nodeCount: 20,
+          faults: FaultPlan(
+            unavailableNodes: {placed[13].node!, placed[14].node!},
+          ),
+        );
+        final report = await runVerify(
+          crypto: crypto,
+          keys: keys,
+          index: s.index,
+          fragments: offline,
+        );
+        expect(report.unchecked, isEmpty);
+        expect(report.unrecoverable, hasLength(1));
+        expect(
+          (report.unrecoverable.single.$2 as InsufficientShardsException)
+              .available,
+          5,
+        );
+      },
+    );
   });
 }

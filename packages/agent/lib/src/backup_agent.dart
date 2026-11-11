@@ -23,7 +23,7 @@ import 'package:logging/logging.dart';
 import 'package:protocol/protocol.dart' as pb;
 
 /// Вид задания агента.
-enum JobKind { backup, verify, restore }
+enum JobKind { backup, verify, restore, forget }
 
 /// Состояние агента для приложения.
 enum AgentStatus {
@@ -698,6 +698,7 @@ final class BackupAgent {
           JobKind.backup => _backup(job, session, config, params),
           JobKind.verify => _verify(job, session, config, params),
           JobKind.restore => _restore(job, session, params),
+          JobKind.forget => _forget(job, session, config, params),
         };
       });
       record = JobRecord(
@@ -853,7 +854,7 @@ final class BackupAgent {
             {'path': e.path, 'reason': e.reason.name, 'detail': ?e.detail},
         ],
         'warnings': [for (final w in result.warnings) w.name],
-        'retention': await _cleanup(session, config),
+        'retention': await _cleanup(job, session, config),
       },
     );
   }
@@ -873,6 +874,8 @@ final class BackupAgent {
       'bytesRead': p.bytesRead,
       'newBytes': p.newBytes,
       'doneBytes': done,
+      'stage': p.stage.name,
+      'currentFile': ?p.currentPath,
       'segmentsStored': p.segmentsStored,
       'elapsedMs': ms,
       'totalFiles': ?total?.files,
@@ -881,6 +884,16 @@ final class BackupAgent {
       if (left != null && rate != null && rate > 0)
         'etaMs': (left < 0 ? 0 : left) * 1000 ~/ rate,
     };
+  }
+
+  /// Предел скорости сети из параметров `settings`: целое число байт в
+  /// секунду, 0 — без предела.
+  static int _speedLimit(String key, Object? value) {
+    if (value is int && value >= 0 && value <= 1 << 30) return value;
+    throw ControlException(
+      'bad_request',
+      '$key — целое число байт в секунду от 0 до ${1 << 30}',
+    );
   }
 
   /// Папки этого бэкапа: `paths` из параметров — бэкап отдельной папки с
@@ -925,11 +938,15 @@ final class BackupAgent {
   /// бэкап неудачным: снимок уже сохранён, следующий бэкап повторит
   /// очистку.
   Future<Map<String, Object?>?> _cleanup(
+    RunningJob job,
     Session session,
     AppConfig config,
   ) async {
     final policy = config.retention;
     if (policy == null) return null;
+    // Ход задания: снимок уже сохранён, осталась очистка по политике —
+    // приложение показывает это, а не «отправляем данные».
+    _progress(job, {...job.progress, 'stage': 'cleaning', 'currentFile': null});
     try {
       final report = await forgetByPolicy(
         catalog: _catalog(session),
@@ -940,21 +957,7 @@ final class BackupAgent {
         'kept': report.kept.length,
         'forgotten': report.forgotten.length,
       };
-      if (report.forgotten.isNotEmpty) {
-        final gc = await collectGarbage(
-          crypto: crypto,
-          keys: session.keys,
-          index: session.index,
-          fragments: session.fragments,
-          objects: session.objects,
-          releaser: session.releaser,
-          locator: session.locator,
-        );
-        out
-          ..['segmentsDeleted'] = gc.segmentsDeleted
-          ..['bytesFreed'] = gc.bytesFreed
-          ..['fragmentErrors'] = gc.fragmentErrors.length;
-      }
+      if (report.forgotten.isNotEmpty) out.addAll(await _garbage(session));
       _log.info(LogEvent('retention', out));
       return out;
     } on CoreException catch (e) {
@@ -964,6 +967,104 @@ final class BackupAgent {
       _log.warning(LogEvent('retention_failed', {'reason': e.message}));
       return {'error': e.message};
     }
+  }
+
+  /// Удаление снимков этого компьютера (`forget`): один по началу
+  /// идентификатора или все (`all`), затем сборка мусора — иначе данные
+  /// останутся на узлах. Снимки других устройств учётной записи не
+  /// трогаются: удалить их можно только с того устройства.
+  Future<(JobOutcome, Map<String, Object?>)> _forget(
+    RunningJob job,
+    Session session,
+    AppConfig config,
+    Map<String, Object?> params,
+  ) async {
+    final catalog = _catalog(session);
+    final listing = await catalog.list();
+    if (listing.warnings.isNotEmpty || listing.unreadable.isNotEmpty) {
+      throw const ControlException(
+        'failed',
+        'список снимков неполон (возможен откат или нечитаемый снимок): '
+            'удаление отложено',
+      );
+    }
+    final mine = [
+      for (final s in listing.snapshots)
+        if (constantTimeEquals(Uint8List.fromList(s.deviceId), config.deviceId))
+          s,
+    ];
+    final List<pb.Snapshot> targets;
+    if (params['all'] == true) {
+      targets = mine;
+    } else {
+      final prefix = params['snapshot'];
+      if (prefix is! String || prefix.trim().length < 4) {
+        throw const ControlException(
+          'bad_request',
+          'snapshot — идентификатор снимка или его начало (от 4 символов)',
+        );
+      }
+      final start = prefix.trim().toLowerCase();
+      targets = [
+        for (final s in mine)
+          if (bytesToHex(s.snapshotId).startsWith(start)) s,
+      ];
+      if (targets.isEmpty) {
+        throw const ControlException(
+          'not_found',
+          'снимок не найден (или он другого компьютера)',
+        );
+      }
+      if (targets.length > 1) {
+        throw const ControlException(
+          'bad_request',
+          'начало идентификатора неоднозначно',
+        );
+      }
+    }
+    _progress(job, {'stage': 'deleting', 'snapshots': targets.length});
+    for (final s in targets) {
+      job.cancel.check();
+      await catalog.forget(Uint8List.fromList(s.snapshotId));
+    }
+    if (targets.isEmpty) {
+      return (JobOutcome.ok, {'snapshots': 0, 'segmentsDeleted': 0});
+    }
+    // Снимки забыты — теперь освободить их сегменты на узлах.
+    _progress(job, {'stage': 'cleaning', 'snapshots': targets.length});
+    final out = <String, Object?>{'snapshots': targets.length};
+    try {
+      out.addAll(await _garbage(session));
+      return (JobOutcome.ok, out);
+    } on CoreException catch (e) {
+      // Снимки уже удалены; мусор уберёт следующее задание.
+      out['gcError'] = e.message;
+      return (JobOutcome.partial, out);
+    }
+  }
+
+  /// Сборка мусора в общем виде: удаляет сегменты, не нужные ни одному
+  /// снимку, и их фрагменты с узлов.
+  Future<Map<String, Object?>> _garbage(Session session) async {
+    final gc = await collectGarbage(
+      crypto: crypto,
+      keys: session.keys,
+      index: session.index,
+      fragments: session.fragments,
+      objects: session.objects,
+      releaser: session.releaser,
+      locator: session.locator,
+      // Агент выполняет задания по одному: бэкап сейчас не идёт, и
+      // недописанный бэкап (например, после отказа сети или квоты relay)
+      // не должен запирать удаление снимков и сборку мусора.
+      discardInterrupted: true,
+    );
+    return {
+      'segmentsDeleted': gc.segmentsDeleted,
+      'discardedSegments': gc.discardedSegments,
+      'bytesFreed': gc.bytesFreed,
+      'fragmentErrors': gc.fragmentErrors.length,
+    };
   }
 
   Future<(JobOutcome, Map<String, Object?>)> _verify(
@@ -997,6 +1098,8 @@ final class BackupAgent {
         'problems': report.problems.length,
         'atRisk': report.atRisk.length,
         'unrecoverable': report.unrecoverable.length,
+        'unchecked': report.unchecked.length,
+        'uncheckedFragments': report.uncheckedFragments,
       },
     );
   }
@@ -1114,6 +1217,19 @@ final class BackupAgent {
     if (paths != null &&
         (paths is! List<Object?> || paths.any((p) => p is! String))) {
       throw const ControlException('bad_request', 'paths — список строк');
+    }
+  }
+
+  /// Проверка параметров `forget` до запуска задания.
+  static void _checkForget(Map<String, Object?> params) {
+    if (params['all'] == true) return;
+    final snapshot = params['snapshot'];
+    if (snapshot is! String || snapshot.trim().length < 4) {
+      throw const ControlException(
+        'bad_request',
+        'snapshot — идентификатор снимка или его начало (от 4 символов), '
+            'или all: true',
+      );
     }
   }
 
@@ -1358,7 +1474,10 @@ final class BackupAgent {
     final json = settings.toJson();
     if (paths.home.initialized) {
       try {
-        json['retention'] = AppConfig.load(paths.home).retention?.toJson();
+        final config = AppConfig.load(paths.home);
+        json['retention'] = config.retention?.toJson();
+        json['uploadBytesPerSecond'] = config.uploadBytesPerSecond;
+        json['downloadBytesPerSecond'] = config.downloadBytesPerSecond;
       } on ConfigException {
         // Испорченный config.json покажет первое же задание.
       }
@@ -1419,6 +1538,13 @@ final class BackupAgent {
           final patch = {...params};
           final retention = patch.containsKey('retention');
           final policy = patch.remove('retention');
+          // Пределы скорости сети — в `config.json`, как и политика
+          // хранения: ими пользуются все задания, не только агент.
+          final limits =
+              patch.containsKey('uploadBytesPerSecond') ||
+              patch.containsKey('downloadBytesPerSecond');
+          final upload = patch.remove('uploadBytesPerSecond');
+          final download = patch.remove('downloadBytesPerSecond');
           final AgentSettings next;
           final RetentionPolicy? nextPolicy;
           try {
@@ -1434,16 +1560,33 @@ final class BackupAgent {
           } on ConfigException catch (e) {
             throw ControlException('bad_request', e.message);
           }
-          if (retention) {
+          if (retention || limits) {
             if (!paths.home.initialized) {
               throw const ControlException(
                 'not_configured',
                 'нет учётной записи на этом устройстве',
               );
             }
-            AppConfig.load(paths.home)
-              ..retention = nextPolicy
-              ..save(paths.home);
+            final AppConfig config;
+            try {
+              config = AppConfig.load(paths.home);
+            } on ConfigException catch (e) {
+              throw ControlException('bad_request', e.message);
+            }
+            if (retention) config.retention = nextPolicy;
+            if (upload != null) {
+              config.uploadBytesPerSecond = _speedLimit(
+                'uploadBytesPerSecond',
+                upload,
+              );
+            }
+            if (download != null) {
+              config.downloadBytesPerSecond = _speedLimit(
+                'downloadBytesPerSecond',
+                download,
+              );
+            }
+            config.save(paths.home);
           }
           for (final p in next.paths) {
             if (!Directory(p).isAbsolute) {
@@ -1459,6 +1602,10 @@ final class BackupAgent {
               'hours': ?next.hours?.toJson(),
               'onlyOnAcPower': next.onlyOnAcPower,
               if (retention) 'retention': nextPolicy?.toJson(),
+              if (upload != null || download != null)
+                'uploadBytesPerSecond': upload,
+              if (upload != null || download != null)
+                'downloadBytesPerSecond': download,
             }),
           );
           _waitingForPower = false;
@@ -1482,6 +1629,9 @@ final class BackupAgent {
       case 'restore':
         _checkRestore(params);
         return {'started': await _run(JobKind.restore, 'manual', params)};
+      case 'forget':
+        _checkForget(params);
+        return {'started': await _run(JobKind.forget, 'manual', params)};
       case 'cancel':
         _job?.cancel.cancel();
         return {'cancelled': _job != null};

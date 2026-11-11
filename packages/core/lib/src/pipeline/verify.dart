@@ -20,8 +20,18 @@ final class VerifyReport {
   int segments = 0;
   int fragments = 0;
 
-  /// Недостающие, недоступные и испорченные фрагменты.
+  /// Недостающие и испорченные фрагменты: их точно нет или они не
+  /// разбираются.
   final List<FragmentProblem> problems = [];
+
+  /// Сегменты, которые не удалось проверить: подтверждённых фрагментов
+  /// меньше k, но часть фрагментов на недоступных узлах — возможно, их
+  /// хватает. Это не потеря данных, а неполная проверка (нет связи с
+  /// хранителями, исчерпан суточный предел relay и т. п.).
+  final List<(Uint8List, CoreException)> unchecked = [];
+
+  /// Сколько фрагментов не удалось проверить ([unchecked]).
+  int uncheckedFragments = 0;
 
   /// Сегменты, у которых живых фрагментов не больше порога ремонта.
   final List<Uint8List> atRisk = [];
@@ -38,7 +48,10 @@ final class VerifyReport {
   int repairing = 0;
 
   bool get isHealthy =>
-      problems.isEmpty && atRisk.isEmpty && unrecoverable.isEmpty;
+      problems.isEmpty &&
+      atRisk.isEmpty &&
+      unrecoverable.isEmpty &&
+      unchecked.isEmpty;
 
   /// Итог для истории проверок локального индекса.
   VerifyRecord toRecord(VerifyMode mode, DateTime at) => VerifyRecord(
@@ -48,6 +61,7 @@ final class VerifyReport {
     atRisk: atRisk.length,
     unrecoverable: unrecoverable.length,
     problems: problems.length,
+    unchecked: unchecked.length,
   );
 }
 
@@ -87,12 +101,20 @@ Future<VerifyReport> runVerify({
     final entry = index.segment(segmentId)!;
     report.segments++;
     var alive = 0;
+    var unknown = 0;
+    CoreException? firstUnknown;
     final before = reader.problems.length;
     await reader.resolveNodes(segmentId);
     if (full) {
       for (final f in index.fragments(segmentId)) {
         report.fragments++;
-        if (await reader.fetch(segmentId, f) != null) alive++;
+        final beforeFetch = reader.problems.length;
+        if (await reader.fetch(segmentId, f) != null) {
+          alive++;
+        } else if (_unreachable(reader.problems[beforeFetch].error)) {
+          unknown++;
+          firstUnknown ??= reader.problems[beforeFetch].error;
+        }
       }
       if (alive >= entry.k) {
         // Сборка снова читает фрагменты: те же проблемы второй раз не нужны.
@@ -115,6 +137,10 @@ Future<VerifyReport> runVerify({
           }
           alive++;
         } on CoreException catch (e) {
+          if (_unreachable(e)) {
+            unknown++;
+            firstUnknown ??= e;
+          }
           reader.problems.add(
             FragmentProblem(
               segmentId: segmentId,
@@ -126,16 +152,32 @@ Future<VerifyReport> runVerify({
         }
       }
     }
-    report.problems.addAll(reader.problems.sublist(before));
+    report.problems.addAll(
+      reader.problems.sublist(before).where((p) => !_unreachable(p.error)),
+    );
     if (alive < entry.k) {
-      report.unrecoverable.add((
-        segmentId,
-        InsufficientShardsException(
-          available: alive,
-          required: entry.k,
-          segmentId: segmentId,
-        ),
-      ));
+      if (alive + unknown >= entry.k) {
+        // Часть фрагментов не удалось проверить: данных может хватать.
+        report.unchecked.add((
+          segmentId,
+          firstUnknown ??
+              InsufficientShardsException(
+                available: alive,
+                required: entry.k,
+                segmentId: segmentId,
+              ),
+        ));
+        report.uncheckedFragments += unknown;
+      } else {
+        report.unrecoverable.add((
+          segmentId,
+          InsufficientShardsException(
+            available: alive,
+            required: entry.k,
+            segmentId: segmentId,
+          ),
+        ));
+      }
     } else if (alive <= threshold) {
       report.atRisk.add(segmentId);
     }
@@ -218,3 +260,10 @@ StorageException _notFound(FragmentEntry f) => StorageException(
   problem: StorageProblem.notFound,
   operation: 'has',
 );
+
+/// Фрагмент не удалось проверить: узел недоступен (нет связи, исчерпан
+/// суточный предел relay) или не ответил координатор. Это не значит, что
+/// фрагмента нет.
+bool _unreachable(CoreException e) =>
+    e is CoordinatorException ||
+    (e is StorageException && e.problem == StorageProblem.unavailable);

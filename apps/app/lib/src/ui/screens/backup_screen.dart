@@ -1,8 +1,10 @@
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
+import 'package:app/src/ui/backup/delete_section.dart';
 import 'package:app/src/ui/backup/folders_section.dart';
 import 'package:app/src/ui/backup/history_section.dart';
+import 'package:app/src/ui/backup/network_section.dart';
 import 'package:app/src/ui/backup/retention_section.dart';
 import 'package:app/src/ui/backup/schedule_section.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
@@ -84,7 +86,9 @@ class BackupScreen extends StatelessWidget {
             ),
             FoldersSection(agent: agent, settings: settings),
             ScheduleSection(agent: agent, settings: settings),
+            NetworkSection(agent: agent, settings: settings),
             RetentionSection(agent: agent, settings: settings),
+            DeleteSection(agent: agent),
             HistorySection(agent: agent),
           ],
         );

@@ -32,6 +32,7 @@ final class VerifyRecord {
     required this.atRisk,
     required this.unrecoverable,
     required this.problems,
+    this.unchecked = 0,
   });
 
   factory fromJson(Map<String, Object?> json) => VerifyRecord(
@@ -41,6 +42,8 @@ final class VerifyRecord {
     atRisk: json['atRisk']! as int,
     unrecoverable: json['unrecoverable']! as int,
     problems: json['problems']! as int,
+    // Записи прежних версий этого поля не знают.
+    unchecked: json['unchecked'] as int? ?? 0,
   );
 
   final VerifyMode mode;
@@ -54,7 +57,12 @@ final class VerifyRecord {
   /// Недостающие или испорченные фрагменты.
   final int problems;
 
-  bool get isHealthy => atRisk == 0 && unrecoverable == 0 && problems == 0;
+  /// Сегменты, которые не удалось проверить: часть фрагментов на
+  /// недоступных узлах. Это не потеря данных.
+  final int unchecked;
+
+  bool get isHealthy =>
+      atRisk == 0 && unrecoverable == 0 && problems == 0 && unchecked == 0;
 
   Map<String, Object?> toJson() => {
     'mode': mode.name,
@@ -63,6 +71,7 @@ final class VerifyRecord {
     'atRisk': atRisk,
     'unrecoverable': unrecoverable,
     'problems': problems,
+    'unchecked': unchecked,
   };
 }
 

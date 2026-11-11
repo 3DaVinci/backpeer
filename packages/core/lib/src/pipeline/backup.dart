@@ -24,6 +24,15 @@ import 'package:fixnum/fixnum.dart';
 import 'package:meta/meta.dart';
 import 'package:protocol/protocol.dart' as pb;
 
+/// Этап бэкапа для хода задания в приложении.
+enum BackupStage {
+  /// Обход папок и чтение файлов; в [BackupProgress.currentPath] — файл.
+  walking,
+
+  /// Обход закончен, ждём записи сегментов, индексов и снимка.
+  storing,
+}
+
 /// Прогресс бэкапа.
 final class BackupProgress {
   const new({
@@ -32,6 +41,8 @@ final class BackupProgress {
     required this.bytesRead,
     required this.newBytes,
     required this.doneBytes,
+    required this.stage,
+    required this.currentPath,
     required this.segmentsStored,
     required this.segmentsInFlight,
     required this.elapsed,
@@ -53,6 +64,12 @@ final class BackupProgress {
   /// Что сейчас в пути — открытый сегмент и запечатанные без ответов
   /// узлов, — не в счёт.
   final int doneBytes;
+
+  /// Что делается сейчас: обход с чтением файлов или сохранение сегментов.
+  final BackupStage stage;
+
+  /// Файл, который читается сейчас; `null` — обход закончен.
+  final String? currentPath;
   final int segmentsStored;
   final int segmentsInFlight;
   final Duration elapsed;
@@ -149,6 +166,7 @@ Future<BackupResult> runBackup({
     sink: packer,
     index: index,
   );
+  var stage = BackupStage.walking;
   void progress() => onProgress?.call(
     BackupProgress(
       files: builder.stats.files,
@@ -156,6 +174,10 @@ Future<BackupResult> runBackup({
       bytesRead: builder.stats.bytesRead,
       newBytes: builder.stats.newBytes,
       doneBytes: _doneBytes(builder.stats, packer),
+      stage: stage,
+      currentPath: stage == BackupStage.walking
+          ? builder.stats.currentPath
+          : null,
       segmentsStored: packer.segmentsStored,
       segmentsInFlight: packer.segmentsInFlight,
       elapsed: watch.elapsed,
@@ -168,6 +190,8 @@ Future<BackupResult> runBackup({
     final List<ChunkId> root;
     try {
       root = await builder.buildRoot(paths);
+      stage = BackupStage.storing;
+      progress();
       await packer.flush();
     } on Object {
       await packer.abandon();

@@ -53,16 +53,20 @@ void main() {
     params: params,
   );
 
-  Future<GarbageReport> gc({bool dryRun = false, LocalIndex? on}) =>
-      collectGarbage(
-        crypto: crypto,
-        keys: keys,
-        index: on ?? index,
-        fragments: nodes,
-        objects: objects,
-        releaser: LocalSegmentReleaser(on ?? index, nodes),
-        dryRun: dryRun,
-      );
+  Future<GarbageReport> gc({
+    bool dryRun = false,
+    LocalIndex? on,
+    bool discardInterrupted = false,
+  }) => collectGarbage(
+    crypto: crypto,
+    keys: keys,
+    index: on ?? index,
+    fragments: nodes,
+    objects: objects,
+    releaser: LocalSegmentReleaser(on ?? index, nodes),
+    dryRun: dryRun,
+    discardInterrupted: discardInterrupted,
+  );
 
   int nodeBytes() =>
       Directory('${dir.path}/nodes')
@@ -186,4 +190,45 @@ void main() {
     await expectLater(gc(), throwsA(isA<PreconditionException>()));
     expect(index.storedSegments(), isNotEmpty);
   });
+
+  test(
+    'недописанный бэкап: без разрешения сборка стоит, с ним — идёт',
+    () async {
+      final a = Directory('${dir.path}/a')..createSync();
+      File('${a.path}/x.bin').writeAsBytesSync(splitmix64Bytes(6, 2 << 20));
+      final failing = LocalFolderStore(
+        Directory('${dir.path}/nodes'),
+        crypto,
+        nodeCount: 6,
+        faults: const FaultPlan(failWriteRate: 1),
+      );
+      await expectLater(
+        runBackup(
+          crypto: crypto,
+          keys: keys,
+          index: index,
+          fragments: failing,
+          objects: objects,
+          paths: [a.path],
+          deviceId: deviceId,
+          params: params,
+        ),
+        throwsA(isA<InsufficientShardsException>()),
+      );
+      expect(index.pendingSegments(), isNotEmpty);
+
+      // Без флага — как раньше: сначала завершите backup.
+      await expectLater(gc(), throwsA(isA<PreconditionException>()));
+      // Пробная сборка ничего не отбрасывает.
+      final dry = await gc(dryRun: true, discardInterrupted: true);
+      expect(dry.discardedSegments, 0);
+      expect(index.pendingSegments(), isNotEmpty);
+
+      final report = await gc(discardInterrupted: true);
+      expect(report.discardedSegments, greaterThan(0));
+      expect(index.pendingSegments(), isEmpty);
+      expect(index.segmentsNotInIndex(), isEmpty);
+      expect(report.snapshots, 0);
+    },
+  );
 }

@@ -192,7 +192,12 @@ class _KeeperScreenState extends State<KeeperScreen> {
                 ],
               )
             else ...[
-              _KeeperStats(status: node.status!, stats: _stats),
+              _KeeperStats(
+                status: node.status!,
+                stats: _stats,
+                settings: settings,
+                onEdit: agentReady && info != null ? _setup : null,
+              ),
               _Standing(status: node.status!),
             ],
             if (info?['linger']
@@ -252,10 +257,19 @@ class _KeeperScreenState extends State<KeeperScreen> {
 
 /// Место, трафик, способ подключения (`status` и `stats` демона `node`).
 class _KeeperStats extends StatelessWidget {
-  const new({required this.status, required this.stats});
+  const new({
+    required this.status,
+    required this.stats,
+    required this.settings,
+    required this.onEdit,
+  });
 
   final Map<String, Object?> status;
   final Map<String, Object?>? stats;
+
+  /// Настройки роли (`keeper.info.settings`): пределы скорости сети.
+  final Map<String, Object?>? settings;
+  final VoidCallback? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +282,19 @@ class _KeeperStats extends StatelessWidget {
     final mapping = s['portMapping'] as Map<String, Object?>?;
     return Section(
       title: l10n.keeperStats,
-      trailing: Chip(label: Text(nodeStateName(l10n, s['state']))),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Chip(label: Text(nodeStateName(l10n, s['state']))),
+          if (onEdit != null)
+            IconButton(
+              key: const ValueKey('keeper-limits-edit'),
+              tooltip: l10n.keeperChange,
+              onPressed: onEdit,
+              icon: const Icon(Icons.tune),
+            ),
+        ],
+      ),
       children: [
         Fact(l10n.keeperQuota, size(s['quotaBytes'])),
         Fact(l10n.keeperUsed, size(s['usedBytes'] ?? 0)),
@@ -276,6 +302,8 @@ class _KeeperStats extends StatelessWidget {
         Fact(l10n.keeperDisk, size(s['diskAvailableBytes'])),
         if (s['storageDir'] case final String dir) Fact(l10n.keeperFolder, dir),
         Fact(l10n.keeperFragments, '${s['fragments'] ?? 0}'),
+        if (settings case final limits?)
+          Fact(l10n.keeperSpeedLimits, speedLimitsText(l10n, limits)),
         if (stats case final st?)
           Fact(
             l10n.keeperTraffic,
@@ -300,6 +328,23 @@ class _KeeperStats extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Пределы скорости хранителя (`keeper.info.settings`): отдача, приём и
+/// более строгий предел в рабочие часы, если правило задано.
+String speedLimitsText(AppLocalizations l10n, Map<String, Object?> settings) {
+  String one(Object? v) => switch (v) {
+    final int rate when rate > 0 => l10n.speedValue(formatSize(l10n, rate)),
+    _ => l10n.speedUnlimited,
+  };
+  final daytime = workHoursLimit(
+    (settings['schedule'] as List<Object?>?) ?? const [],
+  );
+  return [
+    '${l10n.keeperUpload}: ${one(settings['uploadBytesPerSecond'])}',
+    '${l10n.keeperDownload}: ${one(settings['downloadBytesPerSecond'])}',
+    if (daytime > 0) '${l10n.keeperWorkHours}: ${one(daytime)}',
+  ].join(', ');
 }
 
 /// Как к узлу подключаются: напрямую, по UDP после сведения, через relay.

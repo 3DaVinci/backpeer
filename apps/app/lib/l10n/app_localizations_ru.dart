@@ -910,6 +910,93 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String progressPercent(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String backupReading(String path) {
+    return 'Читаем: $path';
+  }
+
+  @override
+  String get backupReadingFiles => 'Читаем файлы';
+
+  @override
+  String get backupStoring => 'Отправляем данные на узлы';
+
+  @override
+  String backupStoringSegments(int count) {
+    return 'Отправляем данные на узлы (сегментов: $count)';
+  }
+
+  @override
+  String get backupCleaning => 'Убираем старые снимки';
+
+  @override
+  String get deleteSnapshot => 'Удалить снимок';
+
+  @override
+  String get deleteSnapshotTitle => 'Удалить снимок?';
+
+  @override
+  String deleteSnapshotNote(String date) {
+    return 'Снимок от $date и его данные будут удалены с узлов. Восстановить их не получится.';
+  }
+
+  @override
+  String get deleteBackup => 'Удалить данные бэкапа';
+
+  @override
+  String get deleteAllSnapshots => 'Удалить все снимки этого компьютера';
+
+  @override
+  String get deleteAllSnapshotsTitle => 'Удалить все снимки этого компьютера?';
+
+  @override
+  String get deleteAllSnapshotsNote =>
+      'Все снимки этого компьютера и их данные на узлах будут удалены. Восстановить их не получится.';
+
+  @override
+  String get deleteStarted => 'Удаление начато';
+
+  @override
+  String get jobForget => 'Удаление снимков';
+
+  @override
+  String get networkSection => 'Сеть';
+
+  @override
+  String get networkLimitsHint =>
+      'Предел скорости для бэкапа, проверки и восстановления по сети на этом компьютере. У хранителя свои пределы — на экране «Хранитель».';
+
+  @override
+  String get networkUpload => 'Отдача';
+
+  @override
+  String get networkDownload => 'Приём';
+
+  @override
+  String get keeperSpeedLimits => 'Пределы скорости';
+
+  @override
+  String get deleteBackupHint =>
+      'Все снимки этого компьютера и их данные на узлах удаляются без возможности восстановления. Снимки других компьютеров учётной записи не трогаются.';
+
+  @override
+  String forgetSnapshotsDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count снимка удалено',
+      many: '$count снимков удалено',
+      few: '$count снимка удалено',
+      one: '$count снимок удалён',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get addFolder => 'Добавить папку';
 
   @override

@@ -1580,6 +1580,138 @@ abstract class AppLocalizations {
   /// **'Папки: {paths}'**
   String backupPaths(String paths);
 
+  /// No description provided for @progressPercent.
+  ///
+  /// In ru, this message translates to:
+  /// **'{percent}%'**
+  String progressPercent(int percent);
+
+  /// No description provided for @backupReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Читаем: {path}'**
+  String backupReading(String path);
+
+  /// No description provided for @backupReadingFiles.
+  ///
+  /// In ru, this message translates to:
+  /// **'Читаем файлы'**
+  String get backupReadingFiles;
+
+  /// No description provided for @backupStoring.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправляем данные на узлы'**
+  String get backupStoring;
+
+  /// No description provided for @backupStoringSegments.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправляем данные на узлы (сегментов: {count})'**
+  String backupStoringSegments(int count);
+
+  /// No description provided for @backupCleaning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убираем старые снимки'**
+  String get backupCleaning;
+
+  /// No description provided for @deleteSnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить снимок'**
+  String get deleteSnapshot;
+
+  /// No description provided for @deleteSnapshotTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить снимок?'**
+  String get deleteSnapshotTitle;
+
+  /// No description provided for @deleteSnapshotNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снимок от {date} и его данные будут удалены с узлов. Восстановить их не получится.'**
+  String deleteSnapshotNote(String date);
+
+  /// No description provided for @deleteBackup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить данные бэкапа'**
+  String get deleteBackup;
+
+  /// No description provided for @deleteAllSnapshots.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить все снимки этого компьютера'**
+  String get deleteAllSnapshots;
+
+  /// No description provided for @deleteAllSnapshotsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить все снимки этого компьютера?'**
+  String get deleteAllSnapshotsTitle;
+
+  /// No description provided for @deleteAllSnapshotsNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все снимки этого компьютера и их данные на узлах будут удалены. Восстановить их не получится.'**
+  String get deleteAllSnapshotsNote;
+
+  /// No description provided for @deleteStarted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удаление начато'**
+  String get deleteStarted;
+
+  /// No description provided for @jobForget.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удаление снимков'**
+  String get jobForget;
+
+  /// No description provided for @networkSection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сеть'**
+  String get networkSection;
+
+  /// No description provided for @networkLimitsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Предел скорости для бэкапа, проверки и восстановления по сети на этом компьютере. У хранителя свои пределы — на экране «Хранитель».'**
+  String get networkLimitsHint;
+
+  /// No description provided for @networkUpload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отдача'**
+  String get networkUpload;
+
+  /// No description provided for @networkDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приём'**
+  String get networkDownload;
+
+  /// No description provided for @keeperSpeedLimits.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пределы скорости'**
+  String get keeperSpeedLimits;
+
+  /// No description provided for @deleteBackupHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все снимки этого компьютера и их данные на узлах удаляются без возможности восстановления. Снимки других компьютеров учётной записи не трогаются.'**
+  String get deleteBackupHint;
+
+  /// No description provided for @forgetSnapshotsDeleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} снимок удалён} few{{count} снимка удалено} many{{count} снимков удалено} other{{count} снимка удалено}}'**
+  String forgetSnapshotsDeleted(int count);
+
   /// No description provided for @addFolder.
   ///
   /// In ru, this message translates to:

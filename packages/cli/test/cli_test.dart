@@ -487,6 +487,32 @@ void main() {
       }),
     );
     expect(local.usesNetwork, isFalse);
+
+    // Пределы скорости сети: нет полей — без предела, после сохранения
+    // читаются обратно.
+    expect(folders.uploadBytesPerSecond, 0);
+    expect(folders.downloadBytesPerSecond, 0);
+    expect(folders.toJson().containsKey('uploadBytesPerSecond'), isFalse);
+    final limited = AppConfig.parse(
+      jsonEncode({
+        ...base,
+        'uploadBytesPerSecond': 128 << 10,
+        'downloadBytesPerSecond': 1 << 20,
+      }),
+    );
+    expect(limited.uploadBytesPerSecond, 128 << 10);
+    expect(limited.downloadBytesPerSecond, 1 << 20);
+    final again = AppConfig.parse(jsonEncode(limited.toJson()));
+    expect(again.uploadBytesPerSecond, 128 << 10);
+    expect(again.downloadBytesPerSecond, 1 << 20);
+    for (final bad in [-1, 1 << 31, '1M']) {
+      expect(
+        () =>
+            AppConfig.parse(jsonEncode({...base, 'uploadBytesPerSecond': bad})),
+        throwsA(isA<ConfigException>()),
+        reason: 'предел $bad',
+      );
+    }
   });
 
   test('--version', () async {

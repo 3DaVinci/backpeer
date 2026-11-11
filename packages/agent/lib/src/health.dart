@@ -119,6 +119,18 @@ HealthReport assessHealth(
           'мало живых фрагментов: сегментов ${r['atRisk']}',
         ),
       );
+    } else if ((r['unchecked'] as int? ?? 0) > 0) {
+      // Не смогли проверить: узлы недоступны (нет связи, кончился
+      // суточный предел relay). Это не потеря данных, но проверка
+      // неполная — говорим об этом честно.
+      reasons.add(
+        HealthReason(
+          'verify_failed',
+          'проверка неполная: не удалось связаться с узлами '
+              '(сегментов ${r['unchecked']})',
+          attention: false,
+        ),
+      );
     } else if ((r['problems'] as int? ?? 0) > 0) {
       reasons.add(
         HealthReason(

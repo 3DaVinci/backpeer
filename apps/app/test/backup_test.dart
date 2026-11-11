@@ -213,7 +213,10 @@ void main() {
     await openBackup(tester, agent);
     expect(find.text('Текущий бэкап'), findsOneWidget);
     expect(find.text('Продолжение прерванного бэкапа'), findsOneWidget);
-    expect(find.text('60 файлов из 120, 1,0 ГиБ из 4,0 ГиБ'), findsOneWidget);
+    expect(
+      find.text('60 файлов из 120, 1,0 ГиБ из 4,0 ГиБ, 25%'),
+      findsOneWidget,
+    );
     expect(find.text('10,0 МиБ/с, осталось около 5 минут'), findsOneWidget);
     final bar = tester.widget<LinearProgressIndicator>(
       find.byType(LinearProgressIndicator),
@@ -331,6 +334,8 @@ void main() {
             'totalBytes': 4 << 30,
             'bytesPerSecond': 10 << 20,
             'etaMs': 3 * 60 * 1000,
+            'stage': 'walking',
+            'currentFile': '/home/user/Документы/большой.iso',
           },
         },
       ),
@@ -340,7 +345,93 @@ void main() {
       find.byType(LinearProgressIndicator),
     );
     expect(bar.value, closeTo(0.25, 1e-9));
-    expect(find.text('40 файлов из 500, 1,0 ГиБ из 4,0 ГиБ'), findsOneWidget);
+    expect(
+      find.text('40 файлов из 500, 1,0 ГиБ из 4,0 ГиБ, 25%'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Читаем: /home/user/Документы/большой.iso'),
+      findsOneWidget,
+    );
+
+    // Сегменты отправляются — файл уже не читается.
+    agent.update(
+      status: agentStatus(
+        status: 'working',
+        job: {
+          'kind': 'backup',
+          'trigger': 'manual',
+          'progress': {
+            'files': 500,
+            'doneBytes': 2 << 30,
+            'totalFiles': 500,
+            'totalBytes': 4 << 30,
+            'stage': 'storing',
+            'segmentsStored': 3,
+          },
+        },
+      ),
+    );
+    await tester.pump();
+    expect(
+      find.text('Отправляем данные на узлы (сегментов: 3)'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('пределы скорости сети: выбор сохраняется', (tester) async {
+    final agent = FakeProcess(status: agentStatus());
+    await openBackup(tester, agent);
+
+    await tester.tap(
+      find.byKey(const ValueKey('network-uploadBytesPerSecond')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('1,0 МиБ/с').last);
+    await tester.pumpAndSettle();
+    expect(agent.last('settings'), {'uploadBytesPerSecond': 1 << 20});
+  });
+
+  testWidgets('удаление данных бэкапа: все снимки с подтверждением', (
+    tester,
+  ) async {
+    final agent = FakeProcess(status: agentStatus());
+    await openBackup(tester, agent);
+
+    await tester.tap(find.byKey(const ValueKey('delete-all')));
+    await tester.pumpAndSettle();
+    expect(find.text('Удалить все снимки этого компьютера?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('delete-all-confirm')));
+    await tester.pumpAndSettle();
+    expect(agent.last('forget'), {'all': true});
+  });
+
+  testWidgets('удаление данных бэкапа блокирует кнопку сразу', (tester) async {
+    final agent = FakeProcess(
+      status: agentStatus(),
+      answer: (method, params) async =>
+          method == 'forget' ? {'started': true} : const {},
+    );
+    await openBackup(tester, agent);
+
+    await tester.tap(find.byKey(const ValueKey('delete-all')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('delete-all-confirm')));
+    // Не pumpAndSettle: неопределённый индикатор хода анимируется вечно.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(agent.last('forget'), {'all': true});
+
+    // Задание ещё не пришло в status, но второй запуск уже невозможен.
+    OutlinedButton button() =>
+        tester.widget<OutlinedButton>(find.byKey(const ValueKey('delete-all')));
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(button().onPressed, isNull);
+
+    // Задание закончилось — кнопка снова доступна.
+    agent.emit('job_finished', {'kind': 'forget'});
+    await tester.pumpAndSettle();
+    expect(button().onPressed, isNotNull);
   });
 
   testWidgets('здоровье: требует внимания с причинами, проверить сейчас', (

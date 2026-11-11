@@ -204,6 +204,9 @@ void main() {
       for (final (result, code, state) in [
         ({'unrecoverable': 2}, 'unrecoverable', HealthState.attention),
         ({'atRisk': 1}, 'at_risk', HealthState.attention),
+        // Не удалось связаться с узлами: проверка неполная, но это не
+        // потеря данных и не повод для тревоги.
+        ({'unchecked': 4}, 'verify_failed', HealthState.ok),
         ({'problems': 3}, 'fragments_missing', HealthState.ok),
       ]) {
         final s = AgentState()

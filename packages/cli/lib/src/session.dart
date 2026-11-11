@@ -169,6 +169,10 @@ Future<Session> _networkSession(
   );
   final meter = TrafficMeter();
   final book = TicketBook();
+  // Пределы скорости сети из `config.json` (0 — без предела): один на
+  // отдачу фрагментов и один на приём, общие для всех узлов сессии.
+  final upload = config.uploadBytesPerSecond;
+  final download = config.downloadBytesPerSecond;
   final store = NetworkFragmentStore(
     crypto: crypto,
     transport: ConnectionStrategy.forCoordinator(
@@ -183,6 +187,8 @@ Future<Session> _networkSession(
       meter: meter,
     ),
     access: book,
+    uploadLimiter: upload > 0 ? BandwidthLimiter(() => upload) : null,
+    downloadLimiter: download > 0 ? BandwidthLimiter(() => download) : null,
   );
   final segments = CoordinatorSegments(
     client: client,

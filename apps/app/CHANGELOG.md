@@ -1,3 +1,7 @@
+## 0.0.7-dev.2
+
+ - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.
+
 ## 0.0.7-dev.1
 
  - Bump version to keep all packages in the workspace in lockstep.

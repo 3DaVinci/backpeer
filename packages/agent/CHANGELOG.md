@@ -1,3 +1,7 @@
+## 0.0.7-dev.2
+
+ - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.
+
 ## 0.0.7-dev.1
 
  - **FEAT**(agent): ключи в Keychain macOS и в диспетчере учётных данных Windows (5.1.5).

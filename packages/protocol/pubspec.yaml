@@ -1,6 +1,6 @@
 name: protocol
 description: Сетевой протокол (Protobuf-схемы и сгенерированный Dart-код). Без Flutter.
-version: 0.0.7-dev.1
+version: 0.0.7-dev.2
 publish_to: none
 resolution: workspace
 
@@ -13,4 +13,4 @@ dependencies:
 
 dev_dependencies:
   test: ^1.31.1
-  test_vectors: ^0.0.7-dev.1
+  test_vectors: ^0.0.7-dev.2

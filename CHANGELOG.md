@@ -15,6 +15,54 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.7-dev.2`](#agent---v007-dev2)
+ - [`app` - `v0.0.7-dev.2`](#app---v007-dev2)
+ - [`cli` - `v0.0.7-dev.2`](#cli---v007-dev2)
+ - [`core` - `v0.0.7-dev.2`](#core---v007-dev2)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.7-dev.2`
+ - `coordinator` - `v0.0.7-dev.2`
+ - `daemon_kit` - `v0.0.7-dev.2`
+ - `node` - `v0.0.7-dev.2`
+ - `protocol` - `v0.0.7-dev.2`
+ - `relay` - `v0.0.7-dev.2`
+ - `test_vectors` - `v0.0.7-dev.2`
+
+---
+
+#### `agent` - `v0.0.7-dev.2`
+
+ - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.
+
+#### `app` - `v0.0.7-dev.2`
+
+ - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.
+
+#### `cli` - `v0.0.7-dev.2`
+
+ - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.
+
+#### `core` - `v0.0.7-dev.2`
+
+ - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.
+
+
+## 2026-11-11
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.7-dev.1`](#agent---v007-dev1)
 
 Packages versioned in lockstep only:

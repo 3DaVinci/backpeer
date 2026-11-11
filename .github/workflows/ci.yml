@@ -185,8 +185,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          keychain="$RUNNER_TEMP/backpeer-test.keychain-db"
-          old_default=$(security default-keychain -d user | tr -d '"')
+          keychain="$RUNNER_TEMP/backpeer-test.keychain"
+          old_default=$(security default-keychain -d user | tr -d '" ')
           old_list=$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')
           cleanup() {
             security list-keychains -d user -s $old_list || true

@@ -1,3 +1,7 @@
+## 0.0.7-dev.0
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.6
 
  - **FEAT**(app,tool,repo): службы без окон и автообновление из GitHub.

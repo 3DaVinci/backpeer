@@ -1,3 +1,7 @@
+## 0.0.7-dev.1
+
+ - **FEAT**(agent): ключи в Keychain macOS и в диспетчере учётных данных Windows (5.1.5).
+
 ## 0.0.7-dev.0
 
  - **FEAT**(app,agent,core,coordinator): прогресс, бэкап отдельной папки и скорость бэкапа.

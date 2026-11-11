@@ -15,6 +15,42 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.7-dev.1`](#agent---v007-dev1)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `app` - `v0.0.7-dev.1`
+ - `bench` - `v0.0.7-dev.1`
+ - `cli` - `v0.0.7-dev.1`
+ - `coordinator` - `v0.0.7-dev.1`
+ - `core` - `v0.0.7-dev.1`
+ - `daemon_kit` - `v0.0.7-dev.1`
+ - `node` - `v0.0.7-dev.1`
+ - `protocol` - `v0.0.7-dev.1`
+ - `relay` - `v0.0.7-dev.1`
+ - `test_vectors` - `v0.0.7-dev.1`
+
+---
+
+#### `agent` - `v0.0.7-dev.1`
+
+ - **FEAT**(agent): ключи в Keychain macOS и в диспетчере учётных данных Windows (5.1.5).
+
+
+## 2026-11-11
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.7-dev.0`](#agent---v007-dev0)
  - [`app` - `v0.0.7-dev.0`](#app---v007-dev0)
  - [`coordinator` - `v0.0.7-dev.0`](#coordinator---v007-dev0)

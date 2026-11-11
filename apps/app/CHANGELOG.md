@@ -1,3 +1,7 @@
+## 0.0.7-dev.1
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.7-dev.0
 
  - **FEAT**(app,agent,core,coordinator): прогресс, бэкап отдельной папки и скорость бэкапа.

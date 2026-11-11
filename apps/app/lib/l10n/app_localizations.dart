@@ -1568,6 +1568,18 @@ abstract class AppLocalizations {
   /// **'Текущий бэкап'**
   String get currentBackup;
 
+  /// No description provided for @backupFolderNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сделать бэкап этой папки'**
+  String get backupFolderNow;
+
+  /// No description provided for @backupPaths.
+  ///
+  /// In ru, this message translates to:
+  /// **'Папки: {paths}'**
+  String backupPaths(String paths);
+
   /// No description provided for @addFolder.
   ///
   /// In ru, this message translates to:

@@ -24,7 +24,10 @@ final class ForgetReport {
 /// (задача 5.3.5). Место освобождает сборка мусора после (`collectGarbage`).
 ///
 /// Снимки других устройств учётной записи не трогаются: у каждого
-/// устройства своя история. Если список снимков вызывает сомнения —
+/// устройства своя история. История своя и у каждого набора папок: бэкап
+/// одной папки с экрана «Бэкап» не вытесняет снимки остальных — иначе
+/// политика «последний один» удалила бы данные другой папки, а сборка
+/// мусора — их сегменты. Если список снимков вызывает сомнения —
 /// признаки отката или нечитаемые объекты, — ничего не удаляется
 /// ([PreconditionException]): по неполному списку политика могла бы
 /// удалить снимок, который держит. Удаление идёт по одному снимку; обрыв
@@ -54,19 +57,35 @@ Future<ForgetReport> forgetByPolicy({
     for (final s in listing.snapshots)
       if (constantTimeEquals(Uint8List.fromList(s.deviceId), deviceId)) s,
   ];
-  final plan = policy.plan(
-    mine,
-    (s) => DateTime.fromMillisecondsSinceEpoch(s.createdAtUnixMs.toInt()),
-  );
+  // Политика — на каждый набор папок отдельно: у бэкапа одной папки своя
+  // история снимков.
+  final groups = <String, List<pb.Snapshot>>{};
+  for (final s in mine) {
+    groups.putIfAbsent(_pathsKey(s.paths), () => []).add(s);
+  }
+  final kept = <(pb.Snapshot, Set<RetentionRule>)>[];
+  final forgotten = <pb.Snapshot>[];
+  for (final group in groups.values) {
+    final plan = policy.plan(
+      group,
+      (s) => DateTime.fromMillisecondsSinceEpoch(s.createdAtUnixMs.toInt()),
+    );
+    kept.addAll(plan.keep);
+    forgotten.addAll(plan.forget);
+  }
   if (!dryRun) {
     // От старых к новым: обрыв оставляет новые снимки.
-    for (final s in plan.forget.reversed) {
+    forgotten.sort((a, b) => a.createdAtUnixMs.compareTo(b.createdAtUnixMs));
+    for (final s in forgotten) {
       await catalog.forget(Uint8List.fromList(s.snapshotId));
     }
   }
   return ForgetReport(
-    kept: plan.keep,
-    forgotten: plan.forget,
+    kept: kept,
+    forgotten: forgotten,
     other: listing.snapshots.length - mine.length,
   );
 }
+
+/// Ключ набора папок снимка: пути без учёта порядка.
+String _pathsKey(List<String> paths) => ([...paths]..sort()).join('\x00');

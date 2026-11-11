@@ -231,6 +231,46 @@ void main() {
       expect(again.forgotten, isEmpty);
     });
 
+    test('каждый набор папок хранится отдельно', () async {
+      final a = Directory('${dir.path}/a')..createSync();
+      final b = Directory('${dir.path}/b')..createSync();
+      File('${a.path}/f.bin').writeAsBytesSync(List.filled(200 << 10, 1));
+      File('${b.path}/f.bin').writeAsBytesSync(List.filled(200 << 10, 2));
+      Future<void> backup(List<String> paths) => runBackup(
+        crypto: crypto,
+        keys: keys,
+        index: index,
+        fragments: nodes,
+        objects: objects,
+        paths: paths,
+        deviceId: deviceId,
+        params: params,
+      );
+      await backup([a.path]);
+      await backup([b.path]);
+      // Бэкап одной папки не должен вытеснять снимок другой: у каждой
+      // свой набор путей и своя история.
+      File('${a.path}/f.bin').writeAsBytesSync(List.filled(200 << 10, 3));
+      await backup([a.path]);
+
+      const policy = RetentionPolicy(
+        hourly: 0,
+        daily: 0,
+        weekly: 0,
+        monthly: 0,
+      );
+      final report = await forgetByPolicy(
+        catalog: catalog(),
+        policy: policy,
+        deviceId: deviceId,
+      );
+      expect(report.kept, hasLength(2));
+      expect(report.forgotten, hasLength(1));
+      final left = (await catalog().list()).snapshots;
+      expect(left, hasLength(2));
+      expect(left.map((s) => s.paths.single), containsAll([a.path, b.path]));
+    });
+
     test('оценка объёма учитывает исключения и готовые наборы', () {
       final data = Directory('${dir.path}/est')..createSync();
       File('${data.path}/doc.txt').writeAsStringSync('x' * 1000);

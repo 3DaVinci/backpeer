@@ -18,7 +18,9 @@ class JobProgress extends StatelessWidget {
     final files = p['files'] as int?;
     final totalBytes = p['totalBytes'] as int?;
     final totalFiles = p['totalFiles'] as int?;
-    final done = (p['bytes'] ?? p['bytesRead']) as int? ?? 0;
+    // Доля — по сделанному (`doneBytes`), а не по обработанным файлам:
+    // агент считает `bytes` по обходу, который уходит вперёд загрузки.
+    final done = (p['doneBytes'] ?? p['bytes'] ?? p['bytesRead']) as int? ?? 0;
     final fraction = totalBytes == null || totalBytes == 0
         ? null
         : (done / totalBytes).clamp(0.0, 1.0);

@@ -52,6 +52,44 @@ final class _Recording implements FragmentStore {
       inner.delete(node, fragmentId);
 }
 
+/// Обёртка хранилища с задержкой записи: пока узлы «думают», обход уже
+/// прочитал файлы — на этом и видно, что доля считается по сделанному.
+final class _Slow implements FragmentStore {
+  new(this.inner, this.delay);
+
+  final FragmentStore inner;
+  final Duration delay;
+
+  @override
+  List<String> get nodes => inner.nodes;
+
+  @override
+  Future<Uint8List> put(
+    String node,
+    Uint8List fragment, {
+    Uint8List? expectedFragmentId,
+  }) async {
+    await Future<void>.delayed(delay);
+    return await inner.put(
+      node,
+      fragment,
+      expectedFragmentId: expectedFragmentId,
+    );
+  }
+
+  @override
+  Future<Uint8List> get(String node, Uint8List fragmentId) =>
+      inner.get(node, fragmentId);
+
+  @override
+  Future<List<bool>> has(String node, List<Uint8List> fragmentIds) =>
+      inner.has(node, fragmentIds);
+
+  @override
+  Future<void> delete(String node, Uint8List fragmentId) =>
+      inner.delete(node, fragmentId);
+}
+
 void main() {
   late CryptoProvider crypto;
   late AccountKeys keys;
@@ -338,6 +376,48 @@ void main() {
       healthy.index.close();
     },
   );
+
+  test('прогресс: доля по сделанному, а не по обходу', () async {
+    populate(megabytes: 4);
+    final s = setup('slow');
+    final progress = <BackupProgress>[];
+    final result = await backup(
+      s,
+      fragments: _Slow(s.nodes, const Duration(milliseconds: 40)),
+      progress: progress,
+    );
+    expect(result.stats.files, 5);
+    // Обход уходит вперёд: пока сегменты ждут узлов, сделано меньше, чем
+    // прочитано, — полоса не должна стоять целой.
+    expect(
+      progress.any((p) => p.doneBytes < p.bytes),
+      isTrue,
+      reason: 'есть точка, где часть прочитанного ещё не сохранена',
+    );
+    expect(
+      progress.every((p) => p.doneBytes <= p.bytes),
+      isTrue,
+      reason: 'сделано не больше обработанного',
+    );
+    expect(progress.last.doneBytes, progress.last.bytes);
+    s.index.close();
+  });
+
+  test('прогресс: неизменённые файлы сделаны сразу', () async {
+    populate(megabytes: 4);
+    final s = setup('cached');
+    await backup(s);
+    final progress = <BackupProgress>[];
+    final result = await backup(
+      s,
+      fragments: _Slow(s.nodes, const Duration(milliseconds: 40)),
+      progress: progress,
+    );
+    expect(result.stats.newChunks, 0);
+    expect(progress.last.doneBytes, progress.last.bytes);
+    expect(progress.last.doneBytes, result.stats.bytes);
+    s.index.close();
+  });
 
   test('пул isolate даёт тот же снимок, что кодирование в потоке', () async {
     populate(megabytes: 20);

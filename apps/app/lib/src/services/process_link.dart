@@ -116,11 +116,33 @@ final class ProcessLink extends ChangeNotifier implements BackgroundProcess {
   }
 
   void _onEvent(ControlEvent event) {
-    if (event.name == 'status') {
-      status = event.data;
-      notifyListeners();
+    switch (event.name) {
+      case 'status':
+        status = event.data;
+        notifyListeners();
+      case 'progress':
+        _applyProgress(event.data);
     }
     _events.add(event);
+  }
+
+  /// Ход задания из события `progress`: опрос `status` раз в 15 секунд для
+  /// полосы не годится — она должна идти дважды в секунду, как её шлёт
+  /// агент (задача 5.3.3). Событие другого задания не подмешивается.
+  void _applyProgress(Map<String, Object?> data) {
+    final current = status;
+    final job = current?['job'];
+    if (current == null || job is! Map<String, Object?>) return;
+    final kind = data['kind'];
+    if (kind != null && kind != job['kind']) return;
+    status = {
+      ...current,
+      'job': {
+        ...job,
+        'progress': {...data}..remove('kind'),
+      },
+    };
+    notifyListeners();
   }
 
   Future<void> _refresh() async {

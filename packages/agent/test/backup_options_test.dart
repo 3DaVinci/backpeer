@@ -78,6 +78,60 @@ void main() {
     return await done;
   }
 
+  test('бэкап отдельной папки: paths — только настроенные', () async {
+    final first = sampleData('${dir.path}/first');
+    final second = sampleData('${dir.path}/second');
+    final client = await start();
+    await client.call('settings', {
+      'paths': [first.path, second.path],
+      'intervalMinutes': null,
+    });
+
+    // Бэкап только первой папки: снимок с одним путём, вторая не тронута.
+    final done = finished(client, 'backup');
+    expect(
+      (await client.call('backup', {
+        'paths': [first.path],
+      }))['started'],
+      isTrue,
+    );
+    final result = await done;
+    expect(result['outcome'], 'ok');
+    final snapshots =
+        (await client.call('snapshots'))['snapshots']! as List<Object?>;
+    expect(snapshots, hasLength(1));
+    expect((snapshots.single! as Map<String, Object?>)['paths'], [first.path]);
+
+    // Папка не из настроек — отказ, задание не начинается.
+    await expectLater(
+      client.call('backup', {
+        'paths': ['/etc'],
+      }),
+      throwsA(
+        isA<ControlException>().having((e) => e.code, 'code', 'bad_request'),
+      ),
+    );
+    await expectLater(
+      client.call('backup', {'paths': <String>[]}),
+      throwsA(
+        isA<ControlException>().having((e) => e.code, 'code', 'bad_request'),
+      ),
+    );
+    expect((await client.call('status'))['job'], isNull);
+
+    // Обычный бэкап — обе папки.
+    final all = finished(client, 'backup');
+    await client.call('backup');
+    final both = await all;
+    expect(both['outcome'], 'ok');
+    final after =
+        (await client.call('snapshots'))['snapshots']! as List<Object?>;
+    expect((after.last! as Map<String, Object?>)['paths'], [
+      first.path,
+      second.path,
+    ]);
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
   test('оценка объёма, пропущенные файлы, история, очистка по политике '
       'хранения', () async {
     final data = sampleData('${dir.path}/data');

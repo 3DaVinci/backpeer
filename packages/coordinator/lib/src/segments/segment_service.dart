@@ -108,10 +108,13 @@ final class SegmentService {
         distinctSubnets: policy.distinctSubnets,
       );
     } on PlacementException catch (e) {
+      // Подождать минуту и повторить бессмысленно: подходящих узлов не
+      // станет за минуту, а клиент просидел бы на отказе несколько минут
+      // (агент повторит бэкап по расписанию). Клиент повторяет запрос
+      // сам, с обычной паузой в доли секунды.
       throw RpcException(
         pb.ErrorCode.ERROR_CODE_UNAVAILABLE,
         'подходящих узлов ${e.found}, нужно ${e.needed}',
-        retryAfter: const Duration(minutes: 1),
       );
     }
     final tickets = await signer.sign([

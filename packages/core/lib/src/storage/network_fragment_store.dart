@@ -150,7 +150,10 @@ final class TicketBook implements NodeAccess {
 /// **Недоступные узлы.** Не удалось подключиться — операции с узлом
 /// [failureBackoff] сразу заканчиваются `unavailable`, без новых попыток:
 /// сегмент с двадцатью фрагментами не ждёт двадцать раз один и тот же
-/// узел. Загрузку на остальные узлы и `CommitSegment` с загруженными
+/// узел. Проверка владельца ([handshake]) ждёт ответа не дольше
+/// [handshakeTimeout]: узел, который не ответил, не задерживает размещение
+/// сегмента на десятки секунд и не повторяется на каждом следующем
+/// сегменте. Загрузку на остальные узлы и `CommitSegment` с загруженными
 /// делает конвейер (`SegmentPacker`).
 ///
 /// **Ошибки** — как у остальных хранилищ: `StorageException`
@@ -167,7 +170,8 @@ final class NetworkFragmentStore implements FragmentStore, NodeDirectory {
     required this.access,
     this.maxConnections = 64,
     this.idleTimeout = const Duration(seconds: 60),
-    this.failureBackoff = const Duration(seconds: 10),
+    this.failureBackoff = const Duration(minutes: 1),
+    this.handshakeTimeout = const Duration(seconds: 10),
     this.uploadLimiter,
     this.downloadLimiter,
     this.responseTimeout = PeerClient.defaultTimeout,
@@ -179,6 +183,10 @@ final class NetworkFragmentStore implements FragmentStore, NodeDirectory {
   final int maxConnections;
   final Duration idleTimeout;
   final Duration failureBackoff;
+
+  /// Сколько ждать ответа при проверке владельца ([handshake]); дольше —
+  /// узел считается недоступным, ошибка не задерживает размещение.
+  final Duration handshakeTimeout;
   final BandwidthLimiter? uploadLimiter;
   final BandwidthLimiter? downloadLimiter;
   final Duration responseTimeout;
@@ -203,7 +211,14 @@ final class NetworkFragmentStore implements FragmentStore, NodeDirectory {
   @override
   Future<pb.Signed?> handshake(String node) async {
     try {
-      return (await _client(node, 'handshake')).peer.certificate;
+      final client = await _client(node, 'handshake').timeout(handshakeTimeout);
+      return client.peer.certificate;
+    } on TimeoutException {
+      // Размещение не должно ждать узел, который не отвечает: тот же
+      // сегмент загрузится на остальные, а узел не тронут
+      // [failureBackoff].
+      _markUnreachable(node, 'нет ответа за ${handshakeTimeout.inSeconds} с');
+      return null;
     } on StorageException {
       return null;
     }
@@ -413,6 +428,14 @@ final class NetworkFragmentStore implements FragmentStore, NodeDirectory {
       uploadLimiter: uploadLimiter,
       downloadLimiter: downloadLimiter,
     );
+  }
+
+  /// Узел недоступен: операции с ним [failureBackoff] не пытаются
+  /// подключиться заново; начатое соединение закрывается.
+  void _markUnreachable(String node, String cause) {
+    _failedAt[node] = (DateTime.now(), cause);
+    final pooled = _pool.remove(node);
+    pooled?.close();
   }
 
   void _drop(String node, PeerClient client) {

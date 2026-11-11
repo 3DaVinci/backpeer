@@ -902,6 +902,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get currentBackup => 'Текущий бэкап';
 
   @override
+  String get backupFolderNow => 'Сделать бэкап этой папки';
+
+  @override
+  String backupPaths(String paths) {
+    return 'Папки: $paths';
+  }
+
+  @override
   String get addFolder => 'Добавить папку';
 
   @override

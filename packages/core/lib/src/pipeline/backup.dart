@@ -31,6 +31,7 @@ final class BackupProgress {
     required this.bytes,
     required this.bytesRead,
     required this.newBytes,
+    required this.doneBytes,
     required this.segmentsStored,
     required this.segmentsInFlight,
     required this.elapsed,
@@ -38,13 +39,20 @@ final class BackupProgress {
 
   final int files;
 
-  /// Байт в обработанных файлах, включая неизменённые (их не читают) —
-  /// для доли сделанного от оценки объёма.
+  /// Байт в обработанных файлах, включая неизменённые (их не читают).
   final int bytes;
   final int bytesRead;
 
   /// Байт новых чанков (до упаковки и кодирования).
   final int newBytes;
+
+  /// Байт, с которыми работа уже сделана: прочитаны и сохранены на узлах
+  /// (или были известны по прошлому бэкапу). Считается по прочитанному, а
+  /// не по обработанным файлам: обход уходит далеко вперёд загрузки, и
+  /// файл на несколько гигабайт не должен держать полосу на нуле до конца.
+  /// Что сейчас в пути — открытый сегмент и запечатанные без ответов
+  /// узлов, — не в счёт.
+  final int doneBytes;
   final int segmentsStored;
   final int segmentsInFlight;
   final Duration elapsed;
@@ -147,6 +155,7 @@ Future<BackupResult> runBackup({
       bytes: builder.stats.bytes,
       bytesRead: builder.stats.bytesRead,
       newBytes: builder.stats.newBytes,
+      doneBytes: _doneBytes(builder.stats, packer),
       segmentsStored: packer.segmentsStored,
       segmentsInFlight: packer.segmentsInFlight,
       elapsed: watch.elapsed,
@@ -238,6 +247,15 @@ bool _sameBytes(List<int> a, List<int> b) {
     if (a[i] != b[i]) return false;
   }
   return true;
+}
+
+/// Сделано байт: прочитанное и известное из кеша за вычетом того, что ещё
+/// в пути, но не больше суммы размеров обработанных файлов (оценка объёма
+/// считается отдельно).
+int _doneBytes(TreeStats stats, SegmentPacker packer) {
+  final done = stats.knownBytes + stats.bytesRead - packer.pendingBytes;
+  if (done < 0) return 0;
+  return done > stats.bytes ? stats.bytes : done;
 }
 
 bool _samePaths(List<String> a, List<String> b) =>

@@ -161,6 +161,45 @@ void main() {
     c.close();
   });
 
+  test('retry_after больше общего предела — повтора нет', () async {
+    respond = (r) =>
+        error(r, pb.ErrorCode.ERROR_CODE_UNAVAILABLE, retryAfterMs: 60000);
+    final c = client();
+    await expectLater(
+      c.allocateSegment(pb.AllocateSegmentRequest()),
+      throwsA(
+        isA<CoordinatorException>()
+            .having((e) => e.code, 'code', pb.ErrorCode.ERROR_CODE_UNAVAILABLE)
+            .having(
+              (e) => e.retryAfter,
+              'retryAfter',
+              const Duration(minutes: 1),
+            ),
+      ),
+    );
+    expect(seen, hasLength(1), reason: 'ждать минуту бессмысленно');
+    expect(sleeps, isEmpty);
+    c.close();
+  });
+
+  test('общее ожидание повторов ограничено', () async {
+    respond = (r) => error(r, pb.ErrorCode.ERROR_CODE_UNAVAILABLE);
+    final c = client(
+      retry: const RetryPolicy(
+        initialDelay: Duration(seconds: 20),
+        maxDelay: Duration(seconds: 20),
+      ),
+    );
+    await expectLater(
+      c.listObjects(pb.ListObjectsRequest()),
+      throwsA(isA<CoordinatorException>()),
+    );
+    // Первая пауза 20 с укладывается в предел, вторая (ещё 20 с) — нет.
+    expect(seen, hasLength(2));
+    expect(sleeps, hasLength(1));
+    c.close();
+  });
+
   test('прочие ошибки не повторяются', () async {
     respond = (r) => error(r, pb.ErrorCode.ERROR_CODE_NOT_FOUND, status: 404);
     final c = client();

@@ -890,6 +890,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get currentBackup => 'Current backup';
 
   @override
+  String get backupFolderNow => 'Back up this folder';
+
+  @override
+  String backupPaths(String paths) {
+    return 'Folders: $paths';
+  }
+
+  @override
   String get addFolder => 'Add folder';
 
   @override

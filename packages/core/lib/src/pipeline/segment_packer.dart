@@ -72,7 +72,30 @@ final class SegmentPacker implements ChunkSink {
   /// Чанки запечатанных сегментов, ещё не записанных в индекс.
   final Set<ChunkId> _flying = {};
   final Set<Future<void>> _inFlight = {};
+
+  /// Запечатанные сегменты, которые ещё не сохранены, и сколько их
+  /// фрагментов уже подтвердили узлы: по этому видно долю работы внутри
+  /// сегмента, когда файлы давно прочитаны (прогресс бэкапа).
+  final Set<_Flying> _flyingSegments = {};
+  int _flyingBytes = 0;
   (Object, StackTrace)? _failure;
+
+  /// Байт новых чанков, которые прочитаны, но ещё не сохранены: открытый
+  /// сегмент и запечатанные, ждущие узлов (подтверждённые фрагменты уже
+  /// не в счёт). Это то, чего не хватает до конца файлов в счётчиках
+  /// обхода.
+  int get pendingBytes {
+    final left = _openBytes + _flyingBytes - _ackedBytes;
+    return left < 0 ? 0 : left;
+  }
+
+  int get _ackedBytes {
+    var bytes = 0;
+    for (final f in _flyingSegments) {
+      bytes += f.bytes * f.acked ~/ params.n;
+    }
+    return bytes;
+  }
 
   int segmentsStored = 0;
   int bytesStored = 0;
@@ -128,14 +151,25 @@ final class SegmentPacker implements ChunkSink {
       _rethrow();
     }
     cancel.check();
+    final flying = _Flying(chunks.fold(0, (bytes, c) => bytes + c.data.length));
+    _flyingSegments.add(flying);
+    _flyingBytes += flying.bytes;
     late final Future<void> task;
-    task = _process(chunks)
+    task = _process(chunks, flying)
         .catchError((Object e, StackTrace s) => _failure ??= (e, s))
         .whenComplete(() => _inFlight.remove(task));
     _inFlight.add(task);
   }
 
-  Future<void> _process(List<PackedChunk> chunks) async {
+  Future<void> _process(List<PackedChunk> chunks, _Flying flying) async {
+    try {
+      await _store(chunks, flying);
+    } finally {
+      if (_flyingSegments.remove(flying)) _flyingBytes -= flying.bytes;
+    }
+  }
+
+  Future<void> _store(List<PackedChunk> chunks, _Flying flying) async {
     final plaintext = SegmentPlaintext.encode(chunks);
     final segmentId = crypto.randomBytes(32);
     final key = keys.segmentKey(segmentId);
@@ -201,7 +235,12 @@ final class SegmentPacker implements ChunkSink {
                 encoded.fragments[i],
                 expectedFragmentId: encoded.fragmentIds[i],
               )
-              .then((_) => true, onError: (Object _) => false)
+              .then((_) {
+                // Фрагмент лёг: доля работы внутри сегмента растёт, пока
+                // остальные ещё загружаются (прогресс бэкапа).
+                flying.acked++;
+                return true;
+              }, onError: (Object _) => false)
         else
           Future.value(false),
     ]);
@@ -231,4 +270,13 @@ final class SegmentPacker implements ChunkSink {
     final failure = _failure;
     if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
   }
+}
+
+/// Запечатанный сегмент, который ещё не сохранён: его байты и сколько
+/// фрагментов уже подтвердили узлы.
+final class _Flying {
+  new(this.bytes);
+
+  final int bytes;
+  int acked = 0;
 }

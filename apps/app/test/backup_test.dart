@@ -199,6 +199,7 @@ void main() {
             'files': 60,
             'bytes': 1 << 30,
             'bytesRead': 1 << 29,
+            'doneBytes': 1 << 30,
             'totalFiles': 120,
             'totalBytes': 4 << 30,
             'bytesPerSecond': 10 << 20,
@@ -251,6 +252,95 @@ void main() {
     agent.emit('job_finished', {'kind': 'backup', 'outcome': 'ok'});
     await tester.pumpAndSettle();
     expect(agent.calls.where((c) => c.$1 == 'history').length, before + 1);
+  });
+
+  testWidgets('запуск бэкапа: всех папок и отдельной', (tester) async {
+    final agent = FakeProcess(
+      status: agentStatus(
+        settings: {
+          'paths': ['/home/user/Документы', '/home/user/Фото'],
+        },
+      ),
+    );
+    await openBackup(tester, agent);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Сделать бэкап сейчас'));
+    await tester.pump();
+    expect(agent.last('backup'), isEmpty);
+
+    await tester.tap(find.byTooltip('Сделать бэкап этой папки').first);
+    await tester.pump();
+    expect(agent.last('backup'), {
+      'paths': ['/home/user/Документы'],
+    });
+    await tester.tap(find.byTooltip('Сделать бэкап этой папки').last);
+    await tester.pump();
+    expect(agent.last('backup'), {
+      'paths': ['/home/user/Фото'],
+    });
+
+    // Идёт задание — запускать нечего.
+    agent.update(
+      status: agentStatus(
+        status: 'working',
+        job: {'kind': 'verify', 'trigger': 'manual', 'progress': {}},
+        settings: {
+          'paths': ['/home/user/Документы'],
+        },
+      ),
+    );
+    await tester.pump();
+    final start = tester.widget<FilledButton>(
+      find.widgetWithText(FilledButton, 'Сделать бэкап сейчас'),
+    );
+    expect(start.onPressed, isNull);
+    expect(
+      tester
+          .widget<IconButton>(
+            find.ancestor(
+              of: find.byTooltip('Сделать бэкап этой папки'),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    // Пауза: задание остановлено, но с этого экрана его видно и можно
+    // продолжить.
+    agent.update(status: agentStatus(status: 'paused'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Продолжить'));
+    await tester.pump();
+    expect(agent.last('resume'), isEmpty);
+  });
+
+  testWidgets('прогресс: полоса по сделанному, а не по обходу', (tester) async {
+    final agent = FakeProcess(
+      status: agentStatus(
+        status: 'working',
+        job: {
+          'kind': 'backup',
+          'trigger': 'manual',
+          'progress': {
+            'files': 40,
+            'bytes': 3 << 30,
+            'bytesRead': 3 << 30,
+            'doneBytes': 1 << 30,
+            'totalFiles': 500,
+            'totalBytes': 4 << 30,
+            'bytesPerSecond': 10 << 20,
+            'etaMs': 3 * 60 * 1000,
+          },
+        },
+      ),
+    );
+    await openBackup(tester, agent);
+    final bar = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator),
+    );
+    expect(bar.value, closeTo(0.25, 1e-9));
+    expect(find.text('40 файлов из 500, 1,0 ГиБ из 4,0 ГиБ'), findsOneWidget);
   });
 
   testWidgets('здоровье: требует внимания с причинами, проверить сейчас', (

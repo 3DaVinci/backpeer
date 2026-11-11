@@ -75,10 +75,15 @@ final class RunningJob {
   /// оставшегося времени; `null` — ещё считается.
   BackupEstimate? estimate;
 
+  /// Папки этого бэкапа, когда он запущен отдельно по одной (`backup`
+  /// с `paths`); `null` — все настроенные.
+  List<String>? paths;
+
   Map<String, Object?> toJson() => {
     'kind': kind.name,
     'trigger': trigger,
     'startedAt': startedAt.toUtc().toIso8601String(),
+    'paths': ?paths,
     'progress': progress,
   };
 }
@@ -684,7 +689,7 @@ final class BackupAgent {
     try {
       final result = await _withSession(material, (session, config) {
         return switch (job.kind) {
-          JobKind.backup => _backup(job, session, config),
+          JobKind.backup => _backup(job, session, config, params),
           JobKind.verify => _verify(job, session, config, params),
           JobKind.restore => _restore(job, session, params),
         };
@@ -782,14 +787,14 @@ final class BackupAgent {
     RunningJob job,
     Session session,
     AppConfig config,
+    Map<String, Object?> params,
   ) async {
-    if (settings.paths.isEmpty) {
-      throw const ControlException('bad_request', 'не выбраны папки');
-    }
+    final roots = _backupPaths(params);
+    job.paths = roots;
     final excludes = [...config.excludes, ...settings.excludeRulesList];
     // Оценка объёма — параллельно, в своём isolate: обход синхронный.
     unawaited(
-      _estimate(settings.paths, excludes).then<void>(
+      _estimate(roots, excludes).then<void>(
         (e) => job.estimate = e,
         onError: (Object e) {
           _log.fine(LogEvent('estimate_failed', {'reason': '$e'}));
@@ -807,7 +812,7 @@ final class BackupAgent {
         fragments: session.fragments,
         objects: session.objects,
         placer: session.placer,
-        paths: settings.paths,
+        paths: roots,
         deviceId: config.deviceId,
         excludes: ExcludeRules(excludes),
         params: config.durability,
@@ -850,13 +855,18 @@ final class BackupAgent {
   Map<String, Object?> _backupProgress(RunningJob job, BackupProgress p) {
     final total = job.estimate;
     final ms = p.elapsed.inMilliseconds;
-    final rate = ms < 1000 ? null : p.bytes * 1000 ~/ ms;
-    final left = total == null ? null : total.bytes - p.bytes;
+    // Скорость и остаток — по сделанному, а не по прочитанному: обход идёт
+    // впереди загрузки, и по обработанным файлам полоса казалась полной, а
+    // скорость — в килобайтах в секунду, хотя данные ещё отправлялись.
+    final done = p.doneBytes;
+    final rate = ms < 1000 ? null : done * 1000 ~/ ms;
+    final left = total == null ? null : total.bytes - done;
     return {
       'files': p.files,
       'bytes': p.bytes,
       'bytesRead': p.bytesRead,
       'newBytes': p.newBytes,
+      'doneBytes': done,
       'segmentsStored': p.segmentsStored,
       'elapsedMs': ms,
       'totalFiles': ?total?.files,
@@ -865,6 +875,33 @@ final class BackupAgent {
       if (left != null && rate != null && rate > 0)
         'etaMs': (left < 0 ? 0 : left) * 1000 ~/ rate,
     };
+  }
+
+  /// Папки этого бэкапа: `paths` из параметров — бэкап отдельной папки с
+  /// экрана «Бэкап» (подмножество настроенных), без них — все настроенные.
+  List<String> _backupPaths(Map<String, Object?> params) {
+    final raw = params['paths'];
+    final List<String> roots;
+    if (raw == null) {
+      roots = settings.paths;
+    } else {
+      if (raw is! List<Object?> || raw.any((p) => p is! String)) {
+        throw const ControlException('bad_request', 'paths — список строк');
+      }
+      roots = raw.cast<String>();
+      for (final path in roots) {
+        if (!settings.paths.contains(path)) {
+          throw ControlException(
+            'bad_request',
+            'папка не выбрана для бэкапа: $path',
+          );
+        }
+      }
+    }
+    if (roots.isEmpty) {
+      throw const ControlException('bad_request', 'не выбраны папки');
+    }
+    return roots;
   }
 
   /// Оценка объёма в отдельном isolate: обход синхронный (FFI к libc).
@@ -1428,7 +1465,12 @@ final class BackupAgent {
       case 'history':
         return _history(params);
       case 'backup':
-        return {'started': await _run(JobKind.backup, 'manual')};
+        // Папки проверяются до запуска задания: чужая папка — сразу
+        // `bad_request`, а не задание, которое упадёт в фоне. Без `paths`
+        // (все настроенные папки) решает `_backup`: так бэкап без
+        // учётной записи по-прежнему отвечает `not_configured`.
+        if (params['paths'] != null) _backupPaths(params);
+        return {'started': await _run(JobKind.backup, 'manual', params)};
       case 'verify':
         return {'started': await _run(JobKind.verify, 'manual', params)};
       case 'restore':

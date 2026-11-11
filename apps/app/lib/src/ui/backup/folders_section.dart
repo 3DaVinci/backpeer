@@ -3,6 +3,7 @@ import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/screens/backup_screen.dart';
+import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
@@ -102,6 +103,9 @@ class _FoldersSectionState extends State<FoldersSection> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final connected = widget.agent.state == LinkState.connected;
+    final status = widget.agent.status;
+    final busy = status?['job'] != null;
+    final paused = status?['status'] == 'paused';
     final paths = _strings('paths');
     final presets = _strings('excludePresets');
     final rules = _strings('excludes');
@@ -123,14 +127,33 @@ class _FoldersSectionState extends State<FoldersSection> {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.folder_outlined),
             title: Text(p),
-            trailing: IconButton(
-              tooltip: l10n.removeFolder,
-              onPressed: connected
-                  ? () => changeSettings(context, {
-                      'paths': [...paths]..remove(p),
-                    })
-                  : null,
-              icon: const Icon(Icons.remove_circle_outline),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Бэкап только этой папки — не дожидаясь расписания и не
+                // трогая остальные (метод агента `backup` с `paths`).
+                IconButton(
+                  tooltip: l10n.backupFolderNow,
+                  onPressed: connected && !busy && !paused
+                      ? () => runAction(
+                          context,
+                          () => widget.agent.call('backup', {
+                            'paths': [p],
+                          }),
+                        )
+                      : null,
+                  icon: const Icon(Icons.backup_outlined),
+                ),
+                IconButton(
+                  tooltip: l10n.removeFolder,
+                  onPressed: connected
+                      ? () => changeSettings(context, {
+                          'paths': [...paths]..remove(p),
+                        })
+                      : null,
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+              ],
             ),
           ),
         const SizedBox(height: 16),

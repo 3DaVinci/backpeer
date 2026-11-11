@@ -31,6 +31,10 @@ final class TreeStats {
   /// Байт прочитано с диска — для прогресса.
   int bytesRead = 0;
 
+  /// Байт в неизменённых файлах, взятых из кеша (их не читают): эта работа
+  /// уже сделана прошлым бэкапом — для доли сделанного.
+  int knownBytes = 0;
+
   pb.SnapshotStats toProto() => pb.SnapshotStats(
     files: Int64(files),
     directories: Int64(directories),
@@ -163,6 +167,8 @@ final class TreeBuilder {
     final stamp = FileStamp.fromEntry(entry);
     final cached = index.cachedFile(path, stamp);
     if (cached != null && cached.every(sink.contains)) {
+      // Неизменённый файл: читать и отправлять нечего — сделан целиком.
+      stats.knownBytes += entry.size;
       return (chunks: cached, size: entry.size);
     }
     stats.filesRead++;

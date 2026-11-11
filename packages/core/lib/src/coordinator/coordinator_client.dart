@@ -16,6 +16,7 @@ final class RetryPolicy {
     this.maxAttempts = 5,
     this.initialDelay = const Duration(milliseconds: 250),
     this.maxDelay = const Duration(seconds: 15),
+    this.maxTotalDelay = const Duration(seconds: 30),
   });
 
   /// Попыток всего, с первой.
@@ -24,6 +25,13 @@ final class RetryPolicy {
   /// Пауза перед второй попыткой; дальше удваивается до [maxDelay].
   final Duration initialDelay;
   final Duration maxDelay;
+
+  /// Сколько всего готовы ждать между попытками. Пауза, которая вышла бы
+  /// за этот предел, не делается: запрос завершается ошибкой сразу.
+  /// Координатор просит подождать минуту, когда разместить сегмент некуда
+  /// (мало узлов) или не настроен подписант; повторять такой отказ пять
+  /// раз по минуте — четыре минуты простоя бэкапа без пользы.
+  final Duration maxTotalDelay;
 
   /// Без повторов.
   static const none = RetryPolicy(maxAttempts: 1);
@@ -52,8 +60,8 @@ final class RetryPolicy {
 ///   каждая попытка подписывается заново с новым временем (раздел 4.2).
 /// - Повторяются `UNAVAILABLE`, `RATE_LIMITED`, ответы прокси 502–504 без
 ///   тела `Error` и сбои связи — с экспоненциальной паузой и не раньше
-///   `retry_after_ms`. Ошибки TLS не повторяются: это не сбой сети, а
-///   неверный сертификат.
+///   `retry_after_ms`, но не дольше [RetryPolicy.maxTotalDelay] на запрос.
+///   Ошибки TLS не повторяются: это не сбой сети, а неверный сертификат.
 /// - Повтор после обрыва может прийти к координатору, уже выполнившему
 ///   запрос: `RegisterAccount` тогда ответит `ALREADY_EXISTS`,
 ///   `DeleteSegment` — `NOT_FOUND`; остальные методы повторы выдерживают.
@@ -120,6 +128,7 @@ final class CoordinatorClient {
     }
     final path = '${_basePath()}/api/v1/$method';
     final body = request.writeToBuffer();
+    var waited = Duration.zero;
     for (var attempt = 1; ; attempt++) {
       try {
         final bytes = await _attempt(path, body, signer);
@@ -138,7 +147,10 @@ final class CoordinatorClient {
         }
       } on CoordinatorException catch (e) {
         if (!_retryable(e) || attempt >= retry.maxAttempts) rethrow;
-        await _sleep(retry.delay(attempt, e.retryAfter, _random));
+        final delay = retry.delay(attempt, e.retryAfter, _random);
+        if (waited + delay > retry.maxTotalDelay) rethrow;
+        waited += delay;
+        await _sleep(delay);
       }
     }
   }

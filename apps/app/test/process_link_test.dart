@@ -85,6 +85,43 @@ void main() {
     expect(notified, greaterThan(3));
   });
 
+  test('событие progress обновляет ход задания без запроса status', () async {
+    final server = await ControlServer.bind(
+      endpoint,
+      (method, params) async => {
+        'job': {
+          'kind': 'backup',
+          'trigger': 'manual',
+          'progress': {'files': 0},
+        },
+      },
+    );
+    addTearDown(server.close);
+    final link = ProcessLink(
+      connect: () => ControlClient.connect(endpoint),
+      subscribe: const [],
+    )..start();
+    addTearDown(link.dispose);
+    await until(() => link.state == LinkState.connected, 'подключились');
+
+    Map<String, Object?>? progress() =>
+        (link.status?['job'] as Map<String, Object?>?)?['progress']
+            as Map<String, Object?>?;
+    server.publish('progress', {
+      'kind': 'backup',
+      'files': 3,
+      'doneBytes': 10,
+      'totalBytes': 100,
+    });
+    await until(() => progress()?['files'] == 3, 'ход задания из события');
+    expect(progress(), {'files': 3, 'doneBytes': 10, 'totalBytes': 100});
+
+    // Ход другого задания то же задание бэкапа не переписывает.
+    server.publish('progress', {'kind': 'restore', 'files': 9});
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(progress()?['files'], 3);
+  });
+
   test('молчащий процесс: опрос без ответа — потеря связи и '
       'переподключение', () async {
     // Зависший процесс соединение не рвёт и событий не шлёт: без проверки

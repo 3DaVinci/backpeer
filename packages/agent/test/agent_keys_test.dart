@@ -123,4 +123,61 @@ void main() {
         ? false
         : 'FS_TEST_SECRET_SERVICE не задан (нужен сеанс с Secret Service)',
   );
+
+  test(
+    'Keychain по-настоящему (FS_TEST_KEYCHAIN=1)',
+    () async {
+      final store = KeychainStore.open();
+      expect(store, isNotNull, reason: 'нет Security.framework');
+      final entry = '/tmp/fs-agent-test-$pid';
+      final v = vault(store!, entry);
+      try {
+        await v.remember(keys, device);
+        final material = (await v.open())!;
+        expect(material.accountId, keys.accountId);
+        material.dispose();
+        expect(await store.read(entry), isNotNull);
+        // Повторная запись обновляет ту же запись, а не заводит вторую.
+        await v.remember(keys, null);
+        expect((await v.open())!.hasDevice, isFalse);
+      } finally {
+        await v.forget();
+      }
+      expect(await store.read(entry), isNull);
+    },
+    skip: !Platform.isMacOS
+        ? 'нужен macOS'
+        : Platform.environment['FS_TEST_KEYCHAIN'] == '1'
+        ? false
+        : 'FS_TEST_KEYCHAIN не задан (нужен сеанс с Keychain)',
+  );
+
+  test(
+    'диспетчер учётных данных по-настоящему '
+    '(FS_TEST_CREDENTIAL_MANAGER=1)',
+    () async {
+      final store = CredentialStore.open();
+      expect(store, isNotNull, reason: 'нет advapi32');
+      const entry = r'C:\fs-agent-test';
+      final v = vault(store!, entry);
+      try {
+        await v.remember(keys, device);
+        final material = (await v.open())!;
+        expect(material.accountId, keys.accountId);
+        material.dispose();
+        expect(await store.read(entry), isNotNull);
+        // Повторная запись обновляет ту же учётную запись.
+        await v.remember(keys, null);
+        expect((await v.open())!.hasDevice, isFalse);
+      } finally {
+        await v.forget();
+      }
+      expect(await store.read(entry), isNull);
+    },
+    skip: !Platform.isWindows
+        ? 'нужен Windows'
+        : Platform.environment['FS_TEST_CREDENTIAL_MANAGER'] == '1'
+        ? false
+        : 'FS_TEST_CREDENTIAL_MANAGER не задан (нужен вход пользователя)',
+  );
 }

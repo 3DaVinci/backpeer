@@ -4,7 +4,8 @@
 /// - `BackupAgent` — расписание, бэкап, проверка и восстановление в фоне,
 ///   продолжение прерванного бэкапа, локальный API (`docs/ops/agent.md`);
 /// - `AgentKeyVault`, `SecretStore` — ключи для работы без пароля в
-///   хранилище ОС (ADR-010);
+///   хранилище ОС: Secret Service на Linux, Keychain на macOS, диспетчер
+///   учётных данных на Windows (ADR-010, задача 5.1.5);
 /// - `AgentSettings`, `AgentState` — настройки и состояние в каталоге
 ///   программы (`AgentPaths`);
 /// - `KeeperApi`, `NodeLauncher` — включение роли хранителя из приложения
@@ -27,6 +28,8 @@ export 'src/health.dart';
 export 'src/keeper.dart';
 export 'src/paths.dart';
 export 'src/schedule.dart';
+export 'src/secrets/credential_store.dart';
+export 'src/secrets/keychain_store.dart';
 export 'src/secrets/libsecret_store.dart';
 export 'src/secrets/secret_store.dart';
 export 'src/services.dart';

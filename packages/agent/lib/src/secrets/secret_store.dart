@@ -1,10 +1,13 @@
 import 'dart:io';
 
+import 'package:agent/src/secrets/credential_store.dart';
+import 'package:agent/src/secrets/keychain_store.dart';
 import 'package:agent/src/secrets/libsecret_store.dart';
 
-/// Хранилище секретов ОС (ADR-010): на Linux — Secret Service (GNOME
-/// Keyring, KWallet) через libsecret; Keychain на macOS и Credential
-/// Manager на Windows — задача 5.1.5.
+/// Хранилище секретов ОС (ADR-010, задача 5.1.5): на Linux — Secret
+/// Service (GNOME Keyring, KWallet) через libsecret, на macOS — Keychain
+/// через Security.framework, на Windows — диспетчер учётных данных
+/// (Credential Manager) через advapi32.
 ///
 /// Секрет — короткая строка (ключ агента в base64), запись находится по
 /// [key]: у каждого каталога программы своя.
@@ -15,12 +18,21 @@ abstract interface class SecretStore {
       return LibsecretStore.open() ??
           const UnavailableSecretStore('libsecret не найдена');
     }
+    if (Platform.isMacOS) {
+      return KeychainStore.open() ??
+          const UnavailableSecretStore('Security.framework не загружается');
+    }
+    if (Platform.isWindows) {
+      return CredentialStore.open() ??
+          const UnavailableSecretStore('advapi32 не загружается');
+    }
     return UnavailableSecretStore(
       'хранилище ключей ${Platform.operatingSystem} пока не поддержано',
     );
   }
 
-  /// Имя для состояния и журнала: `secret-service`, `memory`, `none`.
+  /// Имя для состояния и журнала: `secret-service`, `keychain`,
+  /// `credential-manager`, `memory`, `none`.
   String get name;
 
   /// Секрет по [key]; записи нет — `null`. Хранилище недоступно или

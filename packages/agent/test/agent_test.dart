@@ -78,6 +78,29 @@ void main() {
     );
   });
 
+  test('хранилища ключей нет: в keys.problem причина, а не «ключи не '
+      'сохранены»', () async {
+    await initHome(home.dir.path);
+    final data = sampleData('${dir.path}/data');
+    final agent = await BackupAgent.start(
+      home: home,
+      crypto: crypto,
+      secrets: const UnavailableSecretStore('нет Secret Service'),
+      argon2: const Argon2Params(memoryKiB: 1024, iterations: 1),
+      handleSignals: false,
+    );
+    agents.add(agent);
+    final client = await connect();
+    await client.call('settings', {
+      'paths': [data.path],
+    });
+    final started = await client.call('backup');
+    expect(started['started'], isFalse);
+    final keys = (await client.call('status'))['keys']! as Map<String, Object?>;
+    expect(keys['store'], 'none');
+    expect(keys['problem'], contains('нет Secret Service'));
+  });
+
   test('бэкап по расписанию, снимки, дерево, восстановление, проверка; '
       'после перезапуска — без пароля', () async {
     await initHome(home.dir.path);

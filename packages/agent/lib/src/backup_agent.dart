@@ -496,9 +496,15 @@ final class BackupAgent {
         _keysProblem = null;
         return m;
       }
-      _keysProblem = vault.exists
-          ? 'ключ агента в хранилище ОС не найден'
-          : 'ключи для работы без пароля не сохранены';
+      // Хранилища нет вовсе — так и говорим: это не «ключи не сохранены»,
+      // а «система их не умеет хранить» (Linux без Secret Service, старая
+      // сборка на macOS). Так пользователь не ищет несуществующую кнопку.
+      _keysProblem = switch (vault.secrets) {
+        UnavailableSecretStore(:final reason) =>
+          'хранилище ключей ОС недоступно: $reason',
+        _ when vault.exists => 'ключ агента в хранилище ОС не найден',
+        _ => 'ключи для работы без пароля не сохранены',
+      };
     } on SecretStoreException catch (e) {
       _keysProblem = 'хранилище ключей ОС недоступно: ${e.message}';
     }

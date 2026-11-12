@@ -1,3 +1,7 @@
+## 0.0.7
+
+ - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.
+
 ## 0.0.7-dev.2
 
  - **FEAT**(app,agent,cli,core,repo): удаление бэкапа, пределы скорости сети, stage в ходе бэкапа.

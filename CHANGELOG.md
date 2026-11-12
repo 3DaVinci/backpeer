@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-12
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - There are no other changes in this release.
+
+Packages graduated to a stable release (see pre-releases prior to the stable version for changelog entries):
+
+ - `agent` - `v0.0.7`
+ - `app` - `v0.0.7`
+ - `bench` - `v0.0.7`
+ - `cli` - `v0.0.7`
+ - `coordinator` - `v0.0.7`
+ - `core` - `v0.0.7`
+ - `daemon_kit` - `v0.0.7`
+ - `node` - `v0.0.7`
+ - `protocol` - `v0.0.7`
+ - `relay` - `v0.0.7`
+ - `test_vectors` - `v0.0.7`
+
 ## 2026-11-11
 
 ### Changes

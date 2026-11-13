@@ -1,3 +1,7 @@
+## 0.0.8-dev.0
+
+ - **FIX**(app): журнал, код возврата и файл скрипта при обновлении на Windows.
+
 ## 0.0.7
 
  - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.

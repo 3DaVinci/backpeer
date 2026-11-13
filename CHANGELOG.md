@@ -3,6 +3,42 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-13
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`app` - `v0.0.8-dev.0`](#app---v008-dev0)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `agent` - `v0.0.8-dev.0`
+ - `bench` - `v0.0.8-dev.0`
+ - `cli` - `v0.0.8-dev.0`
+ - `coordinator` - `v0.0.8-dev.0`
+ - `core` - `v0.0.8-dev.0`
+ - `daemon_kit` - `v0.0.8-dev.0`
+ - `node` - `v0.0.8-dev.0`
+ - `protocol` - `v0.0.8-dev.0`
+ - `relay` - `v0.0.8-dev.0`
+ - `test_vectors` - `v0.0.8-dev.0`
+
+---
+
+#### `app` - `v0.0.8-dev.0`
+
+ - **FIX**(app): журнал, код возврата и файл скрипта при обновлении на Windows.
+
+
 ## 2026-11-12
 
 ### Changes

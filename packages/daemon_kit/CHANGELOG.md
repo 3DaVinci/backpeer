@@ -1,3 +1,7 @@
+## 0.0.8-dev.0
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.7
 
  - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.

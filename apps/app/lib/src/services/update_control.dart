@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:app/src/services/preferences.dart';
+import 'package:app/src/services/update_log.dart';
 import 'package:app/src/services/updater.dart';
 import 'package:core/core.dart';
 
@@ -16,6 +17,10 @@ abstract interface class UpdateControl {
   /// Загружает пакет, проверяет хэш, корректно останавливает фоновые
   /// процессы, ставит и перезапускает.
   Future<UpdateOutcome> apply(UpdateManifest manifest);
+
+  /// Итог прошлой попытки обновления, если она не удалась: `null` — итога
+  /// нет или обновление установилось. Сообщение показывается один раз.
+  Future<String?> takeLastFailure();
 }
 
 /// Настоящее управление обновлениями: клиент из `core` с ключом обновлений
@@ -31,6 +36,7 @@ final class OsUpdater implements UpdateControl {
     required this.acceptedKeys,
     required this.stopServices,
     required this.appExecutable,
+    this.updateLog,
     this.platform,
     this.arch,
   });
@@ -55,9 +61,16 @@ final class OsUpdater implements UpdateControl {
   final UpdatePlatform? platform;
   final String? arch;
 
+  /// Журнал и итог обновления (`<home>/app/update.log`,
+  /// `update-result.json`); `null` — не вести.
+  final UpdateLog? updateLog;
+
   UpdateInstaller _installer() {
     return switch (platform ?? Updater.currentPlatform()) {
-      UpdatePlatform.windows => WindowsInstaller(appExecutable: appExecutable),
+      UpdatePlatform.windows => WindowsInstaller(
+        appExecutable: appExecutable,
+        log: updateLog,
+      ),
       UpdatePlatform.macos => MacDmgInstaller(appExecutable: appExecutable),
       UpdatePlatform.linux =>
         Platform.environment['APPIMAGE'] != null
@@ -77,6 +90,7 @@ final class OsUpdater implements UpdateControl {
       arch: arch ?? Updater.currentArch(),
       installer: _installer(),
       stop: stopServices,
+      log: updateLog,
     );
   }
 
@@ -104,4 +118,7 @@ final class OsUpdater implements UpdateControl {
       updater.client.close();
     }
   }
+
+  @override
+  Future<String?> takeLastFailure() async => updateLog?.takeResult();
 }

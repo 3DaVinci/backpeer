@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:app/src/services/update_log.dart';
 import 'package:app/src/services/updater.dart';
 import 'package:core/core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -153,19 +154,120 @@ void main() {
     expect(helper, contains(image.path));
   }, skip: Platform.isWindows ? 'права POSIX' : false);
 
-  test('Windows: скрипт ждёт приложение, ставит молча и запускает новую '
-      'версию', () {
+  test('Windows: скрипт ждёт приложение, ставит молча, пишет журнал и '
+      'проверяет код возврата', () {
     final script = windowsUpdateScript(
       pid: 42,
       installer: r"C:\Temp\setup's.exe",
       app: r'C:\Apps\backpeer.exe',
       tempDir: r'C:\Temp\upd',
+      logPath: r'C:\Apps\update.log',
+      resultPath: r'C:\Apps\update-result.json',
     );
-    expect(script, contains('Wait-Process -Id 42'));
+    // Ожидание — опросом процесса: приложение выходит через 2 секунды после
+    // запуска оболочки, и Wait-Process по исчезнувшему PID рисковал
+    // оборвать скрипт до установки (5.8.2).
+    expect(script, contains('Get-Process -Id 42'));
+    expect(script, isNot(contains('Wait-Process')));
     expect(script, contains(r"'C:\Temp\setup''s.exe'"));
     expect(script, contains('/VERYSILENT'));
+    // /LOG= в кавычках: в пути может быть пробел.
+    expect(script, contains(r"""('/LOG=`"' + $setupLog + '`"')"""));
+    // Код возврата установщика проверяется, а не игнорируется.
+    expect(script, contains('-PassThru'));
+    expect(script, contains(r'$process.ExitCode'));
+    // След попытки — журнал и итог рядом с ним.
+    expect(script, contains(r"'C:\Apps\update.log'"));
+    expect(script, contains(r"'C:\Apps\update-result.json'"));
+    expect(script, contains('Write-Result'));
     expect(script, contains(r"'C:\Apps\backpeer.exe'"));
     expect(script, contains('Remove-Item -LiteralPath'));
+  });
+
+  test(
+    'Windows: установщик запускается файлом скрипта, а не -Command',
+    () async {
+      final dir = Directory.systemTemp.createTempSync('fs-update-win-');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      String? executable;
+      List<String>? arguments;
+      final installer = WindowsInstaller(
+        appExecutable: r'C:\Apps\backpeer.exe',
+        startHelper: (exe, args) async {
+          executable = exe;
+          arguments = args;
+        },
+        log: UpdateLog(
+          log: File('${dir.path}/update.log'),
+          result: File('${dir.path}/update-result.json'),
+        ),
+      );
+      final outcome = await installer.apply(
+        UpdatePackage(
+          platform: UpdatePlatform.windows,
+          arch: 'x64',
+          url: Uri.parse('https://u.example/Backpeer-Setup-0.0.7.exe'),
+          sha256: Uint8List(32),
+          size: 4,
+        ),
+        Uint8List.fromList([9, 9, 9, 9]),
+      );
+      final script = File(arguments!.last);
+      addTearDown(() {
+        if (script.parent.existsSync()) {
+          script.parent.deleteSync(recursive: true);
+        }
+      });
+      expect(outcome.restartRequired, isTrue);
+      expect(executable, 'powershell.exe');
+      expect(arguments, contains('-File'));
+      expect(arguments!.last, endsWith('update.ps1'));
+      final text = script.readAsStringSync();
+      expect(text, contains('/VERYSILENT'));
+      expect(text, contains(File('${dir.path}/update.log').path));
+      // Установщик лежит рядом со скриптом под именем из манифеста.
+      expect(
+        File('${script.parent.path}/Backpeer-Setup-0.0.7.exe').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('${dir.path}/update.log').readAsStringSync(),
+        contains('оболочка запущена'),
+      );
+    },
+  );
+
+  test('итог прошлой попытки читается один раз и только для неудачи', () {
+    final dir = Directory.systemTemp.createTempSync('fs-update-result-');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/update-result.json');
+    final log = UpdateLog(log: File('${dir.path}/update.log'), result: file);
+
+    expect(log.takeResult(), isNull, reason: 'файла ещё нет');
+
+    file.writeAsStringSync(
+      '{"ok":false,"stage":"installer", '
+      '"message":"установщик Windows завершился с кодом 7", '
+      r'"log":"C:\\Apps\\update.log"}',
+    );
+    expect(
+      log.takeResult(),
+      r'установщик Windows завершился с кодом 7, журнал: C:\Apps\update.log',
+    );
+    expect(file.existsSync(), isFalse, reason: 'сообщение показывается раз');
+
+    // Успешная установка — показывать нечего.
+    file.writeAsStringSync('{"ok":true,"stage":"done"}');
+    expect(log.takeResult(), isNull);
+    expect(file.existsSync(), isFalse);
+
+    // Оболочка начала установку и не сообщила итог — это тоже неудача.
+    file.writeAsStringSync('{"ok":false,"stage":"started","message":""}');
+    expect(log.takeResult(), 'обновление не завершилось');
+
+    // PowerShell 5.1 может записать BOM.
+    file.writeAsStringSync('\uFEFF{"ok":false,"message":"нет сети"}');
+    expect(log.takeResult(), 'нет сети');
   });
 
   test('macOS: скрипт монтирует .dmg, заменяет .app и открывает его', () {

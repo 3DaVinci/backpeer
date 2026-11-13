@@ -18,6 +18,7 @@ final class _FakeControl implements UpdateControl {
   UpdateManifest? manifest;
   UpdateOutcome outcome;
   Error? error;
+  String? lastFailure;
   int checks = 0;
   int applies = 0;
 
@@ -33,6 +34,13 @@ final class _FakeControl implements UpdateControl {
     applies++;
     if (error case final e?) throw e;
     return outcome;
+  }
+
+  @override
+  Future<String?> takeLastFailure() async {
+    final failure = lastFailure;
+    lastFailure = null;
+    return failure;
   }
 }
 
@@ -148,5 +156,16 @@ void main() {
     await c.applyNow();
     expect(c.state, UpdateState.failed);
     expect(exited, isFalse);
+  });
+
+  test('итог прошлой неудачной установки показывается при запуске', () async {
+    preferences.autoUpdate = false;
+    final control = _FakeControl()
+      ..lastFailure = 'установщик Windows завершился с кодом 7';
+    final c = controller(control)..start();
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    expect(c.state, UpdateState.failed);
+    expect(c.error, contains('кодом 7'));
+    expect(control.lastFailure, isNull, reason: 'сообщение показывается раз');
   });
 }

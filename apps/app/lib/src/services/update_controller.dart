@@ -88,8 +88,26 @@ final class UpdateController extends ChangeNotifier {
   void start() {
     if (_started || _disposed) return;
     _started = true;
+    unawaited(_readPreviousFailure());
     _startTimer = Timer(checkDelay, () => unawaited(_autoCheck()));
     _timer = Timer.periodic(interval, (_) => unawaited(_autoCheck()));
+  }
+
+  /// Итог прошлой попытки: приложение выходит ради установки, поэтому о
+  /// неудаче узнаёт только следующий запуск. Без этого «обновление не
+  /// встало» выглядело как «обновлений нет» (Windows, 12.11.2026).
+  Future<void> _readPreviousFailure() async {
+    String? message;
+    try {
+      message = await control.takeLastFailure();
+    } on Object {
+      // Итог — вспомогательный: проверку обновлений он не отменяет.
+      message = null;
+    }
+    if (message == null || _disposed) return;
+    state = UpdateState.failed;
+    error = message;
+    notifyListeners();
   }
 
   /// Проверить сейчас (кнопка и ручной запуск).

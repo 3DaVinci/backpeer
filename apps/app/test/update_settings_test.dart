@@ -34,6 +34,9 @@ final class _FakeControl implements UpdateControl {
     applies++;
     return outcome;
   }
+
+  @override
+  Future<String?> takeLastFailure() async => null;
 }
 
 UpdateManifest _manifest() => UpdateManifest.parse(

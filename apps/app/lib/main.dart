@@ -14,6 +14,7 @@ import 'package:app/src/services/tray.dart';
 import 'package:app/src/services/update_config.dart';
 import 'package:app/src/services/update_control.dart';
 import 'package:app/src/services/update_controller.dart';
+import 'package:app/src/services/update_log.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
 
@@ -56,6 +57,12 @@ void main() {
               await background.stopService(ClientServices.nodeName);
             },
             appExecutable: Platform.resolvedExecutable,
+            // Журнал и итог обновления (5.8.2): приложение выходит ради
+            // установки, поэтому след попытки — в папке данных приложения.
+            updateLog: UpdateLog(
+              log: File('${endpoints.home.dir.path}/app/update.log'),
+              result: File('${endpoints.home.dir.path}/app/update-result.json'),
+            ),
           ),
           preferences: preferences,
           canApply: () {

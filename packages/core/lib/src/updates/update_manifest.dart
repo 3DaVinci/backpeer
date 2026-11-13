@@ -74,6 +74,22 @@ final class UpdatePackage {
 
   /// Размер пакета в байтах.
   final int size;
+
+  /// Вид сборки по расширению файла в [url] — `appimage`, `deb`, `rpm`,
+  /// `exe` или `dmg`; `null` — не распознан. По нему клиент отличает сборки
+  /// одной платформы: установленное из `.deb` приложение обновляется
+  /// пакетом, а не образом AppImage (docs/spec/updates.md, раздел 4).
+  String? get kind {
+    final name = url.pathSegments.isEmpty
+        ? ''
+        : url.pathSegments.last.toLowerCase();
+    for (final kind in _kinds) {
+      if (name.endsWith('.$kind')) return kind;
+    }
+    return null;
+  }
+
+  static const _kinds = ['appimage', 'deb', 'rpm', 'exe', 'dmg'];
 }
 
 /// Манифест версий (docs/spec/updates.md, раздел 3). Подпись — отсоединённая,
@@ -233,10 +249,20 @@ final class UpdateManifest {
 
   /// Сборка для [platform] и [arch] (при прочих равных — точное совпадение
   /// архитектуры предпочтительнее `arch == null`); нет — `null`.
-  UpdatePackage? packageFor(UpdatePlatform platform, String? arch) {
+  ///
+  /// [kind] — вид сборки (`deb`, `appimage`, `exe`, `dmg`, см.
+  /// [UpdatePackage.kind]): с ним берётся только сборка своего вида, а
+  /// сборки другой платформы или вида не подставляются — иначе клиент с
+  /// `.deb` скачал бы образ AppImage.
+  UpdatePackage? packageFor(
+    UpdatePlatform platform,
+    String? arch, {
+    String? kind,
+  }) {
     UpdatePackage? any;
     for (final p in packages) {
       if (p.platform != platform) continue;
+      if (kind != null && p.kind != kind) continue;
       if (p.arch == arch) return p;
       if (p.arch == null) any ??= p;
     }

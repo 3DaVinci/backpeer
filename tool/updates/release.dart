@@ -7,9 +7,11 @@
 //
 // Закрытый ключ — `UPDATE_SIGNING_KEY` (base64 seed) или `--key`; на машине
 // подписи он хранится в секрете GitHub Environment (П-3, docs/ops/github.md).
-// Пакеты — установщик Windows, AppImage Linux и .dmg macOS, если он уже
-// лежит в папке релиза. `.deb`/`.rpm` в манифест не входят: клиент для них
-// только уведомляет.
+// Пакеты — установщик Windows, AppImage и `.deb` Linux и `.dmg` macOS, если
+// он уже лежит в папке релиза. `.rpm` в манифест не входит: клиент для него
+// только уведомляет. Порядок сборок linux: сначала AppImage, потом `.deb` —
+// клиенты 0.0.7 и раньше не различают вид сборки и берут первую подходящую,
+// то есть образ.
 //
 // URL пакетов — `https://github.com/<repo>/releases/download/<tag>/<файл>`;
 // клиент берёт манифест из `https://github.com/<repo>/releases/latest/
@@ -79,7 +81,10 @@ Future<void> main(List<String> args) async {
           .whereType<File>()
           .where((f) => !f.path.endsWith('.json') && !f.path.endsWith('.sig'))
           .toList()
-        ..sort((a, b) => a.path.compareTo(b.path));
+        ..sort((a, b) {
+          final byKind = _priority(a.path).compareTo(_priority(b.path));
+          return byKind != 0 ? byKind : a.path.compareTo(b.path);
+        });
   for (final file in files) {
     final name = file.uri.pathSegments.last;
     final kind = _assetKind(name);
@@ -147,6 +152,9 @@ ProductVersion _versionFromTag(String tag) {
   final linux = RegExp(r'^backpeer-.*-(x86_64|aarch64|x64|arm64)\.AppImage$')
       .firstMatch(name);
   if (linux != null) return ('linux', _arch(linux[1]!));
+  // `.deb`: backpeer_0.0.8_amd64.deb — ставится клиентом через apt (5.8.2).
+  final deb = RegExp(r'^backpeer_.*_(amd64|arm64)\.deb$').firstMatch(name);
+  if (deb != null) return ('linux', _arch(deb[1]!));
   final macos = RegExp(r'^Backpeer-.*-macos-(x64|arm64|x86_64|aarch64)\.dmg$')
       .firstMatch(name);
   if (macos != null) return ('macos', _arch(macos[1]!));
@@ -154,10 +162,17 @@ ProductVersion _versionFromTag(String tag) {
 }
 
 String _arch(String text) => switch (text) {
-  'x86_64' || 'x64' => 'x64',
+  'x86_64' || 'x64' || 'amd64' => 'x64',
   'aarch64' || 'arm64' => 'arm64',
   _ => text,
 };
+
+/// Порядок сборок в манифесте: сначала те, что понимают все клиенты.
+int _priority(String name) {
+  if (name.endsWith('.deb')) return 1;
+  if (name.endsWith('.rpm')) return 2;
+  return 0;
+}
 
 Map<String, String> _parseFlags(List<String> args) {
   final flags = <String, String>{};

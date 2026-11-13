@@ -25,8 +25,14 @@ abstract interface class UpdateInstaller {
   /// Как пакет будет поставлен, для человека.
   String get description;
 
-  /// Нужно ли скачивать пакет. Для `.deb`/`.rpm` и macOS вне
-  /// `/Applications` — нет: клиент только показывает адрес.
+  /// Вид сборки, который ставит этот установщик (`deb`, `appimage`, `exe`,
+  /// `dmg`); `null` — вид не важен, подойдёт первая сборка платформы.
+  /// По нему [Updater] выбирает пакет из манифеста: клиент с `.deb` не
+  /// должен скачивать образ AppImage.
+  String? get packageKind;
+
+  /// Нужно ли скачивать пакет. Для `.rpm` и macOS вне `/Applications` —
+  /// нет: клиент только показывает адрес.
   bool get needsDownload => true;
 
   /// Ставит пакет [package] из [bytes] (хэш уже проверен; при
@@ -41,12 +47,22 @@ typedef HelperStarter = Future<void> Function(
   List<String> arguments,
 );
 
+/// Запуск программы с ожиданием конца (менеджер пакетов). В тестах —
+/// подделка.
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments,
+);
+
 Future<void> _startHelper(String executable, List<String> arguments) async {
   await Process.start(executable, arguments, mode: ProcessStartMode.detached);
 }
 
-/// Для `.deb`/`.rpm` и случаев, когда автоматической установки нет:
-/// сообщаем адрес пакета.
+Future<ProcessResult> _runProcess(String executable, List<String> arguments) =>
+    Process.run(executable, arguments);
+
+/// Для `.rpm` и случаев, когда автоматической установки нет: сообщаем адрес
+/// пакета.
 final class NotifyingInstaller implements UpdateInstaller {
   const new();
 
@@ -54,11 +70,104 @@ final class NotifyingInstaller implements UpdateInstaller {
   String get description => 'уведомление о новой версии';
 
   @override
+  String? get packageKind => null;
+
+  @override
   bool get needsDownload => false;
 
   @override
   Future<UpdateOutcome> apply(UpdatePackage package, Uint8List bytes) async =>
       UpdateOutcome(url: package.url.toString());
+}
+
+/// Linux `.deb`: поставить загруженный пакет системным менеджером через
+/// `pkexec` (polkit спросит пароль администратора) и перезапустить
+/// приложение новой версией.
+///
+/// Службы к этому моменту остановлены ([Updater.stop]); `postinst` нового
+/// пакета сам перезапускает их у вошедшего пользователя. Без `pkexec`
+/// (нет polkit, запуск по SSH, сервер без рабочего стола) автоматической
+/// установки нет — клиент показывает адрес пакета, как раньше.
+final class DebInstaller implements UpdateInstaller {
+  new({
+    required this.appExecutable,
+    this.run = _runProcess,
+    this.startHelper = _startHelper,
+    this.pkexec = '/usr/bin/pkexec',
+    this.aptGet = '/usr/bin/apt-get',
+  });
+
+  /// `/opt/backpeer/backpeer` — приложение из пакета.
+  final String appExecutable;
+
+  final ProcessRunner run;
+  final HelperStarter startHelper;
+  final String pkexec;
+  final String aptGet;
+
+  /// Пакет `backpeer` поставлен через `dpkg` — обновляем пакетом, а не
+  /// образом AppImage. Признак — список файлов пакета в базе `dpkg`.
+  static bool installedFromDeb({String info = '/var/lib/dpkg/info'}) =>
+      File('$info/backpeer.list').existsSync();
+
+  @override
+  String get description => 'пакет .deb';
+
+  @override
+  String? get packageKind => 'deb';
+
+  @override
+  bool get needsDownload => true;
+
+  @override
+  Future<UpdateOutcome> apply(UpdatePackage package, Uint8List bytes) async {
+    final dir = Directory.systemTemp.createTempSync('backpeer-update-');
+    final name = _packageFileName(package.url, fallback: 'backpeer.deb');
+    final file = File('${dir.path}${Platform.pathSeparator}$name')
+      ..writeAsBytesSync(bytes, flush: true);
+    final ProcessResult result;
+    try {
+      result = await run(pkexec, [aptGet, 'install', '-y', file.path]);
+    } on ProcessException catch (e) {
+      // Нет pkexec или polkit: автоматическая установка невозможна.
+      _removeQuietly(dir);
+      throw ServiceException(
+        'нет pkexec для установки пакета (${e.message}); скачайте .deb '
+        'вручную: ${package.url}',
+      );
+    }
+    if (result.exitCode != 0) {
+      // 126/127 — диалог пароля закрыт или отменён; stderr тогда пуст.
+      final detail = _tail('${result.stderr}');
+      throw ServiceException(
+        'установка .deb не удалась (код ${result.exitCode})'
+        '${detail.isEmpty ? '' : ': $detail'}',
+      );
+    }
+    _removeQuietly(dir);
+    // Замена программ сделана; ждём выхода приложения и поднимаем новую
+    // версию — как у AppImage.
+    await startHelper('/bin/sh', [
+      '-c',
+      appRestartScript(pid: pid, app: appExecutable),
+    ]);
+    return const UpdateOutcome(restartRequired: true);
+  }
+
+  static void _removeQuietly(Directory dir) {
+    try {
+      dir.deleteSync(recursive: true);
+    } on FileSystemException {
+      // Каталог останется в /tmp — установке это не мешает.
+    }
+  }
+
+  static String _tail(String text, {int lines = 3, int max = 300}) {
+    final trimmed = text.trim().split('\n').where((l) => l.isNotEmpty).toList();
+    final skip = trimmed.length > lines ? trimmed.length - lines : 0;
+    final tail = trimmed.skip(skip).join('; ');
+    return tail.length > max ? tail.substring(tail.length - max) : tail;
+  }
 }
 
 /// Linux AppImage: заменить файл образа и перезапустить приложение новой
@@ -74,6 +183,9 @@ final class AppImageInstaller implements UpdateInstaller {
 
   @override
   String get description => 'замена образа AppImage';
+
+  @override
+  String? get packageKind => 'appimage';
 
   @override
   bool get needsDownload => true;
@@ -94,16 +206,17 @@ final class AppImageInstaller implements UpdateInstaller {
     // приложения и дождётся, пока старый процесс отпустит файл.
     await startHelper('/bin/sh', [
       '-c',
-      appImageUpdateScript(pid: pid, image: file.path),
+      appRestartScript(pid: pid, app: file.path),
     ]);
     return const UpdateOutcome(restartRequired: true);
   }
 }
 
-/// Скрипт перезапуска AppImage (вынесен для тестов).
-String appImageUpdateScript({required int pid, required String image}) =>
+/// Скрипт перезапуска приложения после замены программ (AppImage, `.deb`):
+/// дождаться выхода текущего процесса и запустить новый. Вынесен для тестов.
+String appRestartScript({required int pid, required String app}) =>
     'while kill -0 $pid 2>/dev/null; do sleep 0.2; done\n'
-    'exec ${_shQuote(image)}\n';
+    'exec ${_shQuote(app)}\n';
 
 /// Windows: запускает загруженный установщик Inno Setup молча, после него —
 /// приложение. Установщик сам снимает старые службы и кладёт новые
@@ -131,6 +244,9 @@ final class WindowsInstaller implements UpdateInstaller {
 
   @override
   String get description => 'установщик Windows';
+
+  @override
+  String? get packageKind => 'exe';
 
   @override
   bool get needsDownload => true;
@@ -300,6 +416,9 @@ final class MacDmgInstaller implements UpdateInstaller {
   String get description => 'установка из .dmg';
 
   @override
+  String? get packageKind => 'dmg';
+
+  @override
   bool get needsDownload => appBundle.startsWith('/Applications/');
 
   @override
@@ -413,10 +532,24 @@ final class Updater {
   /// процессы и ставит. Порядок гарантирует: подменённый пакет отклоняется до
   /// остановки процессов и установки.
   Future<UpdateOutcome> apply(UpdateManifest manifest) async {
-    final package = manifest.packageFor(platform, arch);
+    final what = '${platform.name}${arch == null ? '' : '/$arch'}';
+    final kind = installer.packageKind;
+    final package = manifest.packageFor(platform, arch, kind: kind);
     if (package == null) {
-      final what = '${platform.name}${arch == null ? '' : '/$arch'}';
-      log?.write('обновление ${manifest.version}: нет сборки для $what');
+      // Сборки своего вида нет (например, `.rpm` или старый манифест без
+      // `.deb`): не подставляем сборку другого вида, а показываем адрес.
+      final other = kind == null ? null : manifest.packageFor(platform, arch);
+      if (other != null) {
+        log?.write(
+          'обновление ${manifest.version}: нет пакета $kind для $what, '
+          'адрес ${other.url}',
+        );
+        return UpdateOutcome(url: other.url.toString());
+      }
+      log?.write(
+        'обновление ${manifest.version}: нет сборки для '
+        '$what${kind == null ? '' : ' ($kind)'}',
+      );
       throw PreconditionException('в манифесте нет сборки для $what');
     }
     log?.write(

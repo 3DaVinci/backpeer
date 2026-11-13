@@ -72,11 +72,21 @@ final class OsUpdater implements UpdateControl {
         log: updateLog,
       ),
       UpdatePlatform.macos => MacDmgInstaller(appExecutable: appExecutable),
-      UpdatePlatform.linux =>
-        Platform.environment['APPIMAGE'] != null
-            ? AppImageInstaller()
-            : const NotifyingInstaller(),
+      UpdatePlatform.linux => _linuxInstaller(),
     };
+  }
+
+  /// Linux: AppImage заменяет свой файл, установленный `.deb` — ставит
+  /// пакет (задача 5.8.2, Linux `.deb`). Остальное (`.rpm`, запуск из
+  /// исходников) — только уведомление с адресом.
+  UpdateInstaller _linuxInstaller() {
+    if (Platform.environment['APPIMAGE'] != null) {
+      return AppImageInstaller();
+    }
+    if (DebInstaller.installedFromDeb()) {
+      return DebInstaller(appExecutable: appExecutable);
+    }
+    return const NotifyingInstaller();
   }
 
   Future<Updater> _updater() async {

@@ -10,6 +10,7 @@ import 'dart:typed_data';
 import 'package:app/src/services/update_log.dart';
 import 'package:app/src/services/updater.dart';
 import 'package:core/core.dart';
+import 'package:daemon_kit/daemon_kit.dart' show ServiceException;
 import 'package:flutter_test/flutter_test.dart';
 
 Future<UpdateOutcome> _okInstall(
@@ -53,18 +54,21 @@ void main() {
     UpdateFetch? fetch,
     Future<UpdateOutcome> Function(UpdatePackage, Uint8List)? install,
     Future<void> Function()? stop,
+    String? kind,
+    String? arch,
   }) {
     final client = UpdateClient(
       crypto: crypto,
       acceptedKeys: [devKey.publicKey],
       fetch: fetch,
     );
-    final installer = _FakeInstaller(install ?? _okInstall);
+    final installer = _FakeInstaller(install ?? _okInstall, kind: kind);
     return Updater(
       client: client,
       currentVersion: ProductVersion.parse('0.0.2'),
       installId: Uint8List(16),
       platform: UpdatePlatform.linux,
+      arch: arch,
       installer: installer,
       stop: stop ?? () async {},
     );
@@ -270,6 +274,195 @@ void main() {
     expect(log.takeResult(), 'нет сети');
   });
 
+  test(
+    'Linux .deb: из манифеста берётся пакет .deb, а не образ AppImage',
+    () async {
+      final deb = Uint8List.fromList([7, 7, 7, 7]);
+      final json = jsonEncode({
+        'format': 1,
+        'channel': 'stable',
+        'version': '0.0.3',
+        'minVersion': '0.0.2',
+        'releasedAt': '2026-11-03T10:00:00Z',
+        'rollout': 1,
+        'packages': [
+          {
+            'platform': 'linux',
+            'arch': 'x64',
+            'url': 'https://u.example/backpeer-0.0.3-x86_64.AppImage',
+            'sha256': bytesToHex(crypto.blake2b256(deb)),
+            'size': 4,
+          },
+          {
+            'platform': 'linux',
+            'arch': 'x64',
+            'url': 'https://u.example/backpeer_0.0.3_amd64.deb',
+            'sha256': bytesToHex(crypto.blake2b256(deb)),
+            'size': 4,
+          },
+        ],
+        'signer': base64Encode(devKey.publicKey),
+      });
+      final fetched = <String>[];
+      final u = updater(
+        kind: 'deb',
+        arch: 'x64',
+        fetch: (url) async {
+          fetched.add(url.path);
+          return deb;
+        },
+      );
+      await u.apply(UpdateManifest.parse(json));
+      expect(fetched, ['/backpeer_0.0.3_amd64.deb']);
+    },
+  );
+
+  test(
+    'нет сборки своего вида — показываем адрес, но не ставим чужую',
+    () async {
+      final json = jsonEncode({
+        'format': 1,
+        'channel': 'stable',
+        'version': '0.0.3',
+        'minVersion': '0.0.2',
+        'releasedAt': '2026-11-03T10:00:00Z',
+        'rollout': 1,
+        'packages': [
+          {
+            'platform': 'linux',
+            'arch': 'x64',
+            'url': 'https://u.example/backpeer-0.0.3-x86_64.AppImage',
+            'sha256': '00' * 32,
+            'size': 4,
+          },
+        ],
+        'signer': base64Encode(devKey.publicKey),
+      });
+      var stopped = false;
+      var installed = false;
+      final u = updater(
+        kind: 'deb',
+        arch: 'x64',
+        stop: () async => stopped = true,
+        install: (package, bytes) async {
+          installed = true;
+          return const UpdateOutcome();
+        },
+      );
+      final outcome = await u.apply(UpdateManifest.parse(json));
+      expect(installed, isFalse);
+      expect(stopped, isFalse, reason: 'останавливать процессы не нужно');
+      expect(outcome.url, 'https://u.example/backpeer-0.0.3-x86_64.AppImage');
+    },
+  );
+
+  test(
+    'Linux .deb: пакет ставится через pkexec apt-get, затем перезапуск',
+    () async {
+      final dir = Directory.systemTemp.createTempSync('fs-update-deb-');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      String? executable;
+      List<String>? arguments;
+      var helper = <String>[];
+      final installer = DebInstaller(
+        appExecutable: '/opt/backpeer/backpeer',
+        run: (exe, args) async {
+          executable = exe;
+          arguments = args;
+          return ProcessResult(1, 0, 'Чтение списков пакетов…', '');
+        },
+        startHelper: (exe, args) async => helper = [exe, ...args],
+      );
+      final outcome = await installer.apply(
+        UpdatePackage(
+          platform: UpdatePlatform.linux,
+          arch: 'x64',
+          url: Uri.parse('https://u.example/backpeer_0.0.8_amd64.deb'),
+          sha256: Uint8List(32),
+          size: 4,
+        ),
+        Uint8List.fromList([1, 2, 3, 4]),
+      );
+      expect(outcome.restartRequired, isTrue);
+      expect(executable, '/usr/bin/pkexec');
+      expect(arguments!.take(3), ['/usr/bin/apt-get', 'install', '-y']);
+      expect(arguments!.last, endsWith('backpeer_0.0.8_amd64.deb'));
+      expect(
+        File(arguments!.last).existsSync(),
+        isFalse,
+        reason: 'убран после',
+      );
+      // Перезапуск — отдельной оболочкой, которая ждёт выхода приложения.
+      expect(helper.first, '/bin/sh');
+      expect(helper.last, contains('kill -0'));
+      expect(helper.last, contains('/opt/backpeer/backpeer'));
+    },
+  );
+
+  test('Linux .deb: ошибка установки — понятная причина', () async {
+    final installer = DebInstaller(
+      appExecutable: '/opt/backpeer/backpeer',
+      run: (exe, args) async =>
+          ProcessResult(1, 100, '', 'dpkg: ошибка: пакет сломан'),
+      startHelper: (exe, args) async {},
+    );
+    await expectLater(
+      installer.apply(
+        UpdatePackage(
+          platform: UpdatePlatform.linux,
+          arch: 'x64',
+          url: Uri.parse('https://u.example/backpeer_0.0.8_amd64.deb'),
+          sha256: Uint8List(32),
+          size: 4,
+        ),
+        Uint8List.fromList([1, 2, 3, 4]),
+      ),
+      throwsA(
+        isA<ServiceException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('код 100'), contains('пакет сломан')),
+        ),
+      ),
+    );
+  });
+
+  test('Linux .deb: без pkexec — сообщение с адресом пакета', () async {
+    final installer = DebInstaller(
+      appExecutable: '/opt/backpeer/backpeer',
+      run: (exe, args) async =>
+          throw ProcessException(exe, args, 'нет файла', 2),
+      startHelper: (exe, args) async {},
+    );
+    await expectLater(
+      installer.apply(
+        UpdatePackage(
+          platform: UpdatePlatform.linux,
+          arch: 'x64',
+          url: Uri.parse('https://u.example/backpeer_0.0.8_amd64.deb'),
+          sha256: Uint8List(32),
+          size: 4,
+        ),
+        Uint8List.fromList([1, 2, 3, 4]),
+      ),
+      throwsA(
+        isA<ServiceException>().having(
+          (e) => e.message,
+          'message',
+          allOf(contains('pkexec'), contains('.deb')),
+        ),
+      ),
+    );
+  });
+
+  test('Linux .deb: установку узнаём по базе dpkg', () {
+    final info = Directory.systemTemp.createTempSync('fs-dpkg-');
+    addTearDown(() => info.deleteSync(recursive: true));
+    expect(DebInstaller.installedFromDeb(info: info.path), isFalse);
+    File('${info.path}/backpeer.list').writeAsStringSync('/opt/backpeer');
+    expect(DebInstaller.installedFromDeb(info: info.path), isTrue);
+  });
+
   test('macOS: скрипт монтирует .dmg, заменяет .app и открывает его', () {
     final script = macUpdateScript(
       pid: 7,
@@ -285,12 +478,18 @@ void main() {
 }
 
 final class _FakeInstaller implements UpdateInstaller {
-  new(this._apply);
+  new(this._apply, {this.kind});
 
   final Future<UpdateOutcome> Function(UpdatePackage, Uint8List) _apply;
 
+  /// Вид сборки, который «ставит» подделка; `null` — любой.
+  final String? kind;
+
   @override
   String get description => 'тест';
+
+  @override
+  String? get packageKind => kind;
 
   @override
   bool get needsDownload => true;

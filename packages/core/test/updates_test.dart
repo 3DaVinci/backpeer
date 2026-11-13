@@ -157,6 +157,40 @@ void main() {
       expect(m.packageFor(UpdatePlatform.windows, 'x64')?.size, 3);
       expect(m.packageFor(UpdatePlatform.macos, null), isNull);
     });
+
+    test('различает сборки одной платформы по виду файла', () {
+      final m = UpdateManifest.parse(
+        manifestJson(
+          packages: [
+            {
+              'platform': 'linux',
+              'arch': 'x64',
+              'url': 'https://u.example/backpeer-0.0.8-x86_64.AppImage',
+              'sha256': '00' * 32,
+              'size': 1,
+            },
+            {
+              'platform': 'linux',
+              'arch': 'x64',
+              'url': 'https://u.example/backpeer_0.0.8_amd64.deb',
+              'sha256': '01' * 32,
+              'size': 2,
+            },
+          ],
+        ),
+      );
+      // Без вида — первая сборка платформы, как у клиентов 0.0.7 и раньше.
+      expect(m.packageFor(UpdatePlatform.linux, 'x64')?.size, 1);
+      expect(
+        m.packageFor(UpdatePlatform.linux, 'x64', kind: 'appimage')?.size,
+        1,
+      );
+      // Установленный .deb обновляется пакетом, а не образом AppImage.
+      expect(m.packageFor(UpdatePlatform.linux, 'x64', kind: 'deb')?.size, 2);
+      expect(m.packageFor(UpdatePlatform.linux, 'x64', kind: 'rpm'), isNull);
+      expect(m.packages.first.kind, 'appimage');
+      expect(m.packages.last.kind, 'deb');
+    });
   });
 
   group('подпись манифеста', () {

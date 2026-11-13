@@ -15,6 +15,46 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`app` - `v0.0.8-dev.1`](#app---v008-dev1)
+ - [`core` - `v0.0.8-dev.1`](#core---v008-dev1)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `agent` - `v0.0.8-dev.1`
+ - `bench` - `v0.0.8-dev.1`
+ - `cli` - `v0.0.8-dev.1`
+ - `coordinator` - `v0.0.8-dev.1`
+ - `daemon_kit` - `v0.0.8-dev.1`
+ - `node` - `v0.0.8-dev.1`
+ - `protocol` - `v0.0.8-dev.1`
+ - `relay` - `v0.0.8-dev.1`
+ - `test_vectors` - `v0.0.8-dev.1`
+
+---
+
+#### `app` - `v0.0.8-dev.1`
+
+ - **FEAT**(app,core): автообновление из .deb через pkexec и выбор сборки по виду.
+
+#### `core` - `v0.0.8-dev.1`
+
+ - **FEAT**(app,core): автообновление из .deb через pkexec и выбор сборки по виду.
+
+
+## 2026-11-13
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`app` - `v0.0.8-dev.0`](#app---v008-dev0)
 
 Packages versioned in lockstep only:

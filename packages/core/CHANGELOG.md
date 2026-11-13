@@ -1,3 +1,7 @@
+## 0.0.8-dev.1
+
+ - **FEAT**(app,core): автообновление из .deb через pkexec и выбор сборки по виду.
+
 ## 0.0.8-dev.0
 
  - Bump version to keep all packages in the workspace in lockstep.

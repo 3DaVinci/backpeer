@@ -86,7 +86,7 @@ class JobProgress extends StatelessWidget {
           ),
         if (p case {'bytesPerSecond': final int rate}) ...[
           [
-            l10n.progressSpeed(formatSize(l10n, rate)),
+            _speedText(l10n, job, p, rate),
             if (p['etaMs'] case final int eta)
               l10n.progressEta(formatRemaining(l10n, eta)),
           ].join(', '),
@@ -136,6 +136,23 @@ class JobProgress extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// Скорость с названием процесса: при обходе — чтение, при отправке —
+  /// передача; у остальных заданий (восстановление) — без уточнения.
+  static String _speedText(
+    AppLocalizations l10n,
+    Map<String, Object?> job,
+    Map<String, Object?> p,
+    int rate,
+  ) {
+    final size = formatSize(l10n, rate);
+    if (job['kind'] != 'backup') return l10n.progressSpeed(size);
+    return switch (p['stage']) {
+      'walking' => l10n.progressReadSpeed(size),
+      'storing' => l10n.progressStoreSpeed(size),
+      _ => l10n.progressSpeed(size),
+    };
   }
 
   /// Что бэкап делает сейчас: читает файл или уже отправляет сегменты

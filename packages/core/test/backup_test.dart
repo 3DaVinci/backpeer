@@ -451,6 +451,44 @@ void main() {
     s.index.close();
   });
 
+  test('оценка времени: чтение и сохранение идут параллельно', () {
+    const p = BackupProgress(
+      files: 1,
+      bytes: 1 << 30,
+      bytesRead: 1 << 29,
+      newBytes: 1 << 29,
+      doneBytes: 1 << 29,
+      bytesStored: 1 << 28,
+      stage: BackupStage.walking,
+      currentPath: '/data/file',
+      segmentsStored: 1,
+      segmentsInFlight: 1,
+      elapsed: Duration(seconds: 10),
+    );
+    expect(p.readRate, closeTo((1 << 29) / 10, 1));
+    expect(p.storeRate, closeTo((1 << 28) / 10, 1));
+    expect(p.currentRate, p.readRate);
+    // Читать осталось 3 ГиБ при 0,5 ГиБ/10 с — 60 с; передать 3,5 ГиБ
+    // при 0,25 ГиБ/10 с — 140 с. Работают параллельно, поэтому 140 с.
+    expect(p.estimateRemaining(4 << 30)?.inSeconds, 140);
+
+    const storing = BackupProgress(
+      files: 1,
+      bytes: 4 << 30,
+      bytesRead: 1 << 29,
+      newBytes: 1 << 29,
+      doneBytes: 1 << 29,
+      bytesStored: 1 << 28,
+      stage: BackupStage.storing,
+      currentPath: null,
+      segmentsStored: 1,
+      segmentsInFlight: 1,
+      elapsed: Duration(seconds: 10),
+    );
+    expect(storing.currentRate, storing.storeRate);
+    expect(storing.estimateRemaining(4 << 30)?.inSeconds, 140);
+  });
+
   test('пул isolate даёт тот же снимок, что кодирование в потоке', () async {
     populate(megabytes: 20);
     final inline = setup('inline');

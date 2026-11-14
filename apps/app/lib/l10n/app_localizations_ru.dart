@@ -859,6 +859,16 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String progressReadSpeed(String size) {
+    return 'чтение $size/с';
+  }
+
+  @override
+  String progressStoreSpeed(String size) {
+    return 'передача $size/с';
+  }
+
+  @override
   String progressEta(String time) {
     return 'осталось около $time';
   }

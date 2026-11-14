@@ -862,27 +862,28 @@ final class BackupAgent {
   Map<String, Object?> _backupProgress(RunningJob job, BackupProgress p) {
     final total = job.estimate;
     final ms = p.elapsed.inMilliseconds;
-    // Скорость и остаток — по сделанному, а не по прочитанному: обход идёт
-    // впереди загрузки, и по обработанным файлам полоса казалась полной, а
-    // скорость — в килобайтах в секунду, хотя данные ещё отправлялись.
-    final done = p.doneBytes;
-    final rate = ms < 1000 ? null : done * 1000 ~/ ms;
-    final left = total == null ? null : total.bytes - done;
+    // Скорость — текущего этапа: при обходе это чтение с диска, после
+    // обхода — передача сегментов на узлы. Оставшееся время считается по
+    // общему объёму и обеим скоростям: пока идёт обход, чтение и передача
+    // работают параллельно, поэтому берётся больший из остатков.
+    final rate = p.currentRate;
+    final speed = rate > 0 ? rate.round() : null;
+    final eta = total == null ? null : p.estimateRemaining(total.bytes);
     return {
       'files': p.files,
       'bytes': p.bytes,
       'bytesRead': p.bytesRead,
       'newBytes': p.newBytes,
-      'doneBytes': done,
+      'doneBytes': p.doneBytes,
+      'bytesStored': p.bytesStored,
       'stage': p.stage.name,
       'currentFile': ?p.currentPath,
       'segmentsStored': p.segmentsStored,
       'elapsedMs': ms,
       'totalFiles': ?total?.files,
       'totalBytes': ?total?.bytes,
-      'bytesPerSecond': ?rate,
-      if (left != null && rate != null && rate > 0)
-        'etaMs': (left < 0 ? 0 : left) * 1000 ~/ rate,
+      'bytesPerSecond': ?speed,
+      'etaMs': ?eta?.inMilliseconds,
     };
   }
 
@@ -946,7 +947,15 @@ final class BackupAgent {
     if (policy == null) return null;
     // Ход задания: снимок уже сохранён, осталась очистка по политике —
     // приложение показывает это, а не «отправляем данные».
-    _progress(job, {...job.progress, 'stage': 'cleaning', 'currentFile': null});
+    _progress(job, {
+      ...job.progress,
+      'stage': 'cleaning',
+      'currentFile': null,
+      // Прежняя скорость чтения или передачи к очистке уже не относится.
+      'bytesPerSecond': null,
+      'etaMs': null,
+      'elapsedMs': DateTime.now().difference(job.startedAt).inMilliseconds,
+    });
     try {
       final report = await forgetByPolicy(
         catalog: _catalog(session),

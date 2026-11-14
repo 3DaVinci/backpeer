@@ -238,6 +238,8 @@
   "verifyNow": "Check now",
   "progressOf": "{done} of {total}",
   "progressSpeed": "{size}/s",
+  "progressReadSpeed": "reading {size}/s",
+  "progressStoreSpeed": "sending {size}/s",
   "progressEta": "about {time} left",
   "durationMinutes": "{count, plural, one{{count} minute} other{{count} minutes}}",
   "durationHours": "{count, plural, one{{count} hour} other{{count} hours}}",

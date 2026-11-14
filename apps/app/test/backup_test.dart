@@ -353,6 +353,10 @@ void main() {
       find.text('Читаем: /home/user/Документы/большой.iso'),
       findsOneWidget,
     );
+    expect(
+      find.text('чтение 10,0 МиБ/с, осталось около 3 минут'),
+      findsOneWidget,
+    );
 
     // Сегменты отправляются — файл уже не читается.
     agent.update(
@@ -368,6 +372,8 @@ void main() {
             'totalBytes': 4 << 30,
             'stage': 'storing',
             'segmentsStored': 3,
+            'bytesPerSecond': 5 << 20,
+            'etaMs': 120000,
           },
         },
       ),
@@ -375,6 +381,10 @@ void main() {
     await tester.pump();
     expect(
       find.text('Отправляем данные на узлы (сегментов: 3)'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('передача 5,0 МиБ/с, осталось около 2 минут'),
       findsOneWidget,
     );
   });

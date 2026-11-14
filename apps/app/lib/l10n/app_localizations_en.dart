@@ -851,6 +851,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String progressReadSpeed(String size) {
+    return 'reading $size/s';
+  }
+
+  @override
+  String progressStoreSpeed(String size) {
+    return 'sending $size/s';
+  }
+
+  @override
   String progressEta(String time) {
     return 'about $time left';
   }

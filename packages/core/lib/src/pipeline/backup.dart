@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:core/src/chunking/chunk_id.dart';
@@ -41,6 +42,7 @@ final class BackupProgress {
     required this.bytesRead,
     required this.newBytes,
     required this.doneBytes,
+    required this.bytesStored,
     required this.stage,
     required this.currentPath,
     required this.segmentsStored,
@@ -65,6 +67,11 @@ final class BackupProgress {
   /// узлов, — не в счёт.
   final int doneBytes;
 
+  /// Байт новых сегментов сохранено на узлах: сегменты, по которым
+  /// ответили все узлы. Пока идёт обход, это и есть скорость передачи по
+  /// сети — в отличие от [bytesRead], которая считает чтение с диска.
+  final int bytesStored;
+
   /// Что делается сейчас: обход с чтением файлов или сохранение сегментов.
   final BackupStage stage;
 
@@ -78,6 +85,37 @@ final class BackupProgress {
   double get readRate => elapsed.inMicroseconds == 0
       ? 0
       : bytesRead / elapsed.inMicroseconds * 1e6;
+
+  /// Скорость сохранения сегментов на узлах, байт в секунду.
+  double get storeRate => elapsed.inMicroseconds == 0
+      ? 0
+      : bytesStored / elapsed.inMicroseconds * 1e6;
+
+  /// Скорость текущего этапа: чтения при обходе, сохранения после него.
+  double get currentRate => stage == BackupStage.walking ? readRate : storeRate;
+
+  /// Оценка оставшегося времени по общему объёму [totalBytes] и средним
+  /// скоростям чтения и сохранения. Пока идёт обход, чтение и сохранение
+  /// работают параллельно, поэтому берётся больший из остатков; после
+  /// обхода остаётся только сохранение. `null` — ещё нечего оценивать.
+  Duration? estimateRemaining(int totalBytes) {
+    if (totalBytes <= 0) return Duration.zero;
+    if (elapsed < const Duration(seconds: 1)) return null;
+    final readLeft = math.max(0, totalBytes - bytes);
+    final storeLeft = math.max(0, totalBytes - doneBytes);
+    final readEta = readRate > 0
+        ? Duration(microseconds: (readLeft / readRate * 1e6).round())
+        : null;
+    final storeEta = storeRate > 0
+        ? Duration(microseconds: (storeLeft / storeRate * 1e6).round())
+        : null;
+    if (stage == BackupStage.walking) {
+      if (readEta == null) return storeEta;
+      if (storeEta == null) return readEta;
+      return readEta > storeEta ? readEta : storeEta;
+    }
+    return storeEta;
+  }
 }
 
 /// Итог бэкапа.
@@ -174,6 +212,7 @@ Future<BackupResult> runBackup({
       bytesRead: builder.stats.bytesRead,
       newBytes: builder.stats.newBytes,
       doneBytes: _doneBytes(builder.stats, packer),
+      bytesStored: packer.bytesStored,
       stage: stage,
       currentPath: stage == BackupStage.walking
           ? builder.stats.currentPath

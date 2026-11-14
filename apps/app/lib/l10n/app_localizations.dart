@@ -1526,6 +1526,18 @@ abstract class AppLocalizations {
   /// **'{size}/с'**
   String progressSpeed(String size);
 
+  /// No description provided for @progressReadSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'чтение {size}/с'**
+  String progressReadSpeed(String size);
+
+  /// No description provided for @progressStoreSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'передача {size}/с'**
+  String progressStoreSpeed(String size);
+
   /// No description provided for @progressEta.
   ///
   /// In ru, this message translates to:

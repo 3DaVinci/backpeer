@@ -3,6 +3,50 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-14
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`agent` - `v0.0.8-dev.2`](#agent---v008-dev2)
+ - [`app` - `v0.0.8-dev.2`](#app---v008-dev2)
+ - [`core` - `v0.0.8-dev.2`](#core---v008-dev2)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.8-dev.2`
+ - `cli` - `v0.0.8-dev.2`
+ - `coordinator` - `v0.0.8-dev.2`
+ - `daemon_kit` - `v0.0.8-dev.2`
+ - `node` - `v0.0.8-dev.2`
+ - `protocol` - `v0.0.8-dev.2`
+ - `relay` - `v0.0.8-dev.2`
+ - `test_vectors` - `v0.0.8-dev.2`
+
+---
+
+#### `agent` - `v0.0.8-dev.2`
+
+ - **FEAT**(app,agent,core): понятный прогресс проверки и удаления снимков.
+
+#### `app` - `v0.0.8-dev.2`
+
+ - **FEAT**(app,agent,core): понятный прогресс проверки и удаления снимков.
+
+#### `core` - `v0.0.8-dev.2`
+
+ - **FEAT**(app,agent,core): понятный прогресс проверки и удаления снимков.
+
+
 ## 2026-11-13
 
 ### Changes

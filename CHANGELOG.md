@@ -15,6 +15,50 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.8-dev.3`](#agent---v008-dev3)
+ - [`app` - `v0.0.8-dev.3`](#app---v008-dev3)
+ - [`core` - `v0.0.8-dev.3`](#core---v008-dev3)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.8-dev.3`
+ - `cli` - `v0.0.8-dev.3`
+ - `coordinator` - `v0.0.8-dev.3`
+ - `daemon_kit` - `v0.0.8-dev.3`
+ - `node` - `v0.0.8-dev.3`
+ - `protocol` - `v0.0.8-dev.3`
+ - `relay` - `v0.0.8-dev.3`
+ - `test_vectors` - `v0.0.8-dev.3`
+
+---
+
+#### `agent` - `v0.0.8-dev.3`
+
+ - **FIX**(app,agent,core): скорость и ETA бэкапа по этапам.
+
+#### `app` - `v0.0.8-dev.3`
+
+ - **FIX**(app,agent,core): скорость и ETA бэкапа по этапам.
+
+#### `core` - `v0.0.8-dev.3`
+
+ - **FIX**(app,agent,core): скорость и ETA бэкапа по этапам.
+
+
+## 2026-11-14
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.8-dev.2`](#agent---v008-dev2)
  - [`app` - `v0.0.8-dev.2`](#app---v008-dev2)
  - [`core` - `v0.0.8-dev.2`](#core---v008-dev2)

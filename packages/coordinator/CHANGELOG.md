@@ -1,3 +1,7 @@
+## 0.0.8-dev.4
+
+ - Bump version to keep all packages in the workspace in lockstep.
+
 ## 0.0.8-dev.3
 
  - Bump version to keep all packages in the workspace in lockstep.

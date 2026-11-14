@@ -903,6 +903,54 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String progressElapsed(String time) {
+    return 'about $time elapsed';
+  }
+
+  @override
+  String get verifyStagePreparing => 'Collecting the list of segments…';
+
+  @override
+  String get verifyStageChecking => 'Checking that fragments are on the hosts';
+
+  @override
+  String get verifyStageReading => 'Reading and checking fragments';
+
+  @override
+  String get verifyStageAssembling => 'Assembling segments from fragments';
+
+  @override
+  String get verifyStageDone => 'Check complete';
+
+  @override
+  String verifySegments(int done, int total) {
+    return 'Segments: $done of $total';
+  }
+
+  @override
+  String verifyFragments(int done, int total) {
+    return 'fragments: $done of $total';
+  }
+
+  @override
+  String verifyCurrentSegment(int segment, int total) {
+    return 'segment $segment of $total';
+  }
+
+  @override
+  String verifyCurrentFragment(int fragment, int total) {
+    return 'fragment $fragment of $total';
+  }
+
+  @override
+  String get verifyWaitingNode => 'waiting for a host…';
+
+  @override
+  String verifyProblems(int count) {
+    return 'problems: $count';
+  }
+
+  @override
   String backupReading(String path) {
     return 'Reading: $path';
   }
@@ -981,6 +1029,56 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '$count snapshot deleted',
     );
     return '$_temp0';
+  }
+
+  @override
+  String get forgetStagePreparing => 'Preparing: reading the snapshot list';
+
+  @override
+  String get forgetStageForgetting => 'Deleting snapshots';
+
+  @override
+  String get forgetStageReading => 'Checking the remaining snapshots';
+
+  @override
+  String get forgetStageScanning =>
+      'Finding segments that are no longer needed';
+
+  @override
+  String get forgetStageRewriting => 'Removing references to unneeded segments';
+
+  @override
+  String get forgetStageCleaning => 'Preparing to delete data';
+
+  @override
+  String get forgetStageDeleting => 'Deleting fragments from hosts';
+
+  @override
+  String get forgetStageDone => 'Deletion complete';
+
+  @override
+  String forgetSnapshotsProgress(int done, int total) {
+    return 'Snapshots: $done of $total';
+  }
+
+  @override
+  String forgetSegmentsProgress(int done, int total) {
+    return 'Segments: $done of $total';
+  }
+
+  @override
+  String forgetFragmentsDeleted(int count) {
+    return 'Fragments deleted: $count';
+  }
+
+  @override
+  String forgetErrors(int count) {
+    return 'Fragments not deleted: $count';
+  }
+
+  @override
+  String forgetCurrentSnapshot(String date) {
+    return 'snapshot from $date';
   }
 
   @override

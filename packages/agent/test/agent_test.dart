@@ -186,7 +186,20 @@ void main() {
     expect(copy.readAsStringSync(), 'второй файл\n' * 50);
 
     final verified = finished(client, 'verify');
+    // Событие `progress` нужно приложению: полоса проверки показывает, что
+    // она делает и сколько осталось, а не крутится бесконечно.
+    final verifyProgress = client.events.firstWhere(
+      (e) =>
+          e.name == 'progress' &&
+          e.data['kind'] == 'verify' &&
+          e.data['stage'] == 'done',
+    );
     await client.call('verify', {'full': true});
+    final step = await verifyProgress.timeout(const Duration(minutes: 2));
+    expect(step.data['totalSegments'], greaterThan(0));
+    expect(step.data['totalFragments'], greaterThan(0));
+    expect(step.data['fragments'], step.data['totalFragments']);
+    expect(step.data['segments'], step.data['totalSegments']);
     final health = await verified;
     expect(health['outcome'], 'ok');
     expect((health['result']! as Map<String, Object?>)['healthy'], isTrue);

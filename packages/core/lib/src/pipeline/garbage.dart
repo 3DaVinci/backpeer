@@ -77,6 +77,90 @@ final class GarbageReport {
   final List<(FragmentLocation, CoreException)> fragmentErrors = [];
 }
 
+/// Что сборка мусора делает сейчас.
+enum GarbageStage {
+  /// Читает объекты-индексы и список снимков.
+  preparing,
+
+  /// Обходит деревья оставшихся снимков и собирает нужные чанки.
+  reading,
+
+  /// Ищет сегменты, которые не нужны ни одному снимку.
+  scanning,
+
+  /// Переписывает объекты-индексы без ненужных сегментов.
+  rewriting,
+
+  /// Удаляет фрагменты с узлов и сегменты из локального индекса.
+  deleting,
+
+  /// Сборка закончена.
+  done,
+}
+
+/// Ход сборки мусора — для события `progress` и полосы в приложении.
+final class GarbageProgress {
+  const new({
+    required this.stage,
+    required this.snapshots,
+    required this.totalSnapshots,
+    required this.segments,
+    required this.totalSegments,
+    required this.fragmentsDeleted,
+    required this.bytesFreed,
+    required this.errors,
+    required this.elapsed,
+  });
+
+  final GarbageStage stage;
+
+  /// Обойдено снимков (этап [GarbageStage.reading]).
+  final int snapshots;
+
+  /// Всего снимков в списке на момент чтения.
+  final int totalSnapshots;
+
+  /// Удалено сегментов (этап [GarbageStage.deleting]).
+  final int segments;
+
+  /// Сколько сегментов нужно удалить.
+  final int totalSegments;
+
+  final int fragmentsDeleted;
+  final int bytesFreed;
+
+  /// Фрагментов, которые не удалось удалить.
+  final int errors;
+  final Duration elapsed;
+
+  /// Доля: по снимкам при чтении, по сегментам при удалении.
+  double? get fraction {
+    if (stage == GarbageStage.done) return 1;
+    if (stage == GarbageStage.reading && totalSnapshots > 0) {
+      return (snapshots / totalSnapshots).clamp(0.0, 1.0);
+    }
+    if (stage == GarbageStage.deleting && totalSegments > 0) {
+      return (segments / totalSegments).clamp(0.0, 1.0);
+    }
+    return null;
+  }
+
+  /// Осталось по средней скорости текущего этапа; `null` — ещё не из чего
+  /// считать.
+  Duration? get eta {
+    final done = stage == GarbageStage.reading ? snapshots : segments;
+    final total = stage == GarbageStage.reading
+        ? totalSnapshots
+        : totalSegments;
+    if (total == 0 || done == 0 || elapsed < const Duration(seconds: 1)) {
+      return null;
+    }
+    final left = total - done;
+    if (left <= 0) return Duration.zero;
+    return Duration(microseconds: elapsed.inMicroseconds * left ~/ done);
+  }
+}
+
 /// Простая сборка мусора (manifest.md, раздел 7; задача 2.7.4): находит
 /// сегменты, ни один чанк которых не нужен ни одному снимку, убирает их из
 /// объектов-индексов, освобождает через [releaser] и удаляет их фрагменты
@@ -120,7 +204,15 @@ Future<GarbageReport> collectGarbage({
   SegmentLocator? locator,
   bool dryRun = false,
   bool discardInterrupted = false,
+  void Function(GarbageProgress)? onProgress,
+  Duration progressInterval = const Duration(milliseconds: 500),
 }) async {
+  final watch = Stopwatch()..start();
+  var stage = GarbageStage.preparing;
+  var snapshotsDone = 0;
+  var totalSnapshots = 0;
+  var totalSegments = 0;
+  var lastProgress = Duration.zero;
   final interrupted =
       index.pendingSegments().isNotEmpty ||
       index.segmentsNotInIndex().isNotEmpty;
@@ -130,6 +222,29 @@ Future<GarbageReport> collectGarbage({
     );
   }
   final report = GarbageReport();
+
+  void emit({bool force = false}) {
+    final callback = onProgress;
+    if (callback == null) return;
+    final elapsed = watch.elapsed;
+    if (!force && elapsed - lastProgress < progressInterval) return;
+    lastProgress = elapsed;
+    callback(
+      GarbageProgress(
+        stage: stage,
+        snapshots: snapshotsDone,
+        totalSnapshots: totalSnapshots,
+        segments: report.segmentsDeleted,
+        totalSegments: totalSegments,
+        fragmentsDeleted: report.fragmentsDeleted,
+        bytesFreed: report.bytesFreed,
+        errors: report.fragmentErrors.length,
+        elapsed: elapsed,
+      ),
+    );
+  }
+
+  emit(force: true);
   if (interrupted && !dryRun) {
     // Недописанные сегменты не попали на узлы (или попали частично):
     // следующий бэкап их всё равно отбрасывает. Сохранённые, но не
@@ -162,6 +277,9 @@ Future<GarbageReport> collectGarbage({
     );
   }
   report.snapshots = listing.snapshots.length;
+  totalSnapshots = listing.snapshots.length;
+  stage = GarbageStage.reading;
+  emit(force: true);
 
   // 2. Нужные чанки.
   final reader = SegmentReader(
@@ -201,6 +319,8 @@ Future<GarbageReport> collectGarbage({
     await walk([
       for (final c in snapshot.rootTree) ChunkId(Uint8List.fromList(c)),
     ]);
+    snapshotsDone++;
+    emit();
   }
 
   // Сегменты: из индексов и из локального индекса (недобранные прошлой
@@ -224,12 +344,21 @@ Future<GarbageReport> collectGarbage({
       if (!value.any(referenced.contains)) key,
   };
   report.segmentsLive = segments.length - garbage.length;
+  totalSegments = garbage
+      .where((hex) => index.segment(hexToBytes(hex)) != null)
+      .length;
+  stage = GarbageStage.scanning;
+  emit(force: true);
   if (dryRun || garbage.isEmpty) {
     report.segmentsDeleted = garbage.length;
+    stage = GarbageStage.done;
+    emit(force: true);
     return report;
   }
 
   // 3. Индексы без ненужных сегментов.
+  stage = GarbageStage.rewriting;
+  emit(force: true);
   final rewritten = <Uint8List>[];
   for (final (id, object) in indexes) {
     if (!object.segments.any(
@@ -276,6 +405,8 @@ Future<GarbageReport> collectGarbage({
   }
 
   // 4. Освобождение и удаление фрагментов.
+  stage = GarbageStage.deleting;
+  emit(force: true);
   for (final hex in garbage) {
     final id = hexToBytes(hex);
     final segment = index.segment(id);
@@ -290,10 +421,14 @@ Future<GarbageReport> collectGarbage({
       } on CoreException catch (e) {
         report.fragmentErrors.add((location, e));
       }
+      emit();
     }
     index.removeSegment(id);
     report.segmentsDeleted++;
+    emit();
   }
+  stage = GarbageStage.done;
+  emit(force: true);
   return report;
 }
 

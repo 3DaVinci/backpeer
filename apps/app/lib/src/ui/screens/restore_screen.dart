@@ -229,7 +229,7 @@ class _RestoreScreenState extends State<RestoreScreen> {
         final forgetting = job != null && job['kind'] == 'forget'
             ? Section(
                 title: l10n.jobForget,
-                children: const [LinearProgressIndicator()],
+                children: [JobProgress(job: job)],
               )
             : null;
         return ScreenBody(

@@ -300,6 +300,47 @@ void main() {
     if (!Platform.isWindows) Process.runSync('chmod', ['600', locked.path]);
   }, timeout: const Timeout(Duration(minutes: 3)));
 
+  test('удаление всех снимков: прогресс снимков и сегментов', () async {
+    final data = sampleData('${dir.path}/data');
+    final client = await start();
+    await client.call('settings', {
+      'paths': [data.path],
+      'intervalMinutes': null,
+    });
+    expect((await backup(client))['outcome'], 'ok');
+
+    final snapshotProgress = client.events.firstWhere(
+      (e) =>
+          e.name == 'progress' &&
+          e.data['kind'] == 'forget' &&
+          e.data['stage'] == 'forgetting' &&
+          (e.data['snapshots'] as int? ?? 0) > 0,
+    );
+    final doneProgress = client.events.firstWhere(
+      (e) =>
+          e.name == 'progress' &&
+          e.data['kind'] == 'forget' &&
+          e.data['stage'] == 'done',
+    );
+    final done = finished(client, 'forget');
+    expect((await client.call('forget', {'all': true}))['started'], isTrue);
+    final snapshots = (await snapshotProgress.timeout(
+      const Duration(minutes: 2),
+    )).data;
+    expect(snapshots['totalSnapshots'], 1);
+    expect(snapshots['snapshots'], 1);
+    expect(snapshots['currentSnapshot'], isA<String>());
+    final progress = (await doneProgress.timeout(const Duration(minutes: 2)))
+        .data;
+    expect(progress['totalSegments'], greaterThan(0));
+    expect(progress['segments'], progress['totalSegments']);
+    expect(progress['fragmentsDeleted'], greaterThan(0));
+    expect(progress['bytesFreed'], greaterThan(0));
+    final record = await done;
+    expect(record['outcome'], 'ok');
+    expect((await client.call('snapshots'))['snapshots'], isEmpty);
+  }, timeout: const Timeout(Duration(minutes: 3)));
+
   test('только от сети: ждёт сеть, от батареи останавливается и потом '
       'продолжает', () async {
     final data = Directory('${dir.path}/big')..createSync();

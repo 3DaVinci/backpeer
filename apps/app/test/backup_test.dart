@@ -406,6 +406,44 @@ void main() {
     expect(agent.last('forget'), {'all': true});
   });
 
+  testWidgets('удаление снимков: прогресс снимков и сегментов', (tester) async {
+    final agent = FakeProcess(status: agentStatus());
+    await openBackup(tester, agent);
+
+    agent.update(
+      status: agentStatus(
+        status: 'working',
+        job: {
+          'kind': 'forget',
+          'trigger': 'manual',
+          'progress': {
+            'stage': 'deleting',
+            'snapshots': 1,
+            'totalSnapshots': 1,
+            'segments': 2,
+            'totalSegments': 5,
+            'fragmentsDeleted': 40,
+            'bytesFreed': 10 << 20,
+            'elapsedMs': 30000,
+            'etaMs': 60000,
+            'problems': 1,
+          },
+        },
+      ),
+    );
+    await tester.pump();
+    expect(find.text('Удаление снимков'), findsOneWidget);
+    expect(find.text('Сегментов: 2 из 5, 40%'), findsOneWidget);
+    expect(find.text('Фрагментов удалено: 40'), findsOneWidget);
+    expect(find.text('освобождено 10,0 МиБ'), findsOneWidget);
+    expect(find.textContaining('Удаляем фрагменты с узлов'), findsOneWidget);
+    expect(find.text('Не удалось удалить фрагментов: 1'), findsOneWidget);
+    final bar = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator),
+    );
+    expect(bar.value, 0.4);
+  });
+
   testWidgets('удаление данных бэкапа блокирует кнопку сразу', (tester) async {
     final agent = FakeProcess(
       status: agentStatus(),

@@ -915,6 +915,54 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String progressElapsed(String time) {
+    return 'прошло около $time';
+  }
+
+  @override
+  String get verifyStagePreparing => 'Собираем список сегментов…';
+
+  @override
+  String get verifyStageChecking => 'Проверяем, на месте ли фрагменты на узлах';
+
+  @override
+  String get verifyStageReading => 'Читаем и проверяем фрагменты';
+
+  @override
+  String get verifyStageAssembling => 'Собираем сегменты из фрагментов';
+
+  @override
+  String get verifyStageDone => 'Проверка завершена';
+
+  @override
+  String verifySegments(int done, int total) {
+    return 'Сегментов: $done из $total';
+  }
+
+  @override
+  String verifyFragments(int done, int total) {
+    return 'фрагментов: $done из $total';
+  }
+
+  @override
+  String verifyCurrentSegment(int segment, int total) {
+    return 'сегмент $segment из $total';
+  }
+
+  @override
+  String verifyCurrentFragment(int fragment, int total) {
+    return 'фрагмент $fragment из $total';
+  }
+
+  @override
+  String get verifyWaitingNode => 'ждём ответа узла…';
+
+  @override
+  String verifyProblems(int count) {
+    return 'проблем: $count';
+  }
+
+  @override
   String backupReading(String path) {
     return 'Читаем: $path';
   }
@@ -994,6 +1042,55 @@ class AppLocalizationsRu extends AppLocalizations {
       one: '$count снимок удалён',
     );
     return '$_temp0';
+  }
+
+  @override
+  String get forgetStagePreparing => 'Готовим удаление: читаем список снимков';
+
+  @override
+  String get forgetStageForgetting => 'Удаляем снимки';
+
+  @override
+  String get forgetStageReading => 'Проверяем оставшиеся снимки';
+
+  @override
+  String get forgetStageScanning => 'Ищем сегменты, которые больше не нужны';
+
+  @override
+  String get forgetStageRewriting => 'Убираем ссылки на ненужные сегменты';
+
+  @override
+  String get forgetStageCleaning => 'Готовим удаление данных';
+
+  @override
+  String get forgetStageDeleting => 'Удаляем фрагменты с узлов';
+
+  @override
+  String get forgetStageDone => 'Удаление завершено';
+
+  @override
+  String forgetSnapshotsProgress(int done, int total) {
+    return 'Снимков: $done из $total';
+  }
+
+  @override
+  String forgetSegmentsProgress(int done, int total) {
+    return 'Сегментов: $done из $total';
+  }
+
+  @override
+  String forgetFragmentsDeleted(int count) {
+    return 'Фрагментов удалено: $count';
+  }
+
+  @override
+  String forgetErrors(int count) {
+    return 'Не удалось удалить фрагментов: $count';
+  }
+
+  @override
+  String forgetCurrentSnapshot(String date) {
+    return 'снимок от $date';
   }
 
   @override

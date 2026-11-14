@@ -57,6 +57,8 @@ void main() {
     bool dryRun = false,
     LocalIndex? on,
     bool discardInterrupted = false,
+    void Function(GarbageProgress)? onProgress,
+    Duration progressInterval = const Duration(milliseconds: 500),
   }) => collectGarbage(
     crypto: crypto,
     keys: keys,
@@ -66,6 +68,8 @@ void main() {
     releaser: LocalSegmentReleaser(on ?? index, nodes),
     dryRun: dryRun,
     discardInterrupted: discardInterrupted,
+    onProgress: onProgress,
+    progressInterval: progressInterval,
   );
 
   int nodeBytes() =>
@@ -146,6 +150,43 @@ void main() {
 
     // Повторная сборка — ничего нового.
     expect((await gc()).segmentsDeleted, 0);
+  });
+
+  test('прогресс: снимки, поиск и удаление сегментов', () async {
+    final a = Directory('${dir.path}/a')..createSync();
+    final b = Directory('${dir.path}/b')..createSync();
+    File('${a.path}/big.bin').writeAsBytesSync(splitmix64Bytes(11, 3 << 20));
+    File('${b.path}/other.bin').writeAsBytesSync(splitmix64Bytes(12, 2 << 20));
+    final first = await backup(a);
+    await backup(b);
+    await catalog().forget(Uint8List.fromList(first.snapshot.snapshotId));
+
+    final seen = <GarbageProgress>[];
+    final report = await gc(
+      onProgress: seen.add,
+      // Без задержки: тест видит каждый шаг, а не зависит от скорости.
+      progressInterval: Duration.zero,
+    );
+    expect(seen, isNotEmpty);
+    expect(seen.first.stage, GarbageStage.preparing);
+    expect(seen.last.stage, GarbageStage.done);
+    expect(seen.last.snapshots, report.snapshots);
+    expect(seen.last.totalSnapshots, report.snapshots);
+    expect(seen.last.segments, report.segmentsDeleted);
+    expect(seen.last.totalSegments, report.segmentsDeleted);
+    expect(seen.last.fragmentsDeleted, report.fragmentsDeleted);
+    expect(seen.last.bytesFreed, report.bytesFreed);
+    expect(seen.last.errors, 0);
+    expect(seen.last.fraction, 1.0);
+    expect(
+      seen.map((p) => p.stage),
+      containsAll([
+        GarbageStage.reading,
+        GarbageStage.scanning,
+        GarbageStage.rewriting,
+        GarbageStage.deleting,
+      ]),
+    );
   });
 
   test('общие чанки удерживают сегмент', () async {

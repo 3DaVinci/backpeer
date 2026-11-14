@@ -308,6 +308,43 @@ void main() {
       }
     });
 
+    test('прогресс: сегменты, фрагменты и этапы', () async {
+      for (final full in [false, true]) {
+        final seen = <VerifyProgress>[];
+        final report = await runVerify(
+          crypto: crypto,
+          keys: keys,
+          index: s.index,
+          fragments: s.nodes,
+          full: full,
+          onProgress: seen.add,
+          // Без таймера: каждый шаг виден в списке, тест не зависит от
+          // скорости машины.
+          progressInterval: Duration.zero,
+        );
+        expect(seen, isNotEmpty, reason: 'full=$full');
+        expect(seen.first.stage, VerifyStage.preparing);
+        expect(seen.last.stage, VerifyStage.done);
+        expect(seen.last.segments, report.segments);
+        expect(seen.last.totalSegments, report.segments);
+        expect(seen.last.fragments, report.fragments);
+        expect(seen.last.totalFragments, report.fragments);
+        expect(seen.last.fraction, 1.0);
+        expect(
+          seen.map((p) => p.stage),
+          contains(full ? VerifyStage.reading : VerifyStage.checking),
+          reason:
+              'полная проверка читает фрагменты, быстрая — спрашивает '
+              'узлы',
+        );
+        expect(
+          seen.any((p) => p.currentFragment != null),
+          isTrue,
+          reason: 'видно, какой фрагмент проверяется',
+        );
+      }
+    });
+
     test('недостающие фрагменты, сегмент в риске и невосстановимый', () async {
       final segmentId = s.index.storedSegments().first;
       final placed = s.index.fragments(segmentId);

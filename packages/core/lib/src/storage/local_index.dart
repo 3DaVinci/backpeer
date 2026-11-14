@@ -394,6 +394,16 @@ final class LocalIndex {
       row['segment_id'] as Uint8List,
   ];
 
+  /// Сколько фрагментов у сохранённых сегментов — для хода проверки.
+  int storedFragmentsCount() =>
+      _db
+              .select(
+                'SELECT count(*) AS n FROM fragments f '
+                'JOIN segments s ON f.segment = s.id WHERE s.stored = 1',
+              )
+              .first['n']
+          as int;
+
   List<FragmentEntry> fragments(Uint8List segmentId) => [
     for (final row in _db.select(
       'SELECT number, fragment_id, node FROM fragments WHERE segment = '

@@ -72,6 +72,54 @@ void main() {
     expect(button.onPressed, isNull);
   });
 
+  testWidgets('проверка: полоса по фрагментам и что делается сейчас', (
+    tester,
+  ) async {
+    final agent = FakeProcess(
+      status: agentStatus(
+        status: 'working',
+        job: {
+          'kind': 'verify',
+          'trigger': 'manual',
+          'progress': {
+            'stage': 'checking',
+            'segments': 2,
+            'totalSegments': 5,
+            'fragments': 40,
+            'totalFragments': 100,
+            'currentSegment': 3,
+            'currentSegmentFragments': 20,
+            'currentFragment': 5,
+            'currentFragmentMs': 6000,
+            'etaMs': 90000,
+            'elapsedMs': 30000,
+            'problems': 1,
+          },
+        },
+      ),
+    );
+    await pump(tester, agent, FakeProcess(status: nodeStatus()));
+    expect(find.text('Проверка'), findsOneWidget);
+    expect(
+      find.text('Сегментов: 2 из 5, фрагментов: 40 из 100, 40%'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Проверяем, на месте ли фрагменты на узлах'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('сегмент 3 из 5'), findsOneWidget);
+    expect(find.textContaining('фрагмент 5 из 20'), findsOneWidget);
+    expect(find.textContaining('ждём ответа узла'), findsOneWidget);
+    expect(find.textContaining('осталось около'), findsOneWidget);
+    expect(find.textContaining('прошло около'), findsOneWidget);
+    expect(find.text('проблем: 1'), findsOneWidget);
+    final bar = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator),
+    );
+    expect(bar.value, 0.4);
+  });
+
   testWidgets('процесс перезапускается: полоса о связи и возврат', (
     tester,
   ) async {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
+import 'package:app/src/ui/widgets/job_progress.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
@@ -123,9 +124,15 @@ class _DeleteSectionState extends State<DeleteSection> {
         ),
         if (forgetting) ...[
           const SizedBox(height: 16),
-          const LinearProgressIndicator(),
-          const SizedBox(height: 8),
-          Text(l10n.jobForget),
+          if (job?['kind'] == 'forget') ...[
+            Text(l10n.jobForget),
+            const SizedBox(height: 8),
+            JobProgress(job: job!),
+          ] else ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 8),
+            Text(l10n.jobForget),
+          ],
         ],
       ],
     );

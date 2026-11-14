@@ -1022,19 +1022,48 @@ final class BackupAgent {
         );
       }
     }
-    _progress(job, {'stage': 'deleting', 'snapshots': targets.length});
-    for (final s in targets) {
+    Duration elapsed() => DateTime.now().difference(job.startedAt);
+    void reportSnapshots(int done, {pb.Snapshot? current}) {
+      _progress(job, {
+        'stage': 'forgetting',
+        'snapshots': done,
+        'totalSnapshots': targets.length,
+        'elapsedMs': elapsed().inMilliseconds,
+        if (current != null)
+          'currentSnapshot': DateTime.fromMillisecondsSinceEpoch(
+            current.createdAtUnixMs.toInt(),
+            isUtc: true,
+          ).toIso8601String(),
+      });
+    }
+
+    reportSnapshots(0);
+    for (var i = 0; i < targets.length; i++) {
       job.cancel.check();
-      await catalog.forget(Uint8List.fromList(s.snapshotId));
+      await catalog.forget(Uint8List.fromList(targets[i].snapshotId));
+      reportSnapshots(i + 1, current: targets[i]);
     }
     if (targets.isEmpty) {
       return (JobOutcome.ok, {'snapshots': 0, 'segmentsDeleted': 0});
     }
     // Снимки забыты — теперь освободить их сегменты на узлах.
-    _progress(job, {'stage': 'cleaning', 'snapshots': targets.length});
+    _progress(job, {
+      'stage': 'cleaning',
+      'snapshots': targets.length,
+      'totalSnapshots': targets.length,
+      'elapsedMs': elapsed().inMilliseconds,
+    });
     final out = <String, Object?>{'snapshots': targets.length};
     try {
-      out.addAll(await _garbage(session));
+      out.addAll(
+        await _garbage(
+          session,
+          onProgress: (p) => _progress(job, {
+            ..._garbageProgress(p),
+            'elapsedMs': elapsed().inMilliseconds,
+          }),
+        ),
+      );
       return (JobOutcome.ok, out);
     } on CoreException catch (e) {
       // Снимки уже удалены; мусор уберёт следующее задание.
@@ -1045,7 +1074,10 @@ final class BackupAgent {
 
   /// Сборка мусора в общем виде: удаляет сегменты, не нужные ни одному
   /// снимку, и их фрагменты с узлов.
-  Future<Map<String, Object?>> _garbage(Session session) async {
+  Future<Map<String, Object?>> _garbage(
+    Session session, {
+    void Function(GarbageProgress)? onProgress,
+  }) async {
     final gc = await collectGarbage(
       crypto: crypto,
       keys: session.keys,
@@ -1058,12 +1090,31 @@ final class BackupAgent {
       // недописанный бэкап (например, после отказа сети или квоты relay)
       // не должен запирать удаление снимков и сборку мусора.
       discardInterrupted: true,
+      onProgress: onProgress,
     );
     return {
       'segmentsDeleted': gc.segmentsDeleted,
       'discardedSegments': gc.discardedSegments,
       'bytesFreed': gc.bytesFreed,
       'fragmentErrors': gc.fragmentErrors.length,
+    };
+  }
+
+  /// Ход сборки мусора для события `progress`: этап, снимки, сегменты,
+  /// удалённые фрагменты и освобождённое место.
+  Map<String, Object?> _garbageProgress(GarbageProgress p) {
+    final eta = p.eta;
+    return {
+      'stage': p.stage.name,
+      'snapshots': p.snapshots,
+      'totalSnapshots': p.totalSnapshots,
+      'segments': p.segments,
+      'totalSegments': p.totalSegments,
+      'fragmentsDeleted': p.fragmentsDeleted,
+      'bytesFreed': p.bytesFreed,
+      'problems': p.errors,
+      'elapsedMs': p.elapsed.inMilliseconds,
+      'etaMs': ?eta?.inMilliseconds,
     };
   }
 
@@ -1083,6 +1134,7 @@ final class BackupAgent {
       full: full,
       params: config.durability,
       cancel: job.cancel,
+      onProgress: (p) => _progress(job, _verifyProgress(p)),
     );
     return (
       report.unrecoverable.isNotEmpty
@@ -1102,6 +1154,26 @@ final class BackupAgent {
         'uncheckedFragments': report.uncheckedFragments,
       },
     );
+  }
+
+  /// Ход проверки для события `progress` и приложения: сколько сегментов и
+  /// фрагментов проверено, что делается сейчас, сколько осталось.
+  Map<String, Object?> _verifyProgress(VerifyProgress p) {
+    final eta = p.eta;
+    return {
+      'stage': p.stage.name,
+      'segments': p.segments,
+      'totalSegments': p.totalSegments,
+      'fragments': p.fragments,
+      'totalFragments': p.totalFragments,
+      'problems': p.problems,
+      'elapsedMs': p.elapsed.inMilliseconds,
+      'currentSegment': ?p.currentSegment,
+      'currentFragment': ?p.currentFragment,
+      'currentSegmentFragments': ?p.currentSegmentFragments,
+      'currentFragmentMs': p.currentFragmentElapsed.inMilliseconds,
+      'etaMs': ?eta?.inMilliseconds,
+    };
   }
 
   Future<(JobOutcome, Map<String, Object?>)> _restore(

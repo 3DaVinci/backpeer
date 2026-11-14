@@ -1586,6 +1586,78 @@ abstract class AppLocalizations {
   /// **'{percent}%'**
   String progressPercent(int percent);
 
+  /// No description provided for @progressElapsed.
+  ///
+  /// In ru, this message translates to:
+  /// **'прошло около {time}'**
+  String progressElapsed(String time);
+
+  /// No description provided for @verifyStagePreparing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Собираем список сегментов…'**
+  String get verifyStagePreparing;
+
+  /// No description provided for @verifyStageChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверяем, на месте ли фрагменты на узлах'**
+  String get verifyStageChecking;
+
+  /// No description provided for @verifyStageReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Читаем и проверяем фрагменты'**
+  String get verifyStageReading;
+
+  /// No description provided for @verifyStageAssembling.
+  ///
+  /// In ru, this message translates to:
+  /// **'Собираем сегменты из фрагментов'**
+  String get verifyStageAssembling;
+
+  /// No description provided for @verifyStageDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка завершена'**
+  String get verifyStageDone;
+
+  /// No description provided for @verifySegments.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегментов: {done} из {total}'**
+  String verifySegments(int done, int total);
+
+  /// No description provided for @verifyFragments.
+  ///
+  /// In ru, this message translates to:
+  /// **'фрагментов: {done} из {total}'**
+  String verifyFragments(int done, int total);
+
+  /// No description provided for @verifyCurrentSegment.
+  ///
+  /// In ru, this message translates to:
+  /// **'сегмент {segment} из {total}'**
+  String verifyCurrentSegment(int segment, int total);
+
+  /// No description provided for @verifyCurrentFragment.
+  ///
+  /// In ru, this message translates to:
+  /// **'фрагмент {fragment} из {total}'**
+  String verifyCurrentFragment(int fragment, int total);
+
+  /// No description provided for @verifyWaitingNode.
+  ///
+  /// In ru, this message translates to:
+  /// **'ждём ответа узла…'**
+  String get verifyWaitingNode;
+
+  /// No description provided for @verifyProblems.
+  ///
+  /// In ru, this message translates to:
+  /// **'проблем: {count}'**
+  String verifyProblems(int count);
+
   /// No description provided for @backupReading.
   ///
   /// In ru, this message translates to:
@@ -1711,6 +1783,84 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{count, plural, one{{count} снимок удалён} few{{count} снимка удалено} many{{count} снимков удалено} other{{count} снимка удалено}}'**
   String forgetSnapshotsDeleted(int count);
+
+  /// No description provided for @forgetStagePreparing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готовим удаление: читаем список снимков'**
+  String get forgetStagePreparing;
+
+  /// No description provided for @forgetStageForgetting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удаляем снимки'**
+  String get forgetStageForgetting;
+
+  /// No description provided for @forgetStageReading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверяем оставшиеся снимки'**
+  String get forgetStageReading;
+
+  /// No description provided for @forgetStageScanning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ищем сегменты, которые больше не нужны'**
+  String get forgetStageScanning;
+
+  /// No description provided for @forgetStageRewriting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Убираем ссылки на ненужные сегменты'**
+  String get forgetStageRewriting;
+
+  /// No description provided for @forgetStageCleaning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готовим удаление данных'**
+  String get forgetStageCleaning;
+
+  /// No description provided for @forgetStageDeleting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удаляем фрагменты с узлов'**
+  String get forgetStageDeleting;
+
+  /// No description provided for @forgetStageDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удаление завершено'**
+  String get forgetStageDone;
+
+  /// No description provided for @forgetSnapshotsProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снимков: {done} из {total}'**
+  String forgetSnapshotsProgress(int done, int total);
+
+  /// No description provided for @forgetSegmentsProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегментов: {done} из {total}'**
+  String forgetSegmentsProgress(int done, int total);
+
+  /// No description provided for @forgetFragmentsDeleted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фрагментов удалено: {count}'**
+  String forgetFragmentsDeleted(int count);
+
+  /// No description provided for @forgetErrors.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось удалить фрагментов: {count}'**
+  String forgetErrors(int count);
+
+  /// No description provided for @forgetCurrentSnapshot.
+  ///
+  /// In ru, this message translates to:
+  /// **'снимок от {date}'**
+  String forgetCurrentSnapshot(String date);
 
   /// No description provided for @addFolder.
   ///

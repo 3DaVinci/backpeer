@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -65,6 +66,88 @@ final class VerifyReport {
   );
 }
 
+/// Что проверка делает сейчас.
+enum VerifyStage {
+  /// Считает сегменты и фрагменты, готовится к проходу.
+  preparing,
+
+  /// Быстрая проверка: спрашивает узлы, на месте ли фрагменты.
+  checking,
+
+  /// Полная проверка: читает и проверяет каждый фрагмент.
+  reading,
+
+  /// Полная проверка: собирает сегмент из уже прочитанных фрагментов.
+  assembling,
+
+  /// Проверка закончена.
+  done,
+}
+
+/// Ход проверки — для события `progress` и полосы в приложении.
+final class VerifyProgress {
+  const new({
+    required this.stage,
+    required this.segments,
+    required this.totalSegments,
+    required this.fragments,
+    required this.totalFragments,
+    required this.problems,
+    required this.elapsed,
+    this.currentSegment,
+    this.currentFragment,
+    this.currentSegmentFragments,
+    this.currentFragmentElapsed = Duration.zero,
+  });
+
+  final VerifyStage stage;
+
+  /// Проверено сегментов.
+  final int segments;
+
+  /// Всего сегментов.
+  final int totalSegments;
+
+  /// Проверено фрагментов.
+  final int fragments;
+
+  /// Всего фрагментов.
+  final int totalFragments;
+
+  /// Найдено недостающих или испорченных фрагментов.
+  final int problems;
+
+  final Duration elapsed;
+
+  /// Номер проверяемого сегмента, с 1; `null` — между сегментами.
+  final int? currentSegment;
+
+  /// Номер проверяемого фрагмента в сегменте, с 1; `null` — между
+  /// фрагментами или идёт сборка.
+  final int? currentFragment;
+
+  /// Сколько фрагментов в текущем сегменте.
+  final int? currentSegmentFragments;
+
+  /// Сколько длится проверка текущего фрагмента: по нему видно, что
+  /// проверка ждёт ответа узла, а не встала.
+  final Duration currentFragmentElapsed;
+
+  /// Доля проверенного по фрагментам; `0` — фрагментов нет.
+  double get fraction =>
+      totalFragments == 0 ? 0 : (fragments / totalFragments).clamp(0.0, 1.0);
+
+  /// Осталось по средней скорости проверки фрагментов; `null` — ещё не из
+  /// чего считать.
+  Duration? get eta {
+    if (totalFragments == 0 || fragments == 0) return null;
+    final left = totalFragments - fragments;
+    if (left <= 0) return Duration.zero;
+    if (elapsed < const Duration(seconds: 1)) return null;
+    return Duration(microseconds: elapsed.inMicroseconds * left ~/ fragments);
+  }
+}
+
 /// Проверка сохранённых сегментов (задача 1.6.4).
 ///
 /// Быстрый режим: есть ли фрагменты на узлах (`HasFragments`). Полный
@@ -84,6 +167,8 @@ Future<VerifyReport> runVerify({
   List<Uint8List>? segments,
   DurabilityParameters? params,
   CancellationToken? cancel,
+  void Function(VerifyProgress)? onProgress,
+  Duration progressInterval = const Duration(milliseconds: 500),
 }) async {
   final token = cancel ?? CancellationToken();
   final threshold = (params ?? DurabilityParameters()).repairThreshold;
@@ -96,92 +181,170 @@ Future<VerifyReport> runVerify({
     locator: locator,
     cacheSize: 0,
   );
-  for (final segmentId in segments ?? index.storedSegments()) {
-    token.check();
-    final entry = index.segment(segmentId)!;
-    report.segments++;
-    var alive = 0;
-    var unknown = 0;
-    CoreException? firstUnknown;
-    final before = reader.problems.length;
-    await reader.resolveNodes(segmentId);
-    if (full) {
-      for (final f in index.fragments(segmentId)) {
-        report.fragments++;
-        final beforeFetch = reader.problems.length;
-        if (await reader.fetch(segmentId, f) != null) {
-          alive++;
-        } else if (_unreachable(reader.problems[beforeFetch].error)) {
-          unknown++;
-          firstUnknown ??= reader.problems[beforeFetch].error;
-        }
-      }
-      if (alive >= entry.k) {
-        // Сборка снова читает фрагменты: те же проблемы второй раз не нужны.
-        final checked = reader.problems.length;
-        try {
-          await reader.segment(segmentId);
-        } on CoreException catch (e) {
-          report.unrecoverable.add((segmentId, e));
-        }
-        reader.problems.removeRange(checked, reader.problems.length);
-      }
-    } else {
-      for (final f in index.fragments(segmentId)) {
-        report.fragments++;
-        final node = f.node;
-        try {
-          if (node == null) throw _notFound(f);
-          if (!(await fragments.has(node, [f.fragmentId])).single) {
-            throw _notFound(f);
-          }
-          alive++;
-        } on CoreException catch (e) {
-          if (_unreachable(e)) {
-            unknown++;
-            firstUnknown ??= e;
-          }
-          reader.problems.add(
-            FragmentProblem(
-              segmentId: segmentId,
-              index: f.number,
-              node: node,
-              error: e,
-            ),
-          );
-        }
-      }
-    }
-    report.problems.addAll(
-      reader.problems.sublist(before).where((p) => !_unreachable(p.error)),
+  final ids = segments ?? index.storedSegments();
+  final totalSegments = ids.length;
+  final totalFragments = segments == null
+      ? index.storedFragmentsCount()
+      : ids.fold<int>(0, (total, id) {
+          return total + (index.segment(id)?.n ?? 0);
+        });
+  final watch = Stopwatch()..start();
+  var stage = VerifyStage.preparing;
+  var segmentsDone = 0;
+  int? currentSegment;
+  int? currentFragment;
+  int? currentSegmentFragments;
+  var fragmentStarted = Duration.zero;
+  var lastProgress = Duration.zero;
+
+  void emit({bool force = false}) {
+    final callback = onProgress;
+    if (callback == null) return;
+    final elapsed = watch.elapsed;
+    if (!force && elapsed - lastProgress < progressInterval) return;
+    lastProgress = elapsed;
+    callback(
+      VerifyProgress(
+        stage: stage,
+        segments: segmentsDone,
+        totalSegments: totalSegments,
+        fragments: report.fragments,
+        totalFragments: totalFragments,
+        problems: report.problems.length,
+        elapsed: elapsed,
+        currentSegment: currentSegment,
+        currentFragment: currentFragment,
+        currentSegmentFragments: currentSegmentFragments,
+        currentFragmentElapsed: currentFragment == null
+            ? Duration.zero
+            : elapsed - fragmentStarted,
+      ),
     );
-    if (alive < entry.k) {
-      if (alive + unknown >= entry.k) {
-        // Часть фрагментов не удалось проверить: данных может хватать.
-        report.unchecked.add((
-          segmentId,
-          firstUnknown ??
-              InsufficientShardsException(
-                available: alive,
-                required: entry.k,
-                segmentId: segmentId,
-              ),
-        ));
-        report.uncheckedFragments += unknown;
-      } else {
-        report.unrecoverable.add((
-          segmentId,
-          InsufficientShardsException(
-            available: alive,
-            required: entry.k,
-            segmentId: segmentId,
-          ),
-        ));
-      }
-    } else if (alive <= threshold) {
-      report.atRisk.add(segmentId);
-    }
   }
+
+  emit(force: true);
+  final timer = onProgress == null || progressInterval <= Duration.zero
+      ? null
+      : Timer.periodic(progressInterval, (_) => emit(force: true));
+  try {
+    for (final segmentId in ids) {
+      token.check();
+      final entry = index.segment(segmentId)!;
+      report.segments++;
+      currentSegment = segmentsDone + 1;
+      currentSegmentFragments = entry.n;
+      var alive = 0;
+      var unknown = 0;
+      CoreException? firstUnknown;
+      final before = reader.problems.length;
+      stage = full ? VerifyStage.reading : VerifyStage.checking;
+      emit(force: true);
+      await reader.resolveNodes(segmentId);
+      if (full) {
+        var number = 0;
+        for (final f in index.fragments(segmentId)) {
+          token.check();
+          report.fragments++;
+          currentFragment = ++number;
+          fragmentStarted = watch.elapsed;
+          emit();
+          final beforeFetch = reader.problems.length;
+          if (await reader.fetch(segmentId, f) != null) {
+            alive++;
+          } else if (_unreachable(reader.problems[beforeFetch].error)) {
+            unknown++;
+            firstUnknown ??= reader.problems[beforeFetch].error;
+          }
+          emit();
+        }
+        if (alive >= entry.k) {
+          // Сборка снова читает фрагменты: те же проблемы второй раз не нужны.
+          stage = VerifyStage.assembling;
+          currentFragment = null;
+          emit(force: true);
+          final checked = reader.problems.length;
+          try {
+            await reader.segment(segmentId);
+          } on CoreException catch (e) {
+            report.unrecoverable.add((segmentId, e));
+          }
+          reader.problems.removeRange(checked, reader.problems.length);
+        }
+      } else {
+        var number = 0;
+        for (final f in index.fragments(segmentId)) {
+          token.check();
+          report.fragments++;
+          currentFragment = ++number;
+          fragmentStarted = watch.elapsed;
+          emit();
+          final node = f.node;
+          try {
+            if (node == null) throw _notFound(f);
+            if (!(await fragments.has(node, [f.fragmentId])).single) {
+              throw _notFound(f);
+            }
+            alive++;
+          } on CoreException catch (e) {
+            if (_unreachable(e)) {
+              unknown++;
+              firstUnknown ??= e;
+            }
+            reader.problems.add(
+              FragmentProblem(
+                segmentId: segmentId,
+                index: f.number,
+                node: node,
+                error: e,
+              ),
+            );
+          }
+          emit();
+        }
+      }
+      report.problems.addAll(
+        reader.problems.sublist(before).where((p) => !_unreachable(p.error)),
+      );
+      if (alive < entry.k) {
+        if (alive + unknown >= entry.k) {
+          // Часть фрагментов не удалось проверить: данных может хватать.
+          report.unchecked.add((
+            segmentId,
+            firstUnknown ??
+                InsufficientShardsException(
+                  available: alive,
+                  required: entry.k,
+                  segmentId: segmentId,
+                ),
+          ));
+          report.uncheckedFragments += unknown;
+        } else {
+          report.unrecoverable.add((
+            segmentId,
+            InsufficientShardsException(
+              available: alive,
+              required: entry.k,
+              segmentId: segmentId,
+            ),
+          ));
+        }
+      } else if (alive <= threshold) {
+        report.atRisk.add(segmentId);
+      }
+      segmentsDone++;
+      currentSegment = null;
+      currentFragment = null;
+      currentSegmentFragments = null;
+      emit(force: true);
+    }
+  } finally {
+    timer?.cancel();
+  }
+  stage = VerifyStage.done;
+  currentSegment = null;
+  currentFragment = null;
+  currentSegmentFragments = null;
+  emit(force: true);
   return report;
 }
 

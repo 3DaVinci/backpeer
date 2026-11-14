@@ -2,6 +2,7 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
+import 'package:app/src/ui/widgets/backup_space_card.dart';
 import 'package:app/src/ui/widgets/health_card.dart';
 import 'package:app/src/ui/widgets/job_progress.dart';
 import 'package:app/src/ui/widgets/section.dart';
@@ -9,8 +10,8 @@ import 'package:app/src/ui/widgets/unlock_dialog.dart';
 import 'package:daemon_kit/daemon_kit.dart';
 import 'package:flutter/material.dart';
 
-/// Обзор: состояние агента бэкапа и хранителя, здоровье данных, бэкап
-/// сейчас, пауза.
+/// Обзор: состояние агента бэкапа и хранителя, здоровье данных, занятое
+/// бэкапами место, бэкап сейчас, пауза.
 class OverviewScreen extends StatelessWidget {
   const new({super.key});
 
@@ -26,8 +27,10 @@ class OverviewScreen extends StatelessWidget {
           if (services.agent.status?['status'] == 'waitingForKeys')
             _KeysCard(agent: services.agent),
           _AgentCard(agent: services.agent),
-          if (services.agent.status?['configured'] == true)
+          if (services.agent.status?['configured'] == true) ...[
             HealthCard(agent: services.agent),
+            BackupSpaceCard(agent: services.agent),
+          ],
           _NodeSummary(node: services.node),
         ],
       ),

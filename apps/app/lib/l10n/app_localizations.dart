@@ -1502,6 +1502,42 @@ abstract class AppLocalizations {
   /// **'Бэкап ещё не проверялся'**
   String get healthReasonNeverVerified;
 
+  /// No description provided for @spaceTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Занято бэкапами'**
+  String get spaceTitle;
+
+  /// No description provided for @spaceData.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данных'**
+  String get spaceData;
+
+  /// No description provided for @spaceOnDisks.
+  ///
+  /// In ru, this message translates to:
+  /// **'На дисках хранителей'**
+  String get spaceOnDisks;
+
+  /// No description provided for @spaceSegments.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сегментов'**
+  String get spaceSegments;
+
+  /// No description provided for @spaceRedundancy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фрагменты хранятся с запасом на избыточность, поэтому на дисках хранителей занято больше, чем самих данных.'**
+  String get spaceRedundancy;
+
+  /// No description provided for @spaceNoCoordinator.
+  ///
+  /// In ru, this message translates to:
+  /// **'Место бэкапов считает координатор, а эта учётная запись без сервера.'**
+  String get spaceNoCoordinator;
+
   /// No description provided for @lastVerify.
   ///
   /// In ru, this message translates to:

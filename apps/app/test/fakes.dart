@@ -56,8 +56,16 @@ final class FakeProcess extends ChangeNotifier implements BackgroundProcess {
     if (state != LinkState.connected) {
       throw const ControlException('unavailable', 'нет связи');
     }
-    return await answer?.call(method, params) ?? const {};
+    final answered = await answer?.call(method, params);
+    return answered ?? _default(method);
   }
+
+  /// Ответ по умолчанию: занятое бэкапами место есть в любом состоянии,
+  /// остальные методы тест настраивает сам.
+  Map<String, Object?> _default(String method) => switch (method) {
+    'usage' => {'segments': 3, 'dataBytes': 3 << 30, 'fragmentBytes': 6 << 30},
+    _ => const {},
+  };
 }
 
 /// Состояние агента, как в `docs/ops/agent.md`.

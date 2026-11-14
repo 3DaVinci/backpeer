@@ -257,7 +257,9 @@ void main() {
     // Половина свободного, не больше 500 ГБ.
     expect(find.text('200'), findsOneWidget);
     await tap(tester, find.byKey(const ValueKey('keeper-submit')));
-    final (method, params) = agent.calls.last;
+    final (method, params) = agent.calls.lastWhere(
+      (c) => c.$1 == 'keeper.enable',
+    );
     expect(method, 'keeper.enable');
     expect(params['storageDir'], '/home/user/.local/share/backpeer/node');
     expect(params['quotaBytes'], 200 * 1000 * 1000 * 1000);
@@ -327,8 +329,8 @@ void main() {
     await enter(tester, 'target', '/home/user/Восстановлено');
     agent.update(status: agentStatus());
     await tap(tester, find.text('Восстановить всё'));
-    expect(agent.calls.last.$1, 'restore');
-    expect(agent.calls.last.$2, {
+    final restore = agent.calls.lastWhere((c) => c.$1 == 'restore');
+    expect(restore.$2, {
       'snapshot': 'cd' * 32,
       'target': '/home/user/Восстановлено',
       'waitMinutes': 60,

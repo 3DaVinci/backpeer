@@ -563,6 +563,9 @@ message BackupHealthSummary {
   uint64 audited_fragments = 9;      // живые, прошедшие аудит с границы
   int64 last_audit_unix_ms = 10;     // последний пройденный аудит; 0 — не было
   uint64 fragment_bytes = 11;        // место фрагментов учётной записи
+  // Объём данных учётной записи без запаса на избыточность: по каждому
+  // сохранённому сегменту k × (размер фрагмента − 96).
+  uint64 data_bytes = 12;
 }
 message SegmentHealth {
   bytes segment_id = 1;

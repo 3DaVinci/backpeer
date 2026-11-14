@@ -1,4 +1,5 @@
 import 'package:coordinator/src/db/database.dart';
+import 'package:core/core.dart' show FragmentHeader;
 import 'package:postgres/postgres.dart';
 
 /// Настройки публичной сводки о сети для сайта (задача С.3.5).
@@ -110,8 +111,17 @@ final class NetworkStatsService {
           FROM nodes WHERE removed_at IS NULL'''),
       parameters: {'o': online},
     )).single;
+    // Объём данных пользователей — по сохранённым сегментам: сегмент
+    // восстанавливается из k тел фрагментов, поэтому до избыточности он
+    // занимает `k × (размер фрагмента − заголовок)`. Блобы снимков и
+    // индексов (`accounts.object_bytes`) сюда не годятся: это метаданные,
+    // которые координатор держит у себя, они в разы меньше самих данных и
+    // к дискам хранителей отношения не имеют.
     final [stored as int] = (await s.execute(
-      'SELECT coalesce(sum(object_bytes), 0)::int8 FROM accounts',
+      Sql.named('''
+        SELECT coalesce(sum(k::int8 * (fragment_size - @h:int4)), 0)::int8
+          FROM segments WHERE state <> 0'''),
+      parameters: {'h': FragmentHeader.length},
     )).single;
     final countries = await s.execute(
       Sql.named('''

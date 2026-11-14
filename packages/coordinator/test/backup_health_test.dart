@@ -162,7 +162,10 @@ void main() {
     expect(s.liveFragments.toInt(), 40);
     expect(s.auditedFragments.toInt(), 0);
     expect(s.lastAuditUnixMs, Int64.ZERO);
-    expect(s.fragmentBytes.toInt(), greaterThan(0));
+    // Данные сегмента — k × (размер фрагмента − 96): 10 × 3008 = 30 080
+    // на сегмент, а на дисках хранителей — n фрагментов по 3104.
+    expect(s.dataBytes.toInt(), 2 * 30080);
+    expect(s.fragmentBytes.toInt(), 2 * 20 * 3104);
     expect(
       r.auditedSinceUnixMs.toInt(),
       h.clock.now

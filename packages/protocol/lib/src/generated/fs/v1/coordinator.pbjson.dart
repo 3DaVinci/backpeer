@@ -1664,6 +1664,7 @@ const BackupHealthSummary$json = {
       '10': 'lastAuditUnixMs'
     },
     {'1': 'fragment_bytes', '3': 11, '4': 1, '5': 4, '10': 'fragmentBytes'},
+    {'1': 'data_bytes', '3': 12, '4': 1, '5': 4, '10': 'dataBytes'},
   ],
 };
 
@@ -1675,7 +1676,8 @@ final $typed_data.Uint8List backupHealthSummaryDescriptor = $convert.base64Decod
     'lyZXBhaXJpbmcSIQoMcmVhZGFibGVfbm93GAcgASgEUgtyZWFkYWJsZU5vdxIlCg5saXZlX2Zy'
     'YWdtZW50cxgIIAEoBFINbGl2ZUZyYWdtZW50cxIrChFhdWRpdGVkX2ZyYWdtZW50cxgJIAEoBF'
     'IQYXVkaXRlZEZyYWdtZW50cxIrChJsYXN0X2F1ZGl0X3VuaXhfbXMYCiABKANSD2xhc3RBdWRp'
-    'dFVuaXhNcxIlCg5mcmFnbWVudF9ieXRlcxgLIAEoBFINZnJhZ21lbnRCeXRlcw==');
+    'dFVuaXhNcxIlCg5mcmFnbWVudF9ieXRlcxgLIAEoBFINZnJhZ21lbnRCeXRlcxIdCgpkYXRhX2'
+    'J5dGVzGAwgASgEUglkYXRhQnl0ZXM=');
 
 @$core.Deprecated('Use segmentHealthDescriptor instead')
 const SegmentHealth$json = {

@@ -843,6 +843,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String get healthReasonNeverVerified => 'Бэкап ещё не проверялся';
 
   @override
+  String get spaceTitle => 'Занято бэкапами';
+
+  @override
+  String get spaceData => 'Данных';
+
+  @override
+  String get spaceOnDisks => 'На дисках хранителей';
+
+  @override
+  String get spaceSegments => 'Сегментов';
+
+  @override
+  String get spaceRedundancy =>
+      'Фрагменты хранятся с запасом на избыточность, поэтому на дисках хранителей занято больше, чем самих данных.';
+
+  @override
+  String get spaceNoCoordinator =>
+      'Место бэкапов считает координатор, а эта учётная запись без сервера.';
+
+  @override
   String get lastVerify => 'Последняя проверка';
 
   @override

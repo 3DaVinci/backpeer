@@ -1366,6 +1366,24 @@ final class BackupAgent {
     }
   }
 
+  /// Занятое бэкапами место учётной записи (метод `usage`): объём самих
+  /// данных и место фрагментов на дисках хранителей. Числа — от
+  /// координатора (`GetBackupHealth`, protocol.md, раздел 4.16): только он
+  /// знает все сегменты учётной записи, включая снимки других компьютеров.
+  Future<Map<String, Object?>> _usage() => _query((session) async {
+    final client = session.client;
+    if (client == null) {
+      throw const ControlException('no_coordinator', 'нет координатора');
+    }
+    final summary = (await client.getBackupHealth(pb.GetBackupHealthRequest()))
+        .summary;
+    return {
+      'segments': summary.segments.toInt(),
+      'dataBytes': summary.dataBytes.toInt(),
+      'fragmentBytes': summary.fragmentBytes.toInt(),
+    };
+  });
+
   Future<Map<String, Object?>> _snapshots() => _query((session) async {
     final listing = await _catalog(session).list();
     return {
@@ -1743,6 +1761,8 @@ final class BackupAgent {
         return await _versions(params);
       case 'health':
         return health.toJson();
+      case 'usage':
+        return await _usage();
       case 'unlock':
         return await _unlock(params);
       case 'lock':

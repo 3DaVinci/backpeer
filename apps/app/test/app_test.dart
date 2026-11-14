@@ -48,7 +48,7 @@ void main() {
     expect(find.text('работает'), findsOneWidget);
     await tester.tap(find.text('Сделать бэкап сейчас'));
     await tester.pump();
-    expect(agent.calls.single.$1, 'backup');
+    expect(agent.calls.last.$1, 'backup');
 
     // Идёт бэкап: прогресс, кнопка бэкапа недоступна.
     agent.update(
@@ -70,6 +70,50 @@ void main() {
       ),
     );
     expect(button.onPressed, isNull);
+  });
+
+  testWidgets('обзор: занятое бэкапами место', (tester) async {
+    final agent = FakeProcess(
+      status: agentStatus(),
+      answer: (method, params) async => switch (method) {
+        'usage' => {
+          'segments': 12,
+          'dataBytes': 3 << 30,
+          'fragmentBytes': 6 << 30,
+        },
+        _ => <String, Object?>{},
+      },
+    );
+    await pump(tester, agent, FakeProcess(status: nodeStatus()));
+    expect(find.text('Занято бэкапами'), findsOneWidget);
+    expect(find.text('Данных'), findsOneWidget);
+    expect(find.text('3,0 ГиБ'), findsOneWidget);
+    expect(find.text('На дисках хранителей'), findsOneWidget);
+    expect(find.text('6,0 ГиБ'), findsOneWidget);
+    expect(find.text('Сегментов'), findsOneWidget);
+    expect(find.text('12'), findsOneWidget);
+    expect(find.textContaining('с запасом на избыточность'), findsOneWidget);
+  });
+
+  testWidgets('обзор: без координатора место бэкапов неизвестно', (
+    tester,
+  ) async {
+    final agent = FakeProcess(
+      status: agentStatus(),
+      answer: (method, params) async => switch (method) {
+        'usage' => throw const ControlException(
+          'no_coordinator',
+          'нет координатора',
+        ),
+        _ => <String, Object?>{},
+      },
+    );
+    await pump(tester, agent, FakeProcess(status: nodeStatus()));
+    expect(
+      find.textContaining('Место бэкапов считает координатор'),
+      findsOneWidget,
+    );
+    expect(find.text('Данных'), findsNothing);
   });
 
   testWidgets('проверка: полоса по фрагментам и что делается сейчас', (

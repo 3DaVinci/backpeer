@@ -81,9 +81,13 @@ final class BackupHealthService {
                  coalesce(sum(audited), 0)::int8,
                  max(last_audit),
                  (SELECT fragment_bytes FROM accounts
-                    WHERE account_id = @a:bytea)
+                    WHERE account_id = @a:bytea),
+                 (SELECT coalesce(sum(k::int8 * (fragment_size - @hdr:int4)),
+                                  0)::int8
+                    FROM segments
+                    WHERE account_id = @a:bytea AND state <> 0)
             FROM h'''),
-        parameters: parameters,
+        parameters: {...parameters, 'hdr': FragmentHeader.length},
       );
       final [
         segments as int,
@@ -97,6 +101,7 @@ final class BackupHealthService {
         audited as int,
         last as DateTime?,
         bytes as int?,
+        data as int,
       ] = summary.single;
       final response = pb.GetBackupHealthResponse(
         summary: pb.BackupHealthSummary(
@@ -111,6 +116,7 @@ final class BackupHealthService {
           auditedFragments: Int64(audited),
           lastAuditUnixMs: _ms(last),
           fragmentBytes: Int64(bytes ?? 0),
+          dataBytes: Int64(data),
         ),
         auditedSinceUnixMs: _ms(since),
       );

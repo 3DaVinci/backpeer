@@ -22,6 +22,10 @@ String formatSize(AppLocalizations l10n, int bytes) {
   return units[unit](number);
 }
 
+/// Целое число в единицах языка интерфейса: `1 200`.
+String formatCount(AppLocalizations l10n, int value) =>
+    NumberFormat.decimalPattern(l10n.localeName).format(value);
+
 /// Дата и время из ISO 8601 в местном времени; `null` — `null`.
 String? formatDateTime(AppLocalizations l10n, Object? iso) {
   if (iso is! String) return null;

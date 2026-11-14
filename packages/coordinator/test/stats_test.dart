@@ -3,9 +3,12 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:coordinator/coordinator.dart';
 import 'package:core/core.dart';
+import 'package:postgres/postgres.dart';
+import 'package:protocol/protocol.dart' as pb;
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -30,6 +33,7 @@ void main() {
   late GeoDatabase geo;
   late DbHarness h;
   late AccountKeys owner;
+  late Ed25519KeyPair ownerDevice;
 
   setUp(() async {
     dir = Directory.systemTemp.createTempSync('stats-geoip');
@@ -45,7 +49,8 @@ void main() {
       ),
     );
     owner = await h.newAccount();
-    await h.register(owner, await h.newKey(), login: 'owner');
+    ownerDevice = await h.newKey();
+    await h.register(owner, ownerDevice, login: 'owner');
   });
 
   tearDown(() async {
@@ -80,6 +85,36 @@ void main() {
       free: capacity - used,
     );
     return node;
+  }
+
+  /// Сохранённый сегмент: сводке нужны только k и размер фрагмента, поэтому
+  /// строка кладётся прямо в базу — размещение, талоны и сами фрагменты на
+  /// объём данных не влияют. [state] 0 — сегмент ещё загружается.
+  Future<void> segment(
+    int tag, {
+    int k = 10,
+    int fragmentSize = 30096,
+    int state = 1,
+  }) async {
+    final segmentId = Uint8List(32)..[0] = tag;
+    await h.db.run(
+      (s) => s.execute(
+        Sql.named('''
+          INSERT INTO segments
+            (account_id, segment_id, k, n, repair_threshold, fragment_size,
+             state, allocated_at, committed_at)
+          VALUES (@a:bytea, @g:bytea, @k:int2, 20, 16, @f:int4, @s:int2,
+                  @t:timestamptz, @t:timestamptz)'''),
+        parameters: {
+          'a': owner.accountId,
+          'g': segmentId,
+          'k': k,
+          'f': fragmentSize,
+          's': state,
+          't': h.clock.now,
+        },
+      ),
+    );
   }
 
   test('узлы, место, объём и города', () async {
@@ -127,6 +162,29 @@ void main() {
         'hosts': 1,
       },
     ]);
+  });
+
+  test('объём данных — сохранённые сегменты, а не блобы '
+      'координатора', () async {
+    await node('1.0.0.7', used: 100);
+    // Снимок 1000 байт лежит на координаторе, а не на дисках хранителей:
+    // в объём данных он не входит.
+    await h.call(
+      'PutObject',
+      pb.PutObjectRequest(
+        kind: pb.ObjectKind.OBJECT_KIND_SNAPSHOT,
+        objectId: Uint8List(32)..[0] = 0x0A,
+        blob: Uint8List(1000),
+      ),
+      pb.PutObjectResponse.fromBuffer,
+      key: ownerDevice,
+    );
+    await segment(1); // 10 × (30096 − 96) = 300 000
+    await segment(2, k: 4); // 4 × 30 000 = 120 000
+    await segment(3, state: 0); // идёт загрузка — не считается
+
+    final body = await json(await get());
+    expect(body['data'], {'storedBytes': 420000, 'fragmentBytes': 100});
   });
 
   test('чужой источник не получает CORS, но данные отдаются', () async {

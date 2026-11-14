@@ -5902,6 +5902,7 @@ class BackupHealthSummary extends $pb.GeneratedMessage {
     $fixnum.Int64? auditedFragments,
     $fixnum.Int64? lastAuditUnixMs,
     $fixnum.Int64? fragmentBytes,
+    $fixnum.Int64? dataBytes,
   }) {
     final result = BackupHealthSummary._();
     if (segments != null) result.segments = segments;
@@ -5915,6 +5916,7 @@ class BackupHealthSummary extends $pb.GeneratedMessage {
     if (auditedFragments != null) result.auditedFragments = auditedFragments;
     if (lastAuditUnixMs != null) result.lastAuditUnixMs = lastAuditUnixMs;
     if (fragmentBytes != null) result.fragmentBytes = fragmentBytes;
+    if (dataBytes != null) result.dataBytes = dataBytes;
     return result;
   }
 
@@ -5957,6 +5959,9 @@ class BackupHealthSummary extends $pb.GeneratedMessage {
     ..aInt64(10, _omitFieldNames ? '' : 'lastAuditUnixMs')
     ..a<$fixnum.Int64>(
         11, _omitFieldNames ? '' : 'fragmentBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        12, _omitFieldNames ? '' : 'dataBytes', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 
@@ -6081,6 +6086,17 @@ class BackupHealthSummary extends $pb.GeneratedMessage {
   $core.bool hasFragmentBytes() => $_has(10);
   @$pb.TagNumber(11)
   void clearFragmentBytes() => $_clearField(11);
+
+  /// Объём данных учётной записи без запаса на избыточность: по каждому
+  /// сохранённому сегменту k × (размер фрагмента − 96).
+  @$pb.TagNumber(12)
+  $fixnum.Int64 get dataBytes => $_getI64(11);
+  @$pb.TagNumber(12)
+  set dataBytes($fixnum.Int64 value) => $_setInt64(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasDataBytes() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearDataBytes() => $_clearField(12);
 }
 
 class SegmentHealth extends $pb.GeneratedMessage {

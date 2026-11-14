@@ -835,6 +835,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthReasonNeverVerified => 'The backup has not been checked yet';
 
   @override
+  String get spaceTitle => 'Backup space';
+
+  @override
+  String get spaceData => 'Data';
+
+  @override
+  String get spaceOnDisks => 'On keepers’ disks';
+
+  @override
+  String get spaceSegments => 'Segments';
+
+  @override
+  String get spaceRedundancy =>
+      'Fragments are stored with redundancy, so keepers’ disks hold more than the data itself.';
+
+  @override
+  String get spaceNoCoordinator =>
+      'Backup space is counted by the coordinator, and this account has no server.';
+
+  @override
   String get lastVerify => 'Last check';
 
   @override

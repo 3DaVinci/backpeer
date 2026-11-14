@@ -33,8 +33,10 @@ final class CancellationToken {
 /// кодирование ([SegmentEncoder]), запись n фрагментов на узлы, которые
 /// выбрал [placer] (координатор или [placeFragments]), и подтверждение
 /// загрузки. Сегмент сохранён, если записано не меньше
-/// `minStoredFragments` (t + 1, durability.md); иначе бэкап падает и
-/// сегмент не подтверждается.
+/// `minStoredFragments` (t + 1, durability.md); если фрагментов меньше,
+/// сегмент размещается заново на других узлах ([allocationAttempts]), и
+/// только когда попытки кончились, бэкап падает и сегмент не
+/// подтверждается.
 ///
 /// Память ограничена: одновременно обрабатывается не больше
 /// [maxInFlight] сегментов, следующий [add] ждёт — это обратное давление
@@ -49,10 +51,14 @@ final class SegmentPacker implements ChunkSink {
     required this.params,
     SegmentPlacer? placer,
     this.maxInFlight = 2,
+    this.allocationAttempts = 2,
     CancellationToken? cancel,
   }) : placer = placer ?? LocalPlacer(store),
        cancel = cancel ?? CancellationToken() {
     if (maxInFlight < 1) throw ArgumentError.value(maxInFlight, 'maxInFlight');
+    if (allocationAttempts < 1) {
+      throw ArgumentError.value(allocationAttempts, 'allocationAttempts');
+    }
   }
 
   final CryptoProvider crypto;
@@ -63,6 +69,10 @@ final class SegmentPacker implements ChunkSink {
   final DurabilityParameters params;
   final SegmentPlacer placer;
   final int maxInFlight;
+
+  /// Сколько раз размещать сегмент, если фрагментов не хватило: каждый
+  /// следующий раз — новые узлы от [placer] (protocol.md, раздел 5.2).
+  final int allocationAttempts;
   final CancellationToken cancel;
 
   final List<PackedChunk> _open = [];
@@ -213,69 +223,86 @@ final class SegmentPacker implements ChunkSink {
     );
     _flying.removeAll(chunks.map((c) => c.id));
 
-    final targets = await placer.allocate(
-      SegmentAllocation(
-        segmentId: segmentId,
-        k: params.k,
-        n: params.n,
-        repairThreshold: params.repairThreshold,
-        fragmentSize: encoded.fragments.first.length,
-        fragmentIds: encoded.fragmentIds,
-        bodyRoots: [
-          for (final f in encoded.fragments) Fragment.parse(f).header.bodyRoot,
-        ],
-      ),
+    final allocation = SegmentAllocation(
+      segmentId: segmentId,
+      k: params.k,
+      n: params.n,
+      repairThreshold: params.repairThreshold,
+      fragmentSize: encoded.fragments.first.length,
+      fragmentIds: encoded.fragmentIds,
+      bodyRoots: [
+        for (final f in encoded.fragments) Fragment.parse(f).header.bodyRoot,
+      ],
     );
-    // Ошибки записи не прерывают остальные загрузки, но первая из них
-    // объясняет, почему фрагментов не хватило: «нет связи», «исчерпан
-    // суточный предел relay» и т. п. Без неё пользователь видел только
-    // «доступно фрагментов 0».
-    final errors = <CoreException>[];
-    final written = await Future.wait([
-      for (var i = 0; i < params.n; i++)
-        if (targets[i] case final FragmentTarget target)
-          store
-              .put(
-                target.node,
-                encoded.fragments[i],
-                expectedFragmentId: encoded.fragmentIds[i],
-              )
-              .then(
-                (_) {
-                  // Фрагмент лёг: доля работы внутри сегмента растёт, пока
-                  // остальные ещё загружаются (прогресс бэкапа).
-                  flying.acked++;
-                  return true;
-                },
-                onError: (Object e) {
-                  if (e is CoreException) errors.add(e);
-                  return false;
-                },
-              )
-        else
-          Future.value(false),
-    ]);
-    final ok = written.where((w) => w).length;
-    if (ok < params.minStoredFragments) {
-      throw InsufficientShardsException(
-        available: ok,
-        required: params.minStoredFragments,
-        segmentId: segmentId,
-        cause: _putCause(errors),
-      );
-    }
-    await placer.commit(segmentId, [
-      for (var i = 0; i < params.n; i++)
-        if (written[i]) i,
-    ]);
-    index.transaction(() {
-      for (var i = 0; i < params.n; i++) {
-        if (written[i]) index.setFragmentNode(segmentId, i, targets[i]!.node);
+    // Фрагментов могло не хватить из-за узла, который не принял талон
+    // (например, не доверяет ключу координатора), или из-за обрыва. Тогда
+    // сегмент размещается заново: координатор освобождает прежние узлы и
+    // выбирает другие, а уже загруженные фрагменты узлы уберут после сверки
+    // (protocol.md, раздел 5.2). Клиент считает загрузку успешной при
+    // t + 1 фрагментах, поэтому переразмещение — часть обычного пути, а не
+    // аварийного.
+    for (var attempt = 1; ; attempt++) {
+      final targets = await placer.allocate(allocation);
+      // Прогресс внутри сегмента считается заново: фрагменты прежнего
+      // размещения больше не в счёт.
+      flying.acked = 0;
+      // Ошибки записи не прерывают остальные загрузки, но первая из них
+      // объясняет, почему фрагментов не хватило: «нет связи», «исчерпан
+      // суточный предел relay» и т. п. Без неё пользователь видел только
+      // «доступно фрагментов 0».
+      final errors = <CoreException>[];
+      final written = await Future.wait([
+        for (var i = 0; i < params.n; i++)
+          if (targets[i] case final FragmentTarget target)
+            store
+                .put(
+                  target.node,
+                  encoded.fragments[i],
+                  expectedFragmentId: encoded.fragmentIds[i],
+                )
+                .then(
+                  (_) {
+                    // Фрагмент лёг: доля работы внутри сегмента растёт, пока
+                    // остальные ещё загружаются (прогресс бэкапа).
+                    flying.acked++;
+                    return true;
+                  },
+                  onError: (Object e) {
+                    if (e is CoreException) errors.add(e);
+                    return false;
+                  },
+                )
+          else
+            Future.value(false),
+      ]);
+      final ok = written.where((w) => w).length;
+      if (ok < params.minStoredFragments) {
+        // Отмена (пауза, сон, остановка) — не повод размещать заново.
+        cancel.check();
+        if (attempt < allocationAttempts) continue;
+        throw InsufficientShardsException(
+          available: ok,
+          required: params.minStoredFragments,
+          segmentId: segmentId,
+          cause: _putCause(errors),
+        );
       }
-      index.markSegmentStored(segmentId);
-    });
-    segmentsStored++;
-    bytesStored += plaintext.length;
+      await placer.commit(segmentId, [
+        for (var i = 0; i < params.n; i++)
+          if (written[i]) i,
+      ]);
+      index.transaction(() {
+        for (var i = 0; i < params.n; i++) {
+          if (written[i]) {
+            index.setFragmentNode(segmentId, i, targets[i]!.node);
+          }
+        }
+        index.markSegmentStored(segmentId);
+      });
+      segmentsStored++;
+      bytesStored += plaintext.length;
+      return;
+    }
   }
 
   void _rethrow() {

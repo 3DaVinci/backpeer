@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:core/core.dart';
+import 'package:fixnum/fixnum.dart';
 import 'package:node/node.dart';
 import 'package:protocol/protocol.dart' as pb;
 import 'package:test/test.dart';
@@ -128,6 +129,130 @@ void main() {
     expect(link.registered, isTrue);
     expect(link.toJson()['unknownCoordinatorKeys'], [
       CoordinatorKeySet.keyId(crypto, unknown),
+    ]);
+    identity.dispose();
+    owner.dispose();
+  });
+
+  test('хранитель без списка ключей: ключ подписанта из регистрации, его '
+      'талоны принимаются', () async {
+    final owner = await nodeWithCertificate(dir, crypto);
+    final identity = await NodeIdentity.load(dir, crypto);
+    final signer = await crypto.ed25519FromSeed(
+      SecretBytes(crypto.randomBytes(32)),
+    );
+    final device = await crypto.ed25519FromSeed(
+      SecretBytes(crypto.randomBytes(32)),
+    );
+    final fake = await _FakeCoordinator.start(
+      (method, body) => method == 'RegisterNode'
+          ? pb.RegisterNodeResponse(coordinatorKeys: [signer.publicKey])
+          : pb.HeartbeatResponse(nextHeartbeatMs: 20),
+    );
+    final client = CoordinatorClient(
+      baseUri: Uri.parse(fake.url),
+      crypto: crypto,
+      retry: RetryPolicy.none,
+    );
+    // Так включён «хранитель» из приложения: node.yaml без
+    // coordinator.keys (`docs/ops/node.md`, раздел «Ключи координатора»).
+    final trusted = CoordinatorKeySet(const []);
+    final link = CoordinatorLink(
+      client: client,
+      identity: identity,
+      capacityBytes: 1000,
+      usedBytes: () => 0,
+      trustedKeys: trusted,
+      interval: const Duration(milliseconds: 20),
+    )..start();
+    await fake.waitCalls(1);
+    await link.stop();
+    client.close(force: true);
+    await fake.close();
+
+    expect(trusted.trusts(signer.publicKey), isTrue);
+    final status = link.toJson();
+    expect(status['coordinatorKeys'], 1);
+    expect(status['coordinatorKeysFrom'], 'registration');
+    expect(status['unknownCoordinatorKeys'], isEmpty);
+
+    // Талон подписанта проходит проверку узла. До исправления список был
+    // пуст, и каждый такой талон отклонялся как untrusted: узел при этом
+    // оставался в размещении, а сегменты бэкапа теряли фрагменты.
+    final fragmentId = crypto.randomBytes(32);
+    final signed = await SignedMessages.sign(
+      crypto,
+      signer,
+      FragmentTickets.signingContext,
+      pb.FragmentTicket(
+        operation: pb.TicketOperation.TICKET_OPERATION_PUT,
+        nodeId: identity.nodeId,
+        deviceSign: device.publicKey,
+        fragmentId: fragmentId,
+        fragmentSize: 4096,
+        expiresAtUnixMs: Int64(
+          DateTime.now()
+              .add(const Duration(minutes: 10))
+              .millisecondsSinceEpoch,
+        ),
+        ticketId: crypto.randomBytes(16),
+      ),
+    );
+    final ticket = await FragmentTickets.authorize(
+      crypto,
+      signed,
+      trusted,
+      now: DateTime.now(),
+      operation: pb.TicketOperation.TICKET_OPERATION_PUT,
+      nodeId: identity.nodeId,
+      deviceSign: device.publicKey,
+      fragmentId: fragmentId,
+    );
+    expect(ticket.fragmentSize, 4096);
+    identity.dispose();
+    owner.dispose();
+  });
+
+  test('свой список ключей главнее ответа координатора: после ротации новые '
+      'ключи не принимаются, только предупреждение', () async {
+    final owner = await nodeWithCertificate(dir, crypto);
+    final identity = await NodeIdentity.load(dir, crypto);
+    final pinned = await crypto.ed25519FromSeed(
+      SecretBytes(crypto.randomBytes(32)),
+    );
+    final rotated = await crypto.ed25519FromSeed(
+      SecretBytes(crypto.randomBytes(32)),
+    );
+    final fake = await _FakeCoordinator.start(
+      (method, body) => method == 'RegisterNode'
+          ? pb.RegisterNodeResponse(coordinatorKeys: [rotated.publicKey])
+          : pb.HeartbeatResponse(nextHeartbeatMs: 20),
+    );
+    final client = CoordinatorClient(
+      baseUri: Uri.parse(fake.url),
+      crypto: crypto,
+      retry: RetryPolicy.none,
+    );
+    final trusted = CoordinatorKeySet([pinned.publicKey]);
+    final link = CoordinatorLink(
+      client: client,
+      identity: identity,
+      capacityBytes: 1000,
+      usedBytes: () => 0,
+      trustedKeys: trusted,
+      interval: const Duration(milliseconds: 20),
+    )..start();
+    await fake.waitCalls(1);
+    await link.stop();
+    client.close(force: true);
+    await fake.close();
+
+    expect(trusted.trusts(rotated.publicKey), isFalse);
+    final status = link.toJson();
+    expect(status['coordinatorKeys'], 1);
+    expect(status['coordinatorKeysFrom'], 'settings');
+    expect(status['unknownCoordinatorKeys'], [
+      CoordinatorKeySet.keyId(crypto, rotated.publicKey),
     ]);
     identity.dispose();
     owner.dispose();

@@ -19,7 +19,10 @@ import 'package:protocol/protocol.dart' as pb;
 ///
 /// - Сначала `RegisterNode` (сертификат, ёмкость, адреса, версии); ответ
 ///   несёт ключи координатора — узел сверяет их со своим списком и
-///   предупреждает о расхождении, но доверяет только списку.
+///   предупреждает о расхождении. Свой список главнее; узел вовсе без
+///   списка (роль хранителя, включённая из приложения) принимает ключи из
+///   ответа и дальше принимает по ним талоны, иначе он не смог бы
+///   хранить ни одного фрагмента ([CoordinatorKeySet.adopt]).
 /// - Затем `Heartbeat` с интервалом из ответа координатора.
 /// - `UNAUTHENTICATED` на heartbeat (координатор не знает узел, например
 ///   после очистки базы стенда) — повторная регистрация.
@@ -160,6 +163,7 @@ final class CoordinatorLink {
   DateTime? _nextAttempt;
   String? _lastError;
   List<String> _unknownKeys = const [];
+  bool _adoptedKeys = false;
   bool _leaving;
   pb.LeaveNetworkResponse? _leave;
   pb.NodeStanding? _standing;
@@ -169,6 +173,14 @@ final class CoordinatorLink {
 
   bool get registered => _registered;
 
+  /// Откуда ключи подписанта: `settings` (список в настройках), `registration`
+  /// (приняты из ответа на регистрацию — узел без своего списка) или `none`.
+  String get _keysSource => trustedKeys.isEmpty
+      ? 'none'
+      : _adoptedKeys
+      ? 'registration'
+      : 'settings';
+
   /// Состояние для `cli node status`.
   Map<String, Object?> toJson() => {
     'url': client.baseUri.toString(),
@@ -177,6 +189,8 @@ final class CoordinatorLink {
     'nextAttemptAt': _nextAttempt?.toUtc().toIso8601String(),
     'lastError': _lastError,
     'unknownCoordinatorKeys': _unknownKeys,
+    'coordinatorKeys': trustedKeys.length,
+    'coordinatorKeysFrom': _keysSource,
     'channel': channel?.toJson(),
     'reconcile': reconciler?.toJson(),
     'exit': exitJson,
@@ -575,6 +589,36 @@ final class CoordinatorLink {
 
   void _checkKeys(List<List<int>> keys) {
     final crypto = client.crypto;
+    if (keys.isNotEmpty && (trustedKeys.isEmpty || _adoptedKeys)) {
+      // Узел без своего списка ключей: так приходит «хранитель», включённый
+      // из приложения (agent пишет node.yaml без coordinator.keys). Взять
+      // ключ больше неоткуда, а без него узел отклоняет все талоны как
+      // untrusted, оставаясь при этом в размещении, — сегменты бэкапа
+      // теряют фрагменты. Принимаем ключи из ответа на регистрацию (и
+      // новые после ротации, пока список не задан явно); событие в журнале
+      // видно оператору, чтобы он мог закрепить ключи в настройках.
+      final added = <List<int>>[];
+      for (final k in keys) {
+        if (trustedKeys.trusts(k)) continue;
+        if (trustedKeys.adopt([k]) > 0) added.add(k);
+      }
+      if (trustedKeys.isEmpty) {
+        _log.warning(const LogEvent('coordinator_keys_not_configured'));
+        return;
+      }
+      _adoptedKeys = true;
+      _unknownKeys = const [];
+      if (added.isNotEmpty) {
+        _log.warning(
+          LogEvent('coordinator_keys_adopted', {
+            'key_ids': [
+              for (final k in added) CoordinatorKeySet.keyId(crypto, k),
+            ],
+          }),
+        );
+      }
+      return;
+    }
     _unknownKeys = [
       for (final k in keys)
         if (!trustedKeys.trusts(k)) CoordinatorKeySet.keyId(crypto, k),

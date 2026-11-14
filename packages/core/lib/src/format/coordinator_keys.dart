@@ -36,7 +36,25 @@ final class CoordinatorKeySet {
 
   bool get isEmpty => _keys.isEmpty;
 
+  /// Сколько ключей в списке.
+  int get length => _keys.length;
+
   bool trusts(List<int> publicKey) => _keys.contains(bytesToHex(publicKey));
+
+  /// Доверяет ключам, которые координатор назвал при регистрации
+  /// (`RegisterNodeResponse.coordinator_keys`). Для узла без своего списка
+  /// («хранитель», включённый из приложения) это единственный способ
+  /// получить ключ подписанта: без него узел не принимает ни один талон
+  /// (`docs/ops/node.md`, раздел «Ключи координатора»). Ключи неверной
+  /// длины отбрасываются. Возвращает число добавленных ключей.
+  int adopt(Iterable<List<int>> keys) {
+    var added = 0;
+    for (final k in keys) {
+      if (k.length != CryptoProvider.keyLength) continue;
+      if (_keys.add(bytesToHex(k))) added++;
+    }
+    return added;
+  }
 
   /// Идентификатор ключа: первые 8 байт `H(ключ)` в hex — для журналов и
   /// процедур ротации.

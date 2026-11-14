@@ -15,6 +15,54 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.8-dev.5`](#agent---v008-dev5)
+ - [`app` - `v0.0.8-dev.5`](#app---v008-dev5)
+ - [`coordinator` - `v0.0.8-dev.5`](#coordinator---v008-dev5)
+ - [`protocol` - `v0.0.8-dev.5`](#protocol---v008-dev5)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.8-dev.5`
+ - `cli` - `v0.0.8-dev.5`
+ - `core` - `v0.0.8-dev.5`
+ - `daemon_kit` - `v0.0.8-dev.5`
+ - `node` - `v0.0.8-dev.5`
+ - `relay` - `v0.0.8-dev.5`
+ - `test_vectors` - `v0.0.8-dev.5`
+
+---
+
+#### `agent` - `v0.0.8-dev.5`
+
+ - **FEAT**(app,agent,coordinator,site): занятое бэкапами место и верный объём данных.
+
+#### `app` - `v0.0.8-dev.5`
+
+ - **FEAT**(app,agent,coordinator,site): занятое бэкапами место и верный объём данных.
+
+#### `coordinator` - `v0.0.8-dev.5`
+
+ - **FEAT**(app,agent,coordinator,site): занятое бэкапами место и верный объём данных.
+
+#### `protocol` - `v0.0.8-dev.5`
+
+ - **FEAT**(app,agent,coordinator,site): занятое бэкапами место и верный объём данных.
+
+
+## 2026-11-14
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`core` - `v0.0.8-dev.4`](#core---v008-dev4)
  - [`node` - `v0.0.8-dev.4`](#node---v008-dev4)
 

@@ -5,6 +5,7 @@ import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/widgets/backup_space_card.dart';
 import 'package:app/src/ui/widgets/health_card.dart';
 import 'package:app/src/ui/widgets/job_progress.dart';
+import 'package:app/src/ui/widgets/quota_card.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:app/src/ui/widgets/unlock_dialog.dart';
 import 'package:daemon_kit/daemon_kit.dart';
@@ -32,6 +33,8 @@ class OverviewScreen extends StatelessWidget {
             BackupSpaceCard(agent: services.agent),
           ],
           _NodeSummary(node: services.node),
+          if (services.agent.status?['configured'] == true)
+            QuotaCard(agent: services.agent),
         ],
       ),
     );

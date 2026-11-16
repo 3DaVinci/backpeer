@@ -1384,6 +1384,53 @@ final class BackupAgent {
     };
   });
 
+  /// Квота и кредиты учётной записи (этап 7, `GetQuota`).
+  Future<Map<String, Object?>> _quota() => _query((session) async {
+    final client = session.client;
+    if (client == null) {
+      throw const ControlException('no_coordinator', 'нет координатора');
+    }
+    final q = await client.getQuota(
+      pb.GetQuotaRequest(),
+      accountKey: session.keys.accountSign,
+    );
+    return {
+      'dataBytes': q.dataBytes.toInt(),
+      'capacityBytes': q.capacityBytes.toInt(),
+      'barterBytes': q.barterBytes.toInt(),
+      'balanceMc': q.balanceMc.toInt(),
+      'maxBytes': q.maxBytes.toInt(),
+      'billableBytes': q.billableBytes.toInt(),
+      'monthlyCostMc': q.monthlyCostMc.toInt(),
+      'dailyCostMc': q.dailyCostMc.toInt(),
+      'earnedMc': q.earnedMc.toInt(),
+      'spentMc': q.spentMc.toInt(),
+      'negativeSince': q.negativeSinceUnixMs.toInt() == 0
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(
+              q.negativeSinceUnixMs.toInt(),
+              isUtc: true,
+            ).toIso8601String(),
+      'graceDays': q.graceDays,
+      'blocked': q.blocked,
+      'repairBytes': q.repairBytes.toInt(),
+      'repairCostMc': q.repairCostMc.toInt(),
+      'repairWindowDays': q.repairWindowDays,
+      'entries': [
+        for (final e in q.entries)
+          {
+            'kind': e.kind,
+            'amountMc': e.amountMc.toInt(),
+            'at': DateTime.fromMillisecondsSinceEpoch(
+              e.atUnixMs.toInt(),
+              isUtc: true,
+            ).toIso8601String(),
+            'note': e.note,
+          },
+      ],
+    };
+  });
+
   Future<Map<String, Object?>> _snapshots() => _query((session) async {
     final listing = await _catalog(session).list();
     return {
@@ -1763,6 +1810,8 @@ final class BackupAgent {
         return health.toJson();
       case 'usage':
         return await _usage();
+      case 'quota':
+        return await _quota();
       case 'unlock':
         return await _unlock(params);
       case 'lock':

@@ -1709,6 +1709,89 @@ final $typed_data.Uint8List segmentHealthDescriptor = $convert.base64Decode(
     'VkaXRlZBgHIAEoDVIHYXVkaXRlZBIrChJsYXN0X2F1ZGl0X3VuaXhfbXMYCCABKANSD2xhc3RB'
     'dWRpdFVuaXhNcxIcCglyZXBhaXJpbmcYCSABKAhSCXJlcGFpcmluZw==');
 
+@$core.Deprecated('Use getQuotaRequestDescriptor instead')
+const GetQuotaRequest$json = {
+  '1': 'GetQuotaRequest',
+};
+
+/// Descriptor for `GetQuotaRequest`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getQuotaRequestDescriptor =
+    $convert.base64Decode('Cg9HZXRRdW90YVJlcXVlc3Q=');
+
+@$core.Deprecated('Use quotaEntryDescriptor instead')
+const QuotaEntry$json = {
+  '1': 'QuotaEntry',
+  '2': [
+    {'1': 'amount_mc', '3': 1, '4': 1, '5': 3, '10': 'amountMc'},
+    {'1': 'kind', '3': 2, '4': 1, '5': 9, '10': 'kind'},
+    {'1': 'at_unix_ms', '3': 3, '4': 1, '5': 3, '10': 'atUnixMs'},
+    {'1': 'note', '3': 4, '4': 1, '5': 9, '10': 'note'},
+  ],
+};
+
+/// Descriptor for `QuotaEntry`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List quotaEntryDescriptor = $convert.base64Decode(
+    'CgpRdW90YUVudHJ5EhsKCWFtb3VudF9tYxgBIAEoA1IIYW1vdW50TWMSEgoEa2luZBgCIAEoCV'
+    'IEa2luZBIcCgphdF91bml4X21zGAMgASgDUghhdFVuaXhNcxISCgRub3RlGAQgASgJUgRub3Rl');
+
+@$core.Deprecated('Use getQuotaResponseDescriptor instead')
+const GetQuotaResponse$json = {
+  '1': 'GetQuotaResponse',
+  '2': [
+    {'1': 'data_bytes', '3': 1, '4': 1, '5': 4, '10': 'dataBytes'},
+    {'1': 'capacity_bytes', '3': 2, '4': 1, '5': 4, '10': 'capacityBytes'},
+    {'1': 'barter_bytes', '3': 3, '4': 1, '5': 4, '10': 'barterBytes'},
+    {'1': 'balance_mc', '3': 4, '4': 1, '5': 3, '10': 'balanceMc'},
+    {'1': 'max_bytes', '3': 5, '4': 1, '5': 4, '10': 'maxBytes'},
+    {'1': 'billable_bytes', '3': 6, '4': 1, '5': 4, '10': 'billableBytes'},
+    {'1': 'monthly_cost_mc', '3': 7, '4': 1, '5': 4, '10': 'monthlyCostMc'},
+    {'1': 'daily_cost_mc', '3': 8, '4': 1, '5': 4, '10': 'dailyCostMc'},
+    {'1': 'earned_mc', '3': 9, '4': 1, '5': 4, '10': 'earnedMc'},
+    {'1': 'spent_mc', '3': 10, '4': 1, '5': 4, '10': 'spentMc'},
+    {
+      '1': 'entries',
+      '3': 11,
+      '4': 3,
+      '5': 11,
+      '6': '.fs.v1.QuotaEntry',
+      '10': 'entries'
+    },
+    {
+      '1': 'negative_since_unix_ms',
+      '3': 12,
+      '4': 1,
+      '5': 3,
+      '10': 'negativeSinceUnixMs'
+    },
+    {'1': 'grace_days', '3': 13, '4': 1, '5': 13, '10': 'graceDays'},
+    {'1': 'blocked', '3': 14, '4': 1, '5': 8, '10': 'blocked'},
+    {'1': 'repair_bytes', '3': 15, '4': 1, '5': 4, '10': 'repairBytes'},
+    {'1': 'repair_cost_mc', '3': 16, '4': 1, '5': 4, '10': 'repairCostMc'},
+    {
+      '1': 'repair_window_days',
+      '3': 17,
+      '4': 1,
+      '5': 13,
+      '10': 'repairWindowDays'
+    },
+  ],
+};
+
+/// Descriptor for `GetQuotaResponse`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List getQuotaResponseDescriptor = $convert.base64Decode(
+    'ChBHZXRRdW90YVJlc3BvbnNlEh0KCmRhdGFfYnl0ZXMYASABKARSCWRhdGFCeXRlcxIlCg5jYX'
+    'BhY2l0eV9ieXRlcxgCIAEoBFINY2FwYWNpdHlCeXRlcxIhCgxiYXJ0ZXJfYnl0ZXMYAyABKARS'
+    'C2JhcnRlckJ5dGVzEh0KCmJhbGFuY2VfbWMYBCABKANSCWJhbGFuY2VNYxIbCgltYXhfYnl0ZX'
+    'MYBSABKARSCG1heEJ5dGVzEiUKDmJpbGxhYmxlX2J5dGVzGAYgASgEUg1iaWxsYWJsZUJ5dGVz'
+    'EiYKD21vbnRobHlfY29zdF9tYxgHIAEoBFINbW9udGhseUNvc3RNYxIiCg1kYWlseV9jb3N0X2'
+    '1jGAggASgEUgtkYWlseUNvc3RNYxIbCgllYXJuZWRfbWMYCSABKARSCGVhcm5lZE1jEhkKCHNw'
+    'ZW50X21jGAogASgEUgdzcGVudE1jEisKB2VudHJpZXMYCyADKAsyES5mcy52MS5RdW90YUVudH'
+    'J5UgdlbnRyaWVzEjMKFm5lZ2F0aXZlX3NpbmNlX3VuaXhfbXMYDCABKANSE25lZ2F0aXZlU2lu'
+    'Y2VVbml4TXMSHQoKZ3JhY2VfZGF5cxgNIAEoDVIJZ3JhY2VEYXlzEhgKB2Jsb2NrZWQYDiABKA'
+    'hSB2Jsb2NrZWQSIQoMcmVwYWlyX2J5dGVzGA8gASgEUgtyZXBhaXJCeXRlcxIkCg5yZXBhaXJf'
+    'Y29zdF9tYxgQIAEoBFIMcmVwYWlyQ29zdE1jEiwKEnJlcGFpcl93aW5kb3dfZGF5cxgRIAEoDV'
+    'IQcmVwYWlyV2luZG93RGF5cw==');
+
 @$core.Deprecated('Use getRelayPassRequestDescriptor instead')
 const GetRelayPassRequest$json = {
   '1': 'GetRelayPassRequest',

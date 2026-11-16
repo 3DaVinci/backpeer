@@ -474,6 +474,16 @@ final class CoordinatorClient {
     pb.GetBackupHealthRequest request,
   ) => call('GetBackupHealth', request, pb.GetBackupHealthResponse.fromBuffer);
 
+  Future<pb.GetQuotaResponse> getQuota(
+    pb.GetQuotaRequest request, {
+    required Ed25519KeyPair accountKey,
+  }) => call(
+    'GetQuota',
+    request,
+    pb.GetQuotaResponse.fromBuffer,
+    key: accountKey,
+  );
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     pb.CheckReachabilityRequest request, {
     required Ed25519KeyPair nodeKey,

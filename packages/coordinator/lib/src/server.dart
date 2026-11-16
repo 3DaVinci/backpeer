@@ -8,6 +8,7 @@ import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/migrations.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
+import 'package:coordinator/src/economy/economy_service.dart';
 import 'package:coordinator/src/geo/geo_database.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
@@ -37,6 +38,7 @@ final class CoordinatorServer {
     this.rendezvous,
     this.audits,
     this.repair,
+    this.economy,
   );
 
   /// Открывает базу, проверяет версию схемы и начинает слушать порт.
@@ -61,6 +63,7 @@ final class CoordinatorServer {
     RendezvousService? rendezvous;
     AuditService? audits;
     RepairService? repair;
+    EconomyService? economy;
     try {
       final migrator = Migrator(db);
       final version = migrate
@@ -155,6 +158,7 @@ final class CoordinatorServer {
         await rendezvous.start();
         audits = (s.audits..channels = channels)..start();
         repair = (s.repair..channels = channels)..start();
+        economy = s.economy..start();
       }
       // Новый отзыв устройства — узлы в канале дочитывают ListRevocations
       // сразу, не дожидаясь heartbeat.
@@ -219,8 +223,10 @@ final class CoordinatorServer {
         rendezvous,
         audits,
         repair,
+        economy,
       );
     } on Object {
+      await economy?.close();
       await repair?.close();
       await audits?.close();
       await rendezvous?.close();
@@ -249,10 +255,14 @@ final class CoordinatorServer {
   /// Ремонт сегментов; `null` — сервис без базы (тесты).
   final RepairService? repair;
 
+  /// Ежедневный расчёт кредитов; `null` — сервис без базы (тесты).
+  final EconomyService? economy;
+
   int get port => _http.port;
 
   Future<void> close() async {
     await _watch?.cancel();
+    await economy?.close();
     await repair?.close();
     await audits?.close();
     await channels.close();

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:coordinator/src/db/database.dart';
+import 'package:coordinator/src/economy/economy_service.dart';
 import 'package:coordinator/src/log.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
 import 'package:coordinator/src/placement/placement.dart';
@@ -43,6 +44,7 @@ final class SegmentService {
     required this.crypto,
     this._signer,
     this.policy = const PlacementPolicy(),
+    this.economy,
     Placement? placement,
     DateTime Function()? clock,
   }) : _placement =
@@ -58,6 +60,9 @@ final class SegmentService {
   final CryptoProvider crypto;
   final TicketSigner? _signer;
   final PlacementPolicy policy;
+
+  /// Бартерная квота; `null` — без проверки (тесты старых задач).
+  final EconomyService? economy;
   final Placement _placement;
   final DateTime Function() _clock;
 
@@ -143,6 +148,7 @@ final class SegmentService {
           );
           await _delete(tx, accountId, segmentId);
         }
+        await economy?.checkCanStore(tx, accountId, k * size);
         await tx.execute(
           Sql.named('''
             INSERT INTO segments

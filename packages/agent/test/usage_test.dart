@@ -44,6 +44,7 @@ void main() {
 
   test('место бэкапов: без учётной записи и без координатора', () async {
     await expectLater(client.call('usage'), code('not_configured'));
+    await expectLater(client.call('quota'), code('not_configured'));
 
     final words =
         ((await client.call('account.new_phrase'))['words']! as List<Object?>)
@@ -58,5 +59,6 @@ void main() {
     // Сегменты локальные: объём данных и место фрагментов на дисках
     // хранителей знает только координатор.
     await expectLater(client.call('usage'), code('no_coordinator'));
+    await expectLater(client.call('quota'), code('no_coordinator'));
   });
 }

@@ -37,6 +37,8 @@ export 'src/config.dart';
 export 'src/db/database.dart';
 export 'src/db/migrations.dart';
 export 'src/db/postgres_key_directory.dart';
+export 'src/economy/economy_policy.dart';
+export 'src/economy/economy_service.dart';
 export 'src/geo/geo_database.dart';
 export 'src/log.dart';
 export 'src/nodes/node_address.dart';

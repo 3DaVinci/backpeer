@@ -6254,6 +6254,407 @@ class SegmentHealth extends $pb.GeneratedMessage {
   void clearRepairing() => $_clearField(9);
 }
 
+/// Подписан ключом устройства.
+class GetQuotaRequest extends $pb.GeneratedMessage {
+  factory GetQuotaRequest() => GetQuotaRequest._();
+
+  GetQuotaRequest._();
+
+  factory GetQuotaRequest.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetQuotaRequest()..mergeFromBuffer(data, registry);
+  factory GetQuotaRequest.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetQuotaRequest()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetQuotaRequest',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetQuotaRequest.$_createMessage)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetQuotaRequest clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetQuotaRequest copyWith(void Function(GetQuotaRequest) updates) =>
+      super.copyWith((message) => updates(message as GetQuotaRequest))
+          as GetQuotaRequest;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GetQuotaRequest() / GetQuotaRequest.new instead')
+  static GetQuotaRequest create() => GetQuotaRequest._();
+  static $pb.GeneratedMessage $_createMessage() => GetQuotaRequest._();
+  @$core.override
+  GetQuotaRequest createEmptyInstance() => GetQuotaRequest._();
+  @$core.pragma('dart2js:noInline')
+  static GetQuotaRequest getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetQuotaRequest>(
+          GetQuotaRequest.$_createMessage);
+  static GetQuotaRequest? _defaultInstance;
+}
+
+class QuotaEntry extends $pb.GeneratedMessage {
+  factory QuotaEntry({
+    $fixnum.Int64? amountMc,
+    $core.String? kind,
+    $fixnum.Int64? atUnixMs,
+    $core.String? note,
+  }) {
+    final result = QuotaEntry._();
+    if (amountMc != null) result.amountMc = amountMc;
+    if (kind != null) result.kind = kind;
+    if (atUnixMs != null) result.atUnixMs = atUnixMs;
+    if (note != null) result.note = note;
+    return result;
+  }
+
+  QuotaEntry._();
+
+  factory QuotaEntry.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuotaEntry()..mergeFromBuffer(data, registry);
+  factory QuotaEntry.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      QuotaEntry()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'QuotaEntry',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: QuotaEntry.$_createMessage)
+    ..aInt64(1, _omitFieldNames ? '' : 'amountMc')
+    ..aOS(2, _omitFieldNames ? '' : 'kind')
+    ..aInt64(3, _omitFieldNames ? '' : 'atUnixMs')
+    ..aOS(4, _omitFieldNames ? '' : 'note')
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuotaEntry clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  QuotaEntry copyWith(void Function(QuotaEntry) updates) =>
+      super.copyWith((message) => updates(message as QuotaEntry)) as QuotaEntry;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use QuotaEntry() / QuotaEntry.new instead')
+  static QuotaEntry create() => QuotaEntry._();
+  static $pb.GeneratedMessage $_createMessage() => QuotaEntry._();
+  @$core.override
+  QuotaEntry createEmptyInstance() => QuotaEntry._();
+  @$core.pragma('dart2js:noInline')
+  static QuotaEntry getDefault() => _defaultInstance ??=
+      $pb.GeneratedMessage.$_defaultFor<QuotaEntry>(QuotaEntry.$_createMessage);
+  static QuotaEntry? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get amountMc => $_getI64(0);
+  @$pb.TagNumber(1)
+  set amountMc($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasAmountMc() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearAmountMc() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $core.String get kind => $_getSZ(1);
+  @$pb.TagNumber(2)
+  set kind($core.String value) => $_setString(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasKind() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearKind() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get atUnixMs => $_getI64(2);
+  @$pb.TagNumber(3)
+  set atUnixMs($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasAtUnixMs() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearAtUnixMs() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $core.String get note => $_getSZ(3);
+  @$pb.TagNumber(4)
+  set note($core.String value) => $_setString(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasNote() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearNote() => $_clearField(4);
+}
+
+class GetQuotaResponse extends $pb.GeneratedMessage {
+  factory GetQuotaResponse({
+    $fixnum.Int64? dataBytes,
+    $fixnum.Int64? capacityBytes,
+    $fixnum.Int64? barterBytes,
+    $fixnum.Int64? balanceMc,
+    $fixnum.Int64? maxBytes,
+    $fixnum.Int64? billableBytes,
+    $fixnum.Int64? monthlyCostMc,
+    $fixnum.Int64? dailyCostMc,
+    $fixnum.Int64? earnedMc,
+    $fixnum.Int64? spentMc,
+    $core.Iterable<QuotaEntry>? entries,
+    $fixnum.Int64? negativeSinceUnixMs,
+    $core.int? graceDays,
+    $core.bool? blocked,
+    $fixnum.Int64? repairBytes,
+    $fixnum.Int64? repairCostMc,
+    $core.int? repairWindowDays,
+  }) {
+    final result = GetQuotaResponse._();
+    if (dataBytes != null) result.dataBytes = dataBytes;
+    if (capacityBytes != null) result.capacityBytes = capacityBytes;
+    if (barterBytes != null) result.barterBytes = barterBytes;
+    if (balanceMc != null) result.balanceMc = balanceMc;
+    if (maxBytes != null) result.maxBytes = maxBytes;
+    if (billableBytes != null) result.billableBytes = billableBytes;
+    if (monthlyCostMc != null) result.monthlyCostMc = monthlyCostMc;
+    if (dailyCostMc != null) result.dailyCostMc = dailyCostMc;
+    if (earnedMc != null) result.earnedMc = earnedMc;
+    if (spentMc != null) result.spentMc = spentMc;
+    if (entries != null) result.entries.addAll(entries);
+    if (negativeSinceUnixMs != null)
+      result.negativeSinceUnixMs = negativeSinceUnixMs;
+    if (graceDays != null) result.graceDays = graceDays;
+    if (blocked != null) result.blocked = blocked;
+    if (repairBytes != null) result.repairBytes = repairBytes;
+    if (repairCostMc != null) result.repairCostMc = repairCostMc;
+    if (repairWindowDays != null) result.repairWindowDays = repairWindowDays;
+    return result;
+  }
+
+  GetQuotaResponse._();
+
+  factory GetQuotaResponse.fromBuffer($core.List<$core.int> data,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetQuotaResponse()..mergeFromBuffer(data, registry);
+  factory GetQuotaResponse.fromJson($core.String json,
+          [$pb.ExtensionRegistry registry = $pb.ExtensionRegistry.EMPTY]) =>
+      GetQuotaResponse()..mergeFromJson(json, registry);
+
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(
+      _omitMessageNames ? '' : 'GetQuotaResponse',
+      package: const $pb.PackageName(_omitMessageNames ? '' : 'fs.v1'),
+      createEmptyInstance: GetQuotaResponse.$_createMessage)
+    ..a<$fixnum.Int64>(
+        1, _omitFieldNames ? '' : 'dataBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        2, _omitFieldNames ? '' : 'capacityBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        3, _omitFieldNames ? '' : 'barterBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aInt64(4, _omitFieldNames ? '' : 'balanceMc')
+    ..a<$fixnum.Int64>(
+        5, _omitFieldNames ? '' : 'maxBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        6, _omitFieldNames ? '' : 'billableBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        7, _omitFieldNames ? '' : 'monthlyCostMc', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        8, _omitFieldNames ? '' : 'dailyCostMc', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        9, _omitFieldNames ? '' : 'earnedMc', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        10, _omitFieldNames ? '' : 'spentMc', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..pPM<QuotaEntry>(11, _omitFieldNames ? '' : 'entries',
+        subBuilder: QuotaEntry.$_createMessage)
+    ..aInt64(12, _omitFieldNames ? '' : 'negativeSinceUnixMs')
+    ..aI(13, _omitFieldNames ? '' : 'graceDays', fieldType: $pb.PbFieldType.OU3)
+    ..aOB(14, _omitFieldNames ? '' : 'blocked')
+    ..a<$fixnum.Int64>(
+        15, _omitFieldNames ? '' : 'repairBytes', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..a<$fixnum.Int64>(
+        16, _omitFieldNames ? '' : 'repairCostMc', $pb.PbFieldType.OU6,
+        defaultOrMaker: $fixnum.Int64.ZERO)
+    ..aI(17, _omitFieldNames ? '' : 'repairWindowDays',
+        fieldType: $pb.PbFieldType.OU3)
+    ..hasRequiredFields = false;
+
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetQuotaResponse clone() => deepCopy();
+  @$core.Deprecated('See https://github.com/google/protobuf.dart/issues/998.')
+  GetQuotaResponse copyWith(void Function(GetQuotaResponse) updates) =>
+      super.copyWith((message) => updates(message as GetQuotaResponse))
+          as GetQuotaResponse;
+
+  @$core.override
+  $pb.BuilderInfo get info_ => _i;
+
+  @$core.pragma('dart2js:noInline')
+  @$core.Deprecated('Use GetQuotaResponse() / GetQuotaResponse.new instead')
+  static GetQuotaResponse create() => GetQuotaResponse._();
+  static $pb.GeneratedMessage $_createMessage() => GetQuotaResponse._();
+  @$core.override
+  GetQuotaResponse createEmptyInstance() => GetQuotaResponse._();
+  @$core.pragma('dart2js:noInline')
+  static GetQuotaResponse getDefault() =>
+      _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<GetQuotaResponse>(
+          GetQuotaResponse.$_createMessage);
+  static GetQuotaResponse? _defaultInstance;
+
+  @$pb.TagNumber(1)
+  $fixnum.Int64 get dataBytes => $_getI64(0);
+  @$pb.TagNumber(1)
+  set dataBytes($fixnum.Int64 value) => $_setInt64(0, value);
+  @$pb.TagNumber(1)
+  $core.bool hasDataBytes() => $_has(0);
+  @$pb.TagNumber(1)
+  void clearDataBytes() => $_clearField(1);
+
+  @$pb.TagNumber(2)
+  $fixnum.Int64 get capacityBytes => $_getI64(1);
+  @$pb.TagNumber(2)
+  set capacityBytes($fixnum.Int64 value) => $_setInt64(1, value);
+  @$pb.TagNumber(2)
+  $core.bool hasCapacityBytes() => $_has(1);
+  @$pb.TagNumber(2)
+  void clearCapacityBytes() => $_clearField(2);
+
+  @$pb.TagNumber(3)
+  $fixnum.Int64 get barterBytes => $_getI64(2);
+  @$pb.TagNumber(3)
+  set barterBytes($fixnum.Int64 value) => $_setInt64(2, value);
+  @$pb.TagNumber(3)
+  $core.bool hasBarterBytes() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearBarterBytes() => $_clearField(3);
+
+  @$pb.TagNumber(4)
+  $fixnum.Int64 get balanceMc => $_getI64(3);
+  @$pb.TagNumber(4)
+  set balanceMc($fixnum.Int64 value) => $_setInt64(3, value);
+  @$pb.TagNumber(4)
+  $core.bool hasBalanceMc() => $_has(3);
+  @$pb.TagNumber(4)
+  void clearBalanceMc() => $_clearField(4);
+
+  @$pb.TagNumber(5)
+  $fixnum.Int64 get maxBytes => $_getI64(4);
+  @$pb.TagNumber(5)
+  set maxBytes($fixnum.Int64 value) => $_setInt64(4, value);
+  @$pb.TagNumber(5)
+  $core.bool hasMaxBytes() => $_has(4);
+  @$pb.TagNumber(5)
+  void clearMaxBytes() => $_clearField(5);
+
+  @$pb.TagNumber(6)
+  $fixnum.Int64 get billableBytes => $_getI64(5);
+  @$pb.TagNumber(6)
+  set billableBytes($fixnum.Int64 value) => $_setInt64(5, value);
+  @$pb.TagNumber(6)
+  $core.bool hasBillableBytes() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearBillableBytes() => $_clearField(6);
+
+  @$pb.TagNumber(7)
+  $fixnum.Int64 get monthlyCostMc => $_getI64(6);
+  @$pb.TagNumber(7)
+  set monthlyCostMc($fixnum.Int64 value) => $_setInt64(6, value);
+  @$pb.TagNumber(7)
+  $core.bool hasMonthlyCostMc() => $_has(6);
+  @$pb.TagNumber(7)
+  void clearMonthlyCostMc() => $_clearField(7);
+
+  @$pb.TagNumber(8)
+  $fixnum.Int64 get dailyCostMc => $_getI64(7);
+  @$pb.TagNumber(8)
+  set dailyCostMc($fixnum.Int64 value) => $_setInt64(7, value);
+  @$pb.TagNumber(8)
+  $core.bool hasDailyCostMc() => $_has(7);
+  @$pb.TagNumber(8)
+  void clearDailyCostMc() => $_clearField(8);
+
+  @$pb.TagNumber(9)
+  $fixnum.Int64 get earnedMc => $_getI64(8);
+  @$pb.TagNumber(9)
+  set earnedMc($fixnum.Int64 value) => $_setInt64(8, value);
+  @$pb.TagNumber(9)
+  $core.bool hasEarnedMc() => $_has(8);
+  @$pb.TagNumber(9)
+  void clearEarnedMc() => $_clearField(9);
+
+  @$pb.TagNumber(10)
+  $fixnum.Int64 get spentMc => $_getI64(9);
+  @$pb.TagNumber(10)
+  set spentMc($fixnum.Int64 value) => $_setInt64(9, value);
+  @$pb.TagNumber(10)
+  $core.bool hasSpentMc() => $_has(9);
+  @$pb.TagNumber(10)
+  void clearSpentMc() => $_clearField(10);
+
+  @$pb.TagNumber(11)
+  $pb.PbList<QuotaEntry> get entries => $_getList(10);
+
+  @$pb.TagNumber(12)
+  $fixnum.Int64 get negativeSinceUnixMs => $_getI64(11);
+  @$pb.TagNumber(12)
+  set negativeSinceUnixMs($fixnum.Int64 value) => $_setInt64(11, value);
+  @$pb.TagNumber(12)
+  $core.bool hasNegativeSinceUnixMs() => $_has(11);
+  @$pb.TagNumber(12)
+  void clearNegativeSinceUnixMs() => $_clearField(12);
+
+  @$pb.TagNumber(13)
+  $core.int get graceDays => $_getIZ(12);
+  @$pb.TagNumber(13)
+  set graceDays($core.int value) => $_setUnsignedInt32(12, value);
+  @$pb.TagNumber(13)
+  $core.bool hasGraceDays() => $_has(12);
+  @$pb.TagNumber(13)
+  void clearGraceDays() => $_clearField(13);
+
+  @$pb.TagNumber(14)
+  $core.bool get blocked => $_getBF(13);
+  @$pb.TagNumber(14)
+  set blocked($core.bool value) => $_setBool(13, value);
+  @$pb.TagNumber(14)
+  $core.bool hasBlocked() => $_has(13);
+  @$pb.TagNumber(14)
+  void clearBlocked() => $_clearField(14);
+
+  @$pb.TagNumber(15)
+  $fixnum.Int64 get repairBytes => $_getI64(14);
+  @$pb.TagNumber(15)
+  set repairBytes($fixnum.Int64 value) => $_setInt64(14, value);
+  @$pb.TagNumber(15)
+  $core.bool hasRepairBytes() => $_has(14);
+  @$pb.TagNumber(15)
+  void clearRepairBytes() => $_clearField(15);
+
+  @$pb.TagNumber(16)
+  $fixnum.Int64 get repairCostMc => $_getI64(15);
+  @$pb.TagNumber(16)
+  set repairCostMc($fixnum.Int64 value) => $_setInt64(15, value);
+  @$pb.TagNumber(16)
+  $core.bool hasRepairCostMc() => $_has(15);
+  @$pb.TagNumber(16)
+  void clearRepairCostMc() => $_clearField(16);
+
+  @$pb.TagNumber(17)
+  $core.int get repairWindowDays => $_getIZ(16);
+  @$pb.TagNumber(17)
+  set repairWindowDays($core.int value) => $_setUnsignedInt32(16, value);
+  @$pb.TagNumber(17)
+  $core.bool hasRepairWindowDays() => $_has(16);
+  @$pb.TagNumber(17)
+  void clearRepairWindowDays() => $_clearField(17);
+}
+
 /// Пропуск к relay. Узел (ключ узла, node_id — свой) получает пропуск
 /// LISTEN: держать управляющее соединение и принимать через relay.
 /// Устройство или узел при ремонте (node_id — другой узел) — CONNECT к узлу.

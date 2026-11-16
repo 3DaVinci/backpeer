@@ -238,6 +238,12 @@ List<RpcMethod> coordinatorMethods(CoordinatorService s) => [
     parse: pb.GetBackupHealthRequest.fromBuffer,
     handle: s.getBackupHealth,
   ),
+  RpcMethod<pb.GetQuotaRequest, pb.GetQuotaResponse>(
+    name: 'GetQuota',
+    auth: AuthRequirement.account,
+    parse: pb.GetQuotaRequest.fromBuffer,
+    handle: s.getQuota,
+  ),
   RpcMethod<pb.GetRelayPassRequest, pb.GetRelayPassResponse>(
     name: 'GetRelayPass',
     auth: AuthRequirement.deviceOrNode,

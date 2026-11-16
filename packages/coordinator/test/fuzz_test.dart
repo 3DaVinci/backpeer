@@ -258,6 +258,7 @@ void main() {
         ),
         device,
       ),
+      'GetQuota': (pb.GetQuotaRequest(), account.accountSign),
       'DeleteSegment': (pb.DeleteSegmentRequest(segmentId: id(3)), device),
       'RegisterNode': (
         pb.RegisterNodeRequest(

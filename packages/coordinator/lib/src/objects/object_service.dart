@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:coordinator/src/db/database.dart';
+import 'package:coordinator/src/economy/economy_service.dart';
 import 'package:coordinator/src/rpc/call_context.dart';
 import 'package:coordinator/src/rpc/errors.dart';
 import 'package:fixnum/fixnum.dart';
@@ -12,14 +13,21 @@ import 'package:protocol/protocol.dart' as pb;
 /// открыто он знает только размер, время и `sequence` снимка, по которому
 /// клиент замечает откат (manifest.md, раздел 6).
 final class ObjectService {
-  new(this._db, {this.maxAccountBytes = 1 << 30, DateTime Function()? clock})
-    : _clock = clock ?? DateTime.now;
+  new(
+    this._db, {
+    this.maxAccountBytes = 1 << 30,
+    this.economy,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   final Database _db;
   final DateTime Function() _clock;
 
   /// Объём объектов учётной записи (сумма размеров блобов).
   final int maxAccountBytes;
+
+  /// Бартерная квота; `null` — без проверки (тесты старых задач).
+  final EconomyService? economy;
 
   /// Предел блоба (manifest.md, раздел 8).
   static const int maxBlobBytes = 8 * 1024 * 1024;
@@ -70,6 +78,7 @@ final class ObjectService {
           'превышен объём объектов учётной записи',
         );
       }
+      await economy?.checkCanStore(tx, accountId, size - replaced);
       // Повторная запись того же идентификатора заменяет объект.
       await tx.execute(
         Sql.named(

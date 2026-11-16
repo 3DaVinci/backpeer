@@ -863,6 +863,39 @@ class AppLocalizationsRu extends AppLocalizations {
       'Место бэкапов считает координатор, а эта учётная запись без сервера.';
 
   @override
+  String get quotaTitle => 'Квота и кредиты';
+
+  @override
+  String get quotaData => 'Сохранено';
+
+  @override
+  String get quotaFree => 'Бесплатно за отданное место';
+
+  @override
+  String get quotaAvailable => 'Доступно';
+
+  @override
+  String get quotaCredits => 'Кредиты';
+
+  @override
+  String get quotaDays => 'Хватит дней';
+
+  @override
+  String get quotaHint =>
+      'Чтобы хранить больше, держите хранитель включённым или отдайте больше места.';
+
+  @override
+  String get quotaRepair => 'Трафик ремонта (30 сут)';
+
+  @override
+  String get quotaNegative =>
+      'Баланс отрицательный: сохранённые данные остаются, а новые бэкапы ждут, пока баланс не станет положительным.';
+
+  @override
+  String get quotaBlocked =>
+      'Баланс отрицательный дольше льготного периода: новые бэкапы запрещены. Сохранённые данные не удаляются — включите хранитель или освободите место.';
+
+  @override
   String get lastVerify => 'Последняя проверка';
 
   @override

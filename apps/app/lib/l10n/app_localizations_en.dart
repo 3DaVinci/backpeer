@@ -855,6 +855,39 @@ class AppLocalizationsEn extends AppLocalizations {
       'Backup space is counted by the coordinator, and this account has no server.';
 
   @override
+  String get quotaTitle => 'Quota and credits';
+
+  @override
+  String get quotaData => 'Stored';
+
+  @override
+  String get quotaFree => 'Free for contributed space';
+
+  @override
+  String get quotaAvailable => 'Available';
+
+  @override
+  String get quotaCredits => 'Credits';
+
+  @override
+  String get quotaDays => 'Days left';
+
+  @override
+  String get quotaHint =>
+      'To store more, keep a keeper online or contribute more space.';
+
+  @override
+  String get quotaRepair => 'Repair traffic (30 days)';
+
+  @override
+  String get quotaNegative =>
+      'The balance is negative: saved data stays, but new backups wait until the balance is positive again.';
+
+  @override
+  String get quotaBlocked =>
+      'The balance has been negative for longer than the grace period: new backups are blocked. Saved data is never deleted — turn the keeper on or free up space.';
+
+  @override
   String get lastVerify => 'Last check';
 
   @override

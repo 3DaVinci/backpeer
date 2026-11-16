@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:coordinator/src/audits/audit_service.dart';
+import 'package:coordinator/src/economy/economy_policy.dart';
 import 'package:coordinator/src/nodes/node_channels.dart';
 import 'package:coordinator/src/nodes/node_pairing.dart';
 import 'package:coordinator/src/nodes/node_policy.dart';
@@ -93,6 +94,7 @@ final class CoordinatorConfig {
     this.relay = const RelayPolicy(),
     this.audits = const AuditPolicy(),
     this.repair = const RepairPolicy(),
+    this.economy = const EconomyPolicy(),
     this.stats = const StatsPolicy(),
     this.geoIpDirectory,
     this.signerSocket,
@@ -228,6 +230,11 @@ final class CoordinatorConfig {
     'repair.suspend_hours',
     'repair.max_relocations',
     'repair.relocations_per_node',
+    'economy.data_credits_per_tb_month',
+    'economy.store_credits_per_tb_month',
+    'economy.barter_ratio',
+    'economy.starter_credits',
+    'economy.history_limit',
     'stats.enabled',
     'stats.origins',
     'stats.per_minute',
@@ -282,6 +289,9 @@ final class CoordinatorConfig {
 
   /// Ремонт: когда узел потерян, очередь, пределы трафика.
   final RepairPolicy repair;
+
+  /// Бартерная экономика: тарифы квоты и кредитов (этап 7).
+  final EconomyPolicy economy;
 
   /// Публичная сводка о сети для сайта (задача С.3.5): источники,
   /// предел частоты, кеш.
@@ -467,6 +477,20 @@ final class _Reader {
       ),
       audits: _audits(ap),
       repair: _repair(),
+      economy: EconomyPolicy(
+        dataCreditsPerTbMonth:
+            _int('economy.data_credits_per_tb_month', 1, 1 << 30) ??
+            d.economy.dataCreditsPerTbMonth,
+        storeCreditsPerTbMonth:
+            _int('economy.store_credits_per_tb_month', 1, 1 << 30) ??
+            d.economy.storeCreditsPerTbMonth,
+        barterRatio: _double('economy.barter_ratio') ?? d.economy.barterRatio,
+        starterCredits:
+            _int('economy.starter_credits', 0, 1 << 30) ??
+            d.economy.starterCredits,
+        historyLimit:
+            _int('economy.history_limit', 1, 1000) ?? d.economy.historyLimit,
+      ),
       stats: _stats(),
       geoIpDirectory: _string('geoip.dir'),
       signerSocket: _string('signer.socket'),

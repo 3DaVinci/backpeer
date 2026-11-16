@@ -5,6 +5,7 @@ import 'package:coordinator/src/audits/audit_service.dart';
 import 'package:coordinator/src/config.dart';
 import 'package:coordinator/src/db/database.dart';
 import 'package:coordinator/src/db/postgres_key_directory.dart';
+import 'package:coordinator/src/economy/economy_service.dart';
 import 'package:coordinator/src/geo/geo_database.dart';
 import 'package:coordinator/src/nodes/node_pairing.dart';
 import 'package:coordinator/src/nodes/node_service.dart';
@@ -72,11 +73,6 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         ),
         clock: clock,
       ),
-      objects = ObjectService(
-        db,
-        maxAccountBytes: config.maxObjectBytesPerAccount,
-        clock: clock,
-      ),
       nodes = NodeService(
         db,
         checks,
@@ -108,6 +104,13 @@ final class DatabaseCoordinatorService extends CoordinatorService {
         clock: clock,
       ),
       health = BackupHealthService(db, nodes: config.nodes, clock: clock) {
+    economy = EconomyService(db, policy: config.economy, clock: clock);
+    objects = ObjectService(
+      db,
+      maxAccountBytes: config.maxObjectBytesPerAccount,
+      clock: clock,
+      economy: economy,
+    );
     rendezvousService = RendezvousService(
       crypto: crypto,
       keys: PostgresKeyDirectory(db),
@@ -121,6 +124,7 @@ final class DatabaseCoordinatorService extends CoordinatorService {
       signer: signer,
       policy: config.placement,
       placement: placement,
+      economy: economy,
       clock: clock,
     );
     repair = RepairService(
@@ -139,8 +143,11 @@ final class DatabaseCoordinatorService extends CoordinatorService {
 
   final AccountService accounts;
   final LoginService login;
-  final ObjectService objects;
+  late final ObjectService objects;
   final NodeService nodes;
+
+  /// Бартерная экономика: квоты, кредиты, ежедневный расчёт (этап 7).
+  late final EconomyService economy;
 
   /// Привязка узла к учётной записи без ввода фразы (задачи 6.1.1, 6.1.2).
   final NodePairingService pairing;
@@ -273,6 +280,12 @@ final class DatabaseCoordinatorService extends CoordinatorService {
     CallContext context,
     pb.GetBackupHealthRequest request,
   ) => health.health(context, request);
+
+  @override
+  Future<pb.GetQuotaResponse> getQuota(
+    CallContext context,
+    pb.GetQuotaRequest request,
+  ) => economy.getQuota(context, request);
 
   @override
   Future<pb.CheckReachabilityResponse> checkReachability(

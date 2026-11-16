@@ -93,6 +93,7 @@ void main() {
       'passwd',
       'key-copy',
       'status',
+      'quota',
       'backup',
       'snapshots',
       'restore',

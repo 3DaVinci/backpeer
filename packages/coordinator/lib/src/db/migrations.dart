@@ -489,6 +489,51 @@ const List<Migration> schemaMigrations = [
       ADD COLUMN geo_at timestamptz''',
     'CREATE INDEX nodes_country ON nodes (country) WHERE removed_at IS NULL',
   ]),
+  Migration(18, 'кредиты и бартерные квоты', [
+    // Баланс учётной записи — кэш журнала credit_ledger. 1 CR = 1 000 000
+    // микрокредитов: дневные начисления не теряют доли на мелких узлах.
+    '''
+    CREATE TABLE credit_accounts (
+      account_id bytea PRIMARY KEY REFERENCES accounts (account_id),
+      balance_mc bigint NOT NULL DEFAULT 0,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )''',
+    // Append-only журнал: каждая проводка объясняет баланс. Уникальность
+    // (account_id, kind, day, ref) делает ежедневный расчёт идемпотентным:
+    // повторный запуск за день не начисляет дважды.
+    '''
+    CREATE TABLE credit_ledger (
+      id bigserial PRIMARY KEY,
+      account_id bytea NOT NULL REFERENCES accounts (account_id),
+      kind text NOT NULL CHECK (kind IN
+        ('starter', 'storage_charge', 'storage_credit', 'penalty', 'adjustment')),
+      amount_mc bigint NOT NULL CHECK (amount_mc <> 0),
+      day date NOT NULL,
+      ref text NOT NULL DEFAULT '',
+      note text NOT NULL DEFAULT '',
+      created_at timestamptz NOT NULL DEFAULT now()
+    )''',
+    '''
+    CREATE UNIQUE INDEX credit_ledger_once
+      ON credit_ledger (account_id, kind, day, ref)''',
+    '''
+    CREATE INDEX credit_ledger_account
+      ON credit_ledger (account_id, id DESC)''',
+    // Отметка завершённого дня: координатор догоняет пропущенные дни
+    // после простоя.
+    '''
+    CREATE TABLE economy_runs (
+      day date PRIMARY KEY,
+      completed_at timestamptz
+    )''',
+  ]),
+  Migration(19, 'льготный период отрицательного баланса', [
+    // С какого дня баланс непрерывно отрицательный (задача 7.3.2). NULL —
+    // баланс неотрицательный. По этой отметке считается льготный период:
+    // пока он идёт, новые данные в пределах бесплатной квоты разрешены,
+    // после — запрещены; сохранённые данные не удаляются никогда.
+    'ALTER TABLE credit_accounts ADD COLUMN negative_since timestamptz',
+  ]),
 ];
 
 /// Схема базы новее, чем знает программа, или список миграций неверен.

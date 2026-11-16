@@ -1538,6 +1538,66 @@ abstract class AppLocalizations {
   /// **'Место бэкапов считает координатор, а эта учётная запись без сервера.'**
   String get spaceNoCoordinator;
 
+  /// No description provided for @quotaTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota and credits'**
+  String get quotaTitle;
+
+  /// No description provided for @quotaData.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored'**
+  String get quotaData;
+
+  /// No description provided for @quotaFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free for contributed space'**
+  String get quotaFree;
+
+  /// No description provided for @quotaAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get quotaAvailable;
+
+  /// No description provided for @quotaCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Credits'**
+  String get quotaCredits;
+
+  /// No description provided for @quotaDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days left'**
+  String get quotaDays;
+
+  /// No description provided for @quotaHint.
+  ///
+  /// In en, this message translates to:
+  /// **'To store more, keep a keeper online or contribute more space.'**
+  String get quotaHint;
+
+  /// No description provided for @quotaRepair.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair traffic (30 days)'**
+  String get quotaRepair;
+
+  /// No description provided for @quotaNegative.
+  ///
+  /// In en, this message translates to:
+  /// **'The balance is negative: saved data stays, but new backups wait until the balance is positive again.'**
+  String get quotaNegative;
+
+  /// No description provided for @quotaBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'The balance has been negative for longer than the grace period: new backups are blocked. Saved data is never deleted — turn the keeper on or free up space.'**
+  String get quotaBlocked;
+
   /// No description provided for @lastVerify.
   ///
   /// In ru, this message translates to:

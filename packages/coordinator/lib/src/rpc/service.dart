@@ -126,6 +126,11 @@ abstract base class CoordinatorService {
     pb.GetBackupHealthRequest request,
   ) => _unimplemented(context);
 
+  Future<pb.GetQuotaResponse> getQuota(
+    CallContext context,
+    pb.GetQuotaRequest request,
+  ) => _unimplemented(context);
+
   Future<pb.CheckReachabilityResponse> checkReachability(
     CallContext context,
     pb.CheckReachabilityRequest request,

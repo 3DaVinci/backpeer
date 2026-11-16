@@ -579,6 +579,40 @@ message SegmentHealth {
   bool repairing = 9;
 }
 
+// --- Бартерная экономика (этап 7) --------------------------------------------
+//
+// protocol.md, раздел 4.19; docs/spec/economy.md. Бесплатная квота — по
+// объявленной ёмкости узлов (2,5 ТБ на 1 ТБ данных), кредиты — за занятые
+// фрагменты. Суммы в микрокредитах: 1 CR = 1 000 000 мк, 1 CR = 0,5 ₽.
+
+// Подписан ключом устройства.
+message GetQuotaRequest {}
+message QuotaEntry {
+  int64 amount_mc = 1;       // плюс — начисление, минус — списание
+  string kind = 2;           // starter, storage_credit, storage_charge, ...
+  int64 at_unix_ms = 3;
+  string note = 4;
+}
+message GetQuotaResponse {
+  uint64 data_bytes = 1;     // сохранённые данные без запаса на избыточность
+  uint64 capacity_bytes = 2; // суммарная ёмкость узлов учётной записи
+  uint64 barter_bytes = 3;   // бесплатная квота = capacity / 2,5
+  int64 balance_mc = 4;      // может быть отрицательным
+  uint64 max_bytes = 5;      // barter_bytes + баланс в байтах хранения
+  uint64 billable_bytes = 6; // data_bytes сверх barter_bytes
+  uint64 monthly_cost_mc = 7;
+  uint64 daily_cost_mc = 8;
+  uint64 earned_mc = 9;      // всего начислено
+  uint64 spent_mc = 10;      // всего списано
+  repeated QuotaEntry entries = 11;
+  int64 negative_since_unix_ms = 12; // 0 — баланс неотрицательный
+  uint32 grace_days = 13;    // длина льготного периода при долге
+  bool blocked = 14;         // новые размещения запрещены: долг дольше льгота
+  uint64 repair_bytes = 15;  // трафик ремонта узлов за repair_window_days
+  uint64 repair_cost_mc = 16; // его цена по тарифу хранителя, справочно
+  uint32 repair_window_days = 17;
+}
+
 // --- Relay (задачи 3.8.1–3.8.3) ----------------------------------------------
 //
 // protocol.md, раздел 4.12. Relay — отдельный сервер; координатор выдаёт

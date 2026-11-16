@@ -15,6 +15,46 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`agent` - `v0.0.8-dev.7`](#agent---v008-dev7)
+ - [`app` - `v0.0.8-dev.7`](#app---v008-dev7)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.8-dev.7`
+ - `cli` - `v0.0.8-dev.7`
+ - `coordinator` - `v0.0.8-dev.7`
+ - `core` - `v0.0.8-dev.7`
+ - `daemon_kit` - `v0.0.8-dev.7`
+ - `node` - `v0.0.8-dev.7`
+ - `protocol` - `v0.0.8-dev.7`
+ - `relay` - `v0.0.8-dev.7`
+ - `test_vectors` - `v0.0.8-dev.7`
+
+---
+
+#### `agent` - `v0.0.8-dev.7`
+
+ - **FIX**(agent,app): причина запуска хранителя и журнал вместо «программа не найдена».
+
+#### `app` - `v0.0.8-dev.7`
+
+ - **FIX**(agent,app): причина запуска хранителя и журнал вместо «программа не найдена».
+
+
+## 2026-11-16
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.8-dev.6`](#agent---v008-dev6)
  - [`app` - `v0.0.8-dev.6`](#app---v008-dev6)
  - [`cli` - `v0.0.8-dev.6`](#cli---v008-dev6)

@@ -3,6 +3,62 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 2026-11-16
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
+ - [`agent` - `v0.0.8-dev.6`](#agent---v008-dev6)
+ - [`app` - `v0.0.8-dev.6`](#app---v008-dev6)
+ - [`cli` - `v0.0.8-dev.6`](#cli---v008-dev6)
+ - [`coordinator` - `v0.0.8-dev.6`](#coordinator---v008-dev6)
+ - [`core` - `v0.0.8-dev.6`](#core---v008-dev6)
+ - [`protocol` - `v0.0.8-dev.6`](#protocol---v008-dev6)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `bench` - `v0.0.8-dev.6`
+ - `daemon_kit` - `v0.0.8-dev.6`
+ - `node` - `v0.0.8-dev.6`
+ - `relay` - `v0.0.8-dev.6`
+ - `test_vectors` - `v0.0.8-dev.6`
+
+---
+
+#### `agent` - `v0.0.8-dev.6`
+
+ - **FEAT**(economy): льготный период, штрафы и моделирование этапа 7.
+
+#### `app` - `v0.0.8-dev.6`
+
+ - **FEAT**(economy): льготный период, штрафы и моделирование этапа 7.
+
+#### `cli` - `v0.0.8-dev.6`
+
+ - **FEAT**(economy): льготный период, штрафы и моделирование этапа 7.
+
+#### `coordinator` - `v0.0.8-dev.6`
+
+ - **FEAT**(economy): льготный период, штрафы и моделирование этапа 7.
+
+#### `core` - `v0.0.8-dev.6`
+
+ - **FEAT**(economy): льготный период, штрафы и моделирование этапа 7.
+
+#### `protocol` - `v0.0.8-dev.6`
+
+ - **FEAT**(economy): льготный период, штрафы и моделирование этапа 7.
+
+
 ## 2026-11-14
 
 ### Changes

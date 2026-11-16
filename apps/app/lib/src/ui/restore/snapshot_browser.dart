@@ -5,7 +5,7 @@ import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/restore/versions_dialog.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Путь в исходном виде для `restore`: корень бэкапа и имена внутри
 /// (`/home/u/docs` + `sub`, `a.txt` → `/home/u/docs/sub/a.txt`).

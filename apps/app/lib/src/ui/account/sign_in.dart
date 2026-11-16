@@ -7,7 +7,7 @@ import 'package:app/src/ui/account/account_widgets.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:core/core.dart' show LoginName;
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Вход на новом устройстве (задача 5.2.2): по имени и паролю (нужна
 /// копия ключа на координаторе) или по фразе восстановления с новым

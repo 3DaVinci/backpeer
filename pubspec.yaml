@@ -57,6 +57,7 @@ melos:
       steps:
         - lint
         - test-dart
+        - test-agent
         - test-serial
         - test-flutter
 
@@ -64,13 +65,27 @@ melos:
     # замеры памяти и времени (тег serial) идут по одному файлу, иначе пик
     # RSS процесса складывается из соседних файлов и замер не проходит.
     test-dart:
-      description: Тесты Dart-пакетов, кроме тега serial.
+      description: Тесты Dart-пакетов, кроме тега serial и агента.
       exec:
         command: dart test -j "${FS_TEST_JOBS:-4}" -x serial
         concurrency: 1
       packageFilters:
         flutter: false
         dirExists: test
+        ignore: [agent]
+
+    # Агентские тесты запускают агента отдельным процессом (`dart run`).
+    # Dart 3.14 готовит native assets в общий `.dart_tool/native_assets.yaml`
+    # и временный каталог: несколько `dart run` одновременно перезаписывают
+    # его, и процесс падает с ArgumentError на `sqlite3_initialize`. Поэтому
+    # файлы агентских тестов идут по одному.
+    test-agent:
+      description: Тесты агента по одному файлу (dart run и native assets).
+      exec:
+        command: dart test -j 1 -x serial
+        concurrency: 1
+      packageFilters:
+        scope: [agent]
 
     test-serial:
       description: Тесты с тегом serial (замеры памяти и времени) по одному файлу.
@@ -85,13 +100,22 @@ melos:
     # ядра всего узла, а не лимит пода, и тесты мешают друг другу
     # (docs/ci.md, раздел «Параллельность тестов»).
     coverage-dart:
-      description: Тесты Dart-пакетов с покрытием (coverage/lcov.info), кроме тега serial.
+      description: Тесты Dart-пакетов с покрытием (coverage/lcov.info), кроме тега serial и агента.
       exec:
         command: dart test -j "${FS_TEST_JOBS:-4}" -x serial --coverage-path=coverage/lcov.info
         concurrency: 1
       packageFilters:
         flutter: false
         dirExists: test
+        ignore: [agent]
+
+    coverage-agent:
+      description: Тесты агента с покрытием по одному файлу.
+      exec:
+        command: dart test -j 1 -x serial --coverage-path=coverage/lcov.info
+        concurrency: 1
+      packageFilters:
+        scope: [agent]
 
     coverage-serial:
       description: Тесты с тегом serial (замеры памяти и времени) по одному файлу (coverage/serial.lcov.info).
@@ -123,6 +147,7 @@ melos:
       description: Тесты с покрытием и сводный отчёт в coverage/ (lcov и Cobertura).
       steps:
         - coverage-dart
+        - coverage-agent
         - coverage-serial
         - coverage-flutter
         - dart run tool/coverage_report.dart

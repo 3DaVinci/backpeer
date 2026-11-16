@@ -11,7 +11,7 @@ import 'package:app/src/ui/account/account_settings.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:core/core.dart' show appVersion;
 import 'package:daemon_kit/daemon_kit.dart' show ServiceState;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Настройки: учётная запись и устройства (5.2.3), фоновая работа (5.6),
 /// язык и тема.

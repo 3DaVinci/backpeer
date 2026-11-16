@@ -6,7 +6,7 @@ import 'package:app/src/ui/screens/backup_screen.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Готовые наборы исключений агента (`ExcludePreset` в `core`).
 const excludePresets = ['temporary', 'caches', 'trash', 'development'];

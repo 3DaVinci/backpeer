@@ -1,8 +1,8 @@
 // Экран «Бэкап» и здоровье данных (задачи 5.3.1–5.3.5) на подделке агента.
 
 import 'package:app/src/services/preferences.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'fakes.dart';
 

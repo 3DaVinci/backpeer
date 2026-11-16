@@ -24,6 +24,9 @@ dependencies:
     sdk: flutter
   # Сообщения и форматы чисел и дат для gen-l10n (BSD-3-Clause).
   intl: ^0.20.2
+  # Material для Flutter 3.50: `package:flutter/material.dart` объявлен
+  # устаревшим, виджеты и локализации Material переехали в пакет.
+  material_ui: ^1.11.0
   # Папка данных и сокет демона хранителя (defaultNodeDataDir).
   node: ^0.0.8-dev.7
 

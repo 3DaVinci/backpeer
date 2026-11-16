@@ -9,7 +9,7 @@ import 'package:app/src/ui/widgets/quota_card.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:app/src/ui/widgets/unlock_dialog.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Обзор: состояние агента бэкапа и хранителя, здоровье данных, занятое
 /// бэкапами место, бэкап сейчас, пауза.

@@ -11,7 +11,7 @@ import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/job_progress.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Восстановление (задачи 5.4.1, 5.4.2): список снимков, дерево снимка с
 /// поиском и версиями файла, восстановление выбранного с выбором места и

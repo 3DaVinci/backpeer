@@ -5,7 +5,7 @@ import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Пределы скорости на выбор, байт в секунду; 0 — без предела.
 const List<int> speedChoices = [0, 1 << 20, 5 << 20, 10 << 20, 50 << 20];

@@ -3,7 +3,7 @@ import 'package:app/src/app_scope.dart';
 import 'package:app/src/theme/app_theme.dart';
 import 'package:app/src/ui/account/account_gate.dart';
 import 'package:app/src/ui/tray_binding.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Приложение — только интерфейс (задача 5.1.1): вся работа в фоновых
 /// процессах (ADR-008), экраны читают их состояние через [AppServices].
@@ -24,7 +24,15 @@ class App extends StatelessWidget {
         darkTheme: AppTheme.dark(),
         themeMode: services.preferences.themeMode,
         locale: services.preferences.locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        // Делегаты — из material_ui: сгенерированный список берёт
+        // GlobalMaterialLocalizations из flutter_localizations, а это
+        // локализации SDK-шного Material, тогда как MaterialApp здесь и
+        // виджеты — из material_ui (в Flutter 3.50 старые объявлены
+        // устаревшими).
+        localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
         supportedLocales: AppLocalizations.supportedLocales,
         builder: (context, child) => TrayBinding(child: child!),
         home: const AccountGate(),

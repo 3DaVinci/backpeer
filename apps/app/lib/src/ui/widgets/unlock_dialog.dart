@@ -1,7 +1,7 @@
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Пароль для агента бэкапа (метод `unlock`, ADR-010): по умолчанию ключ
 /// сохраняется в хранилище ключей системы.

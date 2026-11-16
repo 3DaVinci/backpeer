@@ -5,7 +5,7 @@ import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Квота и кредиты учётной записи (метод агента `quota`): сколько данных
 /// сохранено, сколько даёт бесплатная бартерная квота за отданное место,

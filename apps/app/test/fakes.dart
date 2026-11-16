@@ -9,7 +9,7 @@ import 'package:app/src/services/process_link.dart';
 import 'package:app/src/services/tray.dart';
 import 'package:app/src/services/update_controller.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Фоновый процесс для виджет-тестов: состояние задаёт тест, вызовы
 /// записываются и отвечают функцией [answer].

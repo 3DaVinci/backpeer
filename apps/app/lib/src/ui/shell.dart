@@ -6,7 +6,7 @@ import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/screens/restore_screen.dart';
 import 'package:app/src/ui/screens/settings_screen.dart';
 import 'package:app/src/ui/widgets/process_banner.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Разделы приложения.
 enum Destination { overview, backup, restore, keeper, settings }

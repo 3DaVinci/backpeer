@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/ui/restore/snapshot_browser.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Куда и как восстановить (задача 5.4.2): на исходное место или в другую
 /// папку, что делать с существующими файлами, сколько ждать узлы не в

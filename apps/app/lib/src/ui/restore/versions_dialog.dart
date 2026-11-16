@@ -4,7 +4,7 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Версии файла во всех снимках (метод агента `versions`, задача 5.4.1):
 /// когда менялся, когда его не было. Возвращает снимок, версию из

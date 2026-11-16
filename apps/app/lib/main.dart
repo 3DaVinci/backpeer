@@ -16,7 +16,7 @@ import 'package:app/src/services/update_control.dart';
 import 'package:app/src/services/update_controller.dart';
 import 'package:app/src/services/update_log.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 void main() {
   // Каналу значка в трее нужна привязка до runApp.

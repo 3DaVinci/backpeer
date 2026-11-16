@@ -1,5 +1,5 @@
 import 'package:app/src/theme/brand.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Тема Material 3 на цветах [BrandColors]; шрифт — системный, как у
 /// сайта (`docs/brand/fonts.md`).

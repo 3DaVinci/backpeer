@@ -5,7 +5,7 @@ import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Сколько места занимают бэкапы учётной записи (метод агента `usage`):
 /// объём самих данных и место фрагментов на дисках хранителей. Числа — от

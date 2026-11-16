@@ -2,7 +2,7 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:core/core.dart'
     show PasswordHint, PasswordPolicy, PasswordProblem, PasswordVerdict;
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Ошибка метода `account.*` агента словами интерфейса; неизвестный код —
 /// текст агента.

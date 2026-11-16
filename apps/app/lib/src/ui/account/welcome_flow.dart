@@ -4,7 +4,7 @@ import 'package:app/src/ui/account/create_account.dart';
 import 'package:app/src/ui/account/sign_in.dart';
 import 'package:app/src/ui/keeper/keeper_onboarding.dart';
 import 'package:app/src/ui/widgets/process_banner.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Что пользователь делает на этом устройстве.
 enum WelcomeChoice { create, login, recover }

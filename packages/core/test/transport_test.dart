@@ -189,9 +189,14 @@ void main() {
   });
 
   test('без адресов: сразу UDP, при отказе сведения — relay', () async {
+    // Задержка relay заведомо больше времени рукопожатия: проверяем, что
+    // отказ UDP запускает relay сразу, а не через relayDelay. Абсолютный
+    // предел в миллисекундах плавал под нагрузкой CI (150 мс вплотную
+    // к рукопожатию), поэтому задержка большая, а предел — с запасом.
     final s = strategy(
       udp: way('udp', () => throw const UdpRendezvousException('симметричный')),
       relay: way('relay', () => serve(node)),
+      relayDelay: const Duration(seconds: 2),
     );
     final watch = Stopwatch()..start();
     final c = await s.connect(contact(const []));
@@ -199,7 +204,7 @@ void main() {
     expect(calls, ['udp', 'relay']);
     expect(
       watch.elapsed,
-      lessThan(const Duration(milliseconds: 150)),
+      lessThan(const Duration(seconds: 1)),
       reason: 'отказ UDP начинает relay, не дожидаясь задержки',
     );
     c.channel.destroy();

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Настройки самого приложения (язык, тема, фоновая работа, обновления) —
 /// в файле `<home>/app/preferences.json`. Настройки бэкапа живут в агенте,

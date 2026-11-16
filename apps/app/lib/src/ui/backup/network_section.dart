@@ -3,7 +3,7 @@ import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/screens/backup_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Пределы скорости на выбор для сети клиента, байт в секунду;
 /// 0 — без предела. Меньше, чем у хранителя: домашний исходящий канал

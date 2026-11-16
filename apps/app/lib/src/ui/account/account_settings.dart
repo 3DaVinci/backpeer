@@ -7,7 +7,7 @@ import 'package:app/src/ui/account/account_widgets.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Настройки учётной записи (задача 5.2.3): сведения, смена пароля,
 /// фраза по паролю, копия ключа на координаторе, устройства и отзыв.

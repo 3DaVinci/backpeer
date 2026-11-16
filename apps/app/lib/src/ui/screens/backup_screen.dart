@@ -10,7 +10,7 @@ import 'package:app/src/ui/backup/schedule_section.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/job_progress.dart';
 import 'package:app/src/ui/widgets/section.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Бэкап (задачи 5.3.1–5.3.3, 5.3.5): текущий бэкап с запуском, папки и
 /// исключения с оценкой объёма (у каждой папки — свой запуск), расписание,

@@ -8,9 +8,9 @@ import 'package:app/src/ui/keeper/keeper_setup.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Хранитель (задачи 5.5.1, 5.5.2): включение роли через агента (ключи
 /// узла и сертификат — у агента), статистика демона `node`: место, трафик,

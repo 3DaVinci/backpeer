@@ -12,6 +12,12 @@ analyzer:
     - "**/*.pbenum.dart"
     - "**/*.pbjson.dart"
     - "**/*.pbserver.dart"
+    # Сгенерировано `flutter gen-l10n`: в Flutter 3.50 он ещё подставляет
+    # делегаты GlobalMaterialLocalizations/GlobalCupertinoLocalizations из
+    # flutter_localizations (объявлены устаревшими). Свои делегаты, из
+    # material_ui, приложение собирает в apps/app/lib/src/app.dart.
+    - apps/app/lib/l10n/app_localizations.dart
+    - apps/app/lib/l10n/app_localizations_*.dart
 
 linter:
   rules:

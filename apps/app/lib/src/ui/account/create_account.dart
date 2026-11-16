@@ -6,7 +6,7 @@ import 'package:app/src/app_scope.dart';
 import 'package:app/src/ui/account/account_widgets.dart';
 import 'package:core/core.dart' show LoginName;
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Шаги создания учётной записи.
 enum _Step { name, password, phrase, check, done }

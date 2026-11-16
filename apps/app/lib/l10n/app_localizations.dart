@@ -1540,62 +1540,62 @@ abstract class AppLocalizations {
 
   /// No description provided for @quotaTitle.
   ///
-  /// In en, this message translates to:
-  /// **'Quota and credits'**
+  /// In ru, this message translates to:
+  /// **'Квота и кредиты'**
   String get quotaTitle;
 
   /// No description provided for @quotaData.
   ///
-  /// In en, this message translates to:
-  /// **'Stored'**
+  /// In ru, this message translates to:
+  /// **'Сохранено'**
   String get quotaData;
 
   /// No description provided for @quotaFree.
   ///
-  /// In en, this message translates to:
-  /// **'Free for contributed space'**
+  /// In ru, this message translates to:
+  /// **'Бесплатно за отданное место'**
   String get quotaFree;
 
   /// No description provided for @quotaAvailable.
   ///
-  /// In en, this message translates to:
-  /// **'Available'**
+  /// In ru, this message translates to:
+  /// **'Доступно'**
   String get quotaAvailable;
 
   /// No description provided for @quotaCredits.
   ///
-  /// In en, this message translates to:
-  /// **'Credits'**
+  /// In ru, this message translates to:
+  /// **'Кредиты'**
   String get quotaCredits;
 
   /// No description provided for @quotaDays.
   ///
-  /// In en, this message translates to:
-  /// **'Days left'**
+  /// In ru, this message translates to:
+  /// **'Хватит дней'**
   String get quotaDays;
 
   /// No description provided for @quotaHint.
   ///
-  /// In en, this message translates to:
-  /// **'To store more, keep a keeper online or contribute more space.'**
+  /// In ru, this message translates to:
+  /// **'Чтобы хранить больше, держите хранитель включённым или отдайте больше места.'**
   String get quotaHint;
 
   /// No description provided for @quotaRepair.
   ///
-  /// In en, this message translates to:
-  /// **'Repair traffic (30 days)'**
+  /// In ru, this message translates to:
+  /// **'Трафик ремонта (30 сут)'**
   String get quotaRepair;
 
   /// No description provided for @quotaNegative.
   ///
-  /// In en, this message translates to:
-  /// **'The balance is negative: saved data stays, but new backups wait until the balance is positive again.'**
+  /// In ru, this message translates to:
+  /// **'Баланс отрицательный: сохранённые данные остаются, а новые бэкапы ждут, пока баланс не станет положительным.'**
   String get quotaNegative;
 
   /// No description provided for @quotaBlocked.
   ///
-  /// In en, this message translates to:
-  /// **'The balance has been negative for longer than the grace period: new backups are blocked. Saved data is never deleted — turn the keeper on or free up space.'**
+  /// In ru, this message translates to:
+  /// **'Баланс отрицательный дольше льготного периода: новые бэкапы запрещены. Сохранённые данные не удаляются — включите хранитель или освободите место.'**
   String get quotaBlocked;
 
   /// No description provided for @lastVerify.
@@ -2771,8 +2771,7 @@ abstract class AppLocalizations {
   /// No description provided for @keeperStartFailed.
   ///
   /// In ru, this message translates to:
-  /// **'Роль хранителя включена, но служба не запустилась. Последние строки журнала хранителя:
-  /// {log}'**
+  /// **'Роль хранителя включена, но служба не запустилась. Последние строки журнала хранителя:\n{log}'**
   String keeperStartFailed(String log);
 
   /// No description provided for @keeperStartFailedNoLog.

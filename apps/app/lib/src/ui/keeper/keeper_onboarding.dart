@@ -5,7 +5,7 @@ import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/keeper/keeper_setup.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Первое, что настраивается после создания учётной записи с сервером, —
 /// роль хранителя: те же настройки, что на экране «Хранитель»

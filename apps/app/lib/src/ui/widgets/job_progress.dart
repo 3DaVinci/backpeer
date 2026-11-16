@@ -1,7 +1,7 @@
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/restore/restore_status.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Ход задания агента (`job` в `status`, событие `progress`): доля от
 /// оценки объёма, скорость и оставшееся время, если они известны

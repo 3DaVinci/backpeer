@@ -1,6 +1,6 @@
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/services/process_link.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Полоса над экраном, пока нет связи с фоновым процессом. Приложение
 /// переподключается само; полоса исчезает, как только процесс ответит.

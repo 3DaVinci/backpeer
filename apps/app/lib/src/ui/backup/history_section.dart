@@ -6,7 +6,7 @@ import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
 import 'package:daemon_kit/daemon_kit.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// История заданий агента (задача 5.3.3, метод `history`): бэкапы,
 /// проверки и восстановления с итогом; остановленный бэкап — с пометкой,

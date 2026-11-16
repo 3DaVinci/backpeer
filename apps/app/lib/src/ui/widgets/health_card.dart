@@ -3,7 +3,7 @@ import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/screens/overview_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Здоровье данных (задача 5.3.4): «всё в порядке», «ремонтируется»,
 /// «требует внимания» с причинами словами интерфейса, дата последней

@@ -2,7 +2,7 @@ import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/account/welcome_flow.dart';
 import 'package:app/src/ui/shell.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Без учётной записи на устройстве — первый запуск ([WelcomeFlow]), иначе
 /// основные разделы ([Shell]). Решает агент (`configured` в `status`);

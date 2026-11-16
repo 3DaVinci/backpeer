@@ -4,7 +4,7 @@ import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/services/process_link.dart';
 import 'package:app/src/ui/screens/backup_screen.dart';
 import 'package:app/src/ui/widgets/section.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Расписание (задача 5.3.2): как часто, в какие часы, только от сети,
 /// как часто проверять. Выполняет агент; ручной запуск и пауза — на

@@ -27,6 +27,8 @@ void main() {
     environment: env,
   );
 
+  // Каждый тест запускает `dart run bin/agent.dart` отдельным процессом:
+  // под нагрузкой полного прогона это дольше стандартных 30 секунд.
   test('agent service status: разбирает --home и печатает состояние', () async {
     final result = await run(['service', 'status']);
     final out = '${result.stdout}';
@@ -36,7 +38,7 @@ void main() {
     expect(json['kind'], 'none');
     expect((json['agent']! as Map<String, Object?>)['state'], 'notInstalled');
     expect((json['node']! as Map<String, Object?>)['state'], 'notInstalled');
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('agent service install и uninstall: без служб ОС — понятная '
       'ошибка и код возврата 69', () async {
@@ -47,11 +49,11 @@ void main() {
     // Удаление службы без служб ОС — не ошибка: удалять нечего.
     final uninstall = await run(['service', 'uninstall']);
     expect(uninstall.exitCode, 0, reason: '${uninstall.stderr}');
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('agent status --home: остальные команды по-прежнему работают', () async {
     final result = await run(['status']);
     expect(result.exitCode, 69, reason: '${result.stderr}');
     expect('${result.stderr}', contains('не запущен'));
-  });
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }

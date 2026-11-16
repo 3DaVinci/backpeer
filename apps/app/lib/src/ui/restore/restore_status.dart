@@ -1,7 +1,7 @@
 import 'package:app/l10n/app_localizations.dart';
 import 'package:app/src/ui/format.dart';
 import 'package:app/src/ui/widgets/section.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Восстановление ждёт узлы (задачи 3.9.3, 5.4.2): сколько файлов и
 /// какие, почему, когда следующая попытка и сколько ещё готовы ждать.

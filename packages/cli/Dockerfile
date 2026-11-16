@@ -7,7 +7,7 @@
 # Каталог программы (`FS_HOME`) и данные для бэкапа (`/data`) — тома: без
 # них пересозданный контейнер теряет учётную запись и индекс.
 
-ARG DART_VERSION=3.13.7
+ARG DART_VERSION=3.14.0
 
 FROM dart:${DART_VERSION} AS build
 # Хук пакета sodium собирает libsodium из исходников; SQLite — из core.

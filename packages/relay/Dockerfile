@@ -6,7 +6,7 @@
 #
 # Настройки — переменные FS_RELAY_* (docs/ops/relay.md, раздел «Настройки»).
 
-ARG DART_VERSION=3.13.7
+ARG DART_VERSION=3.14.0
 
 FROM dart:${DART_VERSION} AS build
 # Relay использует libsodium через core: ху́к пакета sodium собирает её из

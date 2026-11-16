@@ -1626,6 +1626,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Settings are saved, but the keeper program was not found next to the app. Start the keeper service manually.';
 
   @override
+  String get keeperStartFailedTitle => 'The keeper did not start';
+
+  @override
+  String keeperStartFailed(String log) {
+    return 'The keeper role is on, but the service did not start. Last lines of the keeper log:\n$log';
+  }
+
+  @override
+  String get keeperStartFailedNoLog =>
+      'The keeper role is on, but the service did not start and there is no log: the program did not get that far. Check Settings → Background work.';
+
+  @override
   String get keeperNoCoordinator =>
       'This account has no server, so the keeper has nowhere to register.';
 

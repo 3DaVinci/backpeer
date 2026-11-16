@@ -129,10 +129,35 @@ abstract interface class NodeLauncher {
   Future<void> disable();
 }
 
+/// Итог запуска демона: поднялся ли он и, если нет, почему.
+///
+/// [reason]:
+/// - `node_not_found` — программы хранителя нет рядом с агентом
+///   (`nodeExecutable` в `keeper.info` — `null`);
+/// - `node_start_failed` — программа есть, но её локальный API не ответил:
+///   демон не запустился (занят порт, ошибка настроек, нет прав) или его
+///   остановила система. Почему — в [log], хвосте журнала демона.
+final class NodeStart {
+  const new({required this.started, this.reason, this.log});
+
+  final bool started;
+  final String? reason;
+
+  /// Последние строки журнала демона (`<data>/logs/node.log`); `null` —
+  /// журнала нет (демон не успел его открыть).
+  final String? log;
+}
+
 /// [NodeLauncher] отдельным процессом: `FS_NODE_EXECUTABLE`, иначе `node`
 /// рядом с агентом (один бандл), в соседнем бандле пакета приложения
 /// (`daemons/node/bin/node`) или сборки (`build/bin/<ОС>-<арх>/node/
-/// bundle/bin/node`). Программу Node.js с тем же именем из `PATH` не ищет.
+/// bundle/bin/node`).
+///
+/// По имени из `PATH` программу **не ищет**: глобально установленный Node.js
+/// называется так же (`node`), и запускать его вместо демона нельзя — он
+/// выходит с ошибкой разбора аргументов, а приложение показывало «служба не
+/// запустилась». `selfExecutable` — для тестов: путь к агенту, рядом с
+/// которым ищется бандл (по умолчанию — сам агент).
 final class ProcessNodeLauncher implements NodeLauncher {
   new({Map<String, String>? environment})
     : executable = find(environment ?? Platform.environment);
@@ -143,12 +168,12 @@ final class ProcessNodeLauncher implements NodeLauncher {
   @override
   String get kind => 'process';
 
-  static String? find(Map<String, String> env) {
+  static String? find(Map<String, String> env, {String? selfExecutable}) {
     if (env['FS_NODE_EXECUTABLE'] case final path? when path.isNotEmpty) {
       return File(path).existsSync() ? path : null;
     }
     final name = Platform.isWindows ? 'node.exe' : 'node';
-    final self = File(Platform.resolvedExecutable).parent;
+    final self = File(selfExecutable ?? Platform.resolvedExecutable).parent;
     for (final candidate in [
       '${self.path}/$name',
       '${self.path}/../../node/bin/$name',
@@ -192,6 +217,7 @@ final class KeeperApi {
     required this.dataDir,
     this.linger,
     this.stopTimeout = const Duration(seconds: 45),
+    this.startTimeout = const Duration(seconds: 15),
   });
 
   final AppHome home;
@@ -212,6 +238,10 @@ final class KeeperApi {
   /// не нужно (нет служб systemd).
   final Linger? linger;
   final Duration stopTimeout;
+
+  /// Сколько ждать локальный API демона после запуска: дольше — значит
+  /// служба не поднялась (`reason: node_start_failed`). Для тестов меньше.
+  final Duration startTimeout;
 
   static final _log = Logger('agent.keeper');
 
@@ -367,15 +397,18 @@ final class KeeperApi {
       }),
     );
     final restarted = await _stopNode();
-    final started = await _startNode();
+    final start = await _startNode();
+    if (!start.started) _logStartFailure(start);
     final identity = await NodeIdentity.load(dir, crypto);
     try {
       return {
         'nodeId': bytesToHex(identity.nodeId),
         'certificateIssued': certified,
         'restarted': restarted,
-        'started': started,
-        if (!started) 'reason': 'node_not_found',
+        'started': start.started,
+        if (!start.started) 'reason': start.reason,
+        'nodeExecutable': launcher.executable,
+        'nodeLog': ?start.log,
         'launcher': launcher.kind,
         'linger': _lingerJson(lingerProblem),
         'settings': next.toJson(),
@@ -421,8 +454,25 @@ final class KeeperApi {
   Future<void> ensureRunning() async {
     if (settings?.enabled != true) return;
     if (await _running()) return;
-    final started = await _startNode();
-    _log.info(LogEvent('keeper_started', {'started': started}));
+    final start = await _startNode();
+    if (!start.started) {
+      _logStartFailure(start);
+    } else {
+      _log.info(const LogEvent('keeper_started', {'started': true}));
+    }
+  }
+
+  /// Почему демон не поднялся — в журнал агента: в приложении это видно
+  /// как «служба не запущена», а причину без журнала не найти.
+  void _logStartFailure(NodeStart start) {
+    _log.warning(
+      LogEvent('keeper_start_failed', {
+        'reason': start.reason,
+        'executable': launcher.executable,
+        'launcher': launcher.kind,
+        'log': ?start.log,
+      }),
+    );
   }
 
   KeeperSettings _parse(Map<String, Object?> params) {
@@ -625,14 +675,60 @@ final class KeeperApi {
     }
   }
 
-  /// Запускает демон и ждёт его локальный API; `false` — запускать нечем
-  /// или демон не поднялся (причина — в его журнале).
-  Future<bool> _startNode() async {
-    if (!await launcher.start(dataDir)) return false;
-    for (var i = 0; i < 100; i++) {
-      if (await _running()) return true;
+  /// Запускает демон и ждёт его локальный API. `node_not_found` — программы
+  /// нет рядом с агентом (это не «программа не запустилась»: службу даже не
+  /// ставили); `node_start_failed` — программа есть, но демон не ответил, и
+  /// в [NodeStart.log] — что он сам об этом написал.
+  Future<NodeStart> _startNode() async {
+    if (!await launcher.start(dataDir)) {
+      return const NodeStart(started: false, reason: 'node_not_found');
+    }
+    final deadline = DateTime.now().add(startTimeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (await _running()) return const NodeStart(started: true);
       await Future<void>.delayed(const Duration(milliseconds: 150));
     }
-    return false;
+    return NodeStart(
+      started: false,
+      reason: 'node_start_failed',
+      log: _nodeLogTail(),
+    );
+  }
+
+  /// Последние строки журнала демона (`<папка данных>/logs/node.log`):
+  /// почему он не запустился. Читается хвост файла, а не весь журнал: он
+  /// бывает в мегабайты. Первая строка обрезанного хвоста отбрасывается —
+  /// она может быть неполной.
+  String? _nodeLogTail({int lines = 12}) {
+    const bytes = 16 * 1024;
+    final file = File('$dataDir/logs/node.log');
+    if (!file.existsSync()) return null;
+    try {
+      final handle = file.openSync();
+      try {
+        final length = handle.lengthSync();
+        final from = length > bytes ? length - bytes : 0;
+        handle.setPositionSync(from);
+        final text = utf8.decode(
+          handle.readSync(length - from),
+          allowMalformed: true,
+        );
+        final tail = text
+            .split('\n')
+            .map((line) => line.trimRight())
+            .where((line) => line.trim().isNotEmpty)
+            .toList();
+        // Хвост начат с середины строки — она неполная.
+        if (from > 0 && tail.isNotEmpty) tail.removeAt(0);
+        if (tail.isEmpty) return null;
+        final start = tail.length > lines ? tail.length - lines : 0;
+        final picked = tail.skip(start).join('\n');
+        return picked.trim().isEmpty ? null : picked;
+      } finally {
+        handle.closeSync();
+      }
+    } on FileSystemException {
+      return null;
+    }
   }
 }

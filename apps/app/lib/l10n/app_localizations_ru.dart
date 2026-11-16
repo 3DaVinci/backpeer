@@ -1646,6 +1646,18 @@ class AppLocalizationsRu extends AppLocalizations {
       'Настройки сохранены, но программа хранителя не найдена рядом с приложением. Запустите службу хранителя вручную.';
 
   @override
+  String get keeperStartFailedTitle => 'Хранитель не запустился';
+
+  @override
+  String keeperStartFailed(String log) {
+    return 'Роль хранителя включена, но служба не запустилась. Последние строки журнала хранителя:\n$log';
+  }
+
+  @override
+  String get keeperStartFailedNoLog =>
+      'Роль хранителя включена, но служба не запустилась, а журнала нет: программа не успела его открыть. Проверьте «Настройки» → «Фоновая работа».';
+
+  @override
   String get keeperNoCoordinator =>
       'Учётная запись без сервера: хранителю негде зарегистрироваться.';
 

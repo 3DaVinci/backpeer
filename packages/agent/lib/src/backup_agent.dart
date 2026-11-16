@@ -143,6 +143,7 @@ final class BackupAgent {
     String? nodeDataDir,
     NodeLauncher? nodeLauncher,
     Linger? linger,
+    Duration nodeStartTimeout = const Duration(seconds: 15),
     SystemEvents? systemEvents,
     Duration wakeDelay = const Duration(seconds: 15),
   }) async {
@@ -207,6 +208,7 @@ final class BackupAgent {
         launcher: nodeLauncher ?? ProcessNodeLauncher(),
         dataDir: nodeDataDir ?? KeeperApi.defaultDataDir(),
         linger: linger,
+        startTimeout: nodeStartTimeout,
       );
       agent._control = await ControlServer.bind(
         paths.endpoint(socketPath: socketPath),

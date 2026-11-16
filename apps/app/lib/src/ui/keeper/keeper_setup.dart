@@ -38,8 +38,15 @@ Future<Map<String, Object?>?> showKeeperSetup(
   builder: (context) => _KeeperSetup(agent: agent, info: info),
 );
 
-/// `keeper.enable`: ключи и сертификат узла, `node.yaml`, запуск. Итог —
-/// в полосе снизу; `false` — агент отказал, роль не включена.
+/// `keeper.enable`: ключи и сертификат узла, `node.yaml`, запуск. Успех —
+/// полосой снизу; `false` — агент отказал, роль не включена.
+///
+/// Роль включилась, а демон не поднялся — не «программа не найдена»:
+/// `keeper.enable` различает, нет ли программы рядом с агентом
+/// (`node_not_found`) и не ответил ли уже запущенный демон
+/// (`node_start_failed`), и во втором случае присылает хвост журнала
+/// хранителя. Его показываем окном: причину без журнала не найти, а журнал
+/// нужно уметь скопировать.
 Future<bool> enableKeeper(
   BuildContext context,
   BackgroundProcess agent,
@@ -53,13 +60,13 @@ Future<bool> enableKeeper(
       params,
       const Duration(minutes: 3),
     );
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          result['started'] == true ? l10n.keeperEnabled : l10n.keeperNoBinary,
-        ),
-      ),
-    );
+    if (result['started'] == true) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.keeperEnabled)));
+    } else if (context.mounted) {
+      // Не ждём, пока окно закроют: экран под ним уже может снять «идёт
+      // включение».
+      unawaited(_showStartFailure(context, l10n, result));
+    }
     return true;
   } on ControlException catch (e) {
     messenger.showSnackBar(
@@ -74,6 +81,38 @@ Future<bool> enableKeeper(
     return false;
   }
 }
+
+/// Почему роль включилась, а хранитель не пошёл: `node_not_found` —
+/// программы нет рядом с приложением; `node_start_failed` — программа есть,
+/// но демон не ответил, и `nodeLog` — хвост его журнала.
+String keeperEnableMessage(AppLocalizations l10n, Map<String, Object?> result) {
+  if (result['started'] == true) return l10n.keeperEnabled;
+  final log = result['nodeLog'];
+  if (result['reason'] != 'node_start_failed') return l10n.keeperNoBinary;
+  return log is String && log.trim().isNotEmpty
+      ? l10n.keeperStartFailed(log)
+      : l10n.keeperStartFailedNoLog;
+}
+
+Future<void> _showStartFailure(
+  BuildContext context,
+  AppLocalizations l10n,
+  Map<String, Object?> result,
+) => showDialog<void>(
+  context: context,
+  builder: (context) => AlertDialog(
+    title: Text(l10n.keeperStartFailedTitle),
+    content: SingleChildScrollView(
+      child: SelectableText(keeperEnableMessage(l10n, result)),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: Text(l10n.close),
+      ),
+    ],
+  ),
+);
 
 class _KeeperSetup extends StatefulWidget {
   const new({required this.agent, required this.info});

@@ -21,6 +21,7 @@ void main() {
   FakeProcess agent({
     Map<String, Object?>? settings,
     int available = 400 * _gb,
+    Map<String, Object?>? enableResult,
   }) => FakeProcess(
     status: agentStatus(),
     answer: (method, params) async => switch (method) {
@@ -32,7 +33,7 @@ void main() {
         'minQuotaBytes': 1 << 30,
       },
       'keeper.disk' => {'path': params['path'], 'availableBytes': available},
-      'keeper.enable' => {'started': true, 'nodeId': 'ab' * 32},
+      'keeper.enable' => enableResult ?? {'started': true, 'nodeId': 'ab' * 32},
       'keeper.disable' => {'enabled': false, 'stopped': true},
       _ => const {},
     },
@@ -96,6 +97,51 @@ void main() {
       'schedule': ['mon-fri 09:00-18:00 upload=1048576 download=1048576'],
     });
     expect(find.text('Роль хранителя включена'), findsOneWidget);
+  });
+
+  testWidgets('демон не поднялся: окно с причиной и хвостом журнала', (
+    tester,
+  ) async {
+    final a = agent(
+      enableResult: {
+        'started': false,
+        'reason': 'node_start_failed',
+        'nodeExecutable': '/opt/backpeer/daemons/node/bin/node',
+        'nodeLog': '{"event":"start_failed","reason":"порт 7340 занят"}',
+      },
+    );
+    await openKeeper(tester, a, FakeProcess(state: LinkState.unavailable));
+    await tester.tap(find.byKey(const ValueKey('keeper-enable')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('keeper-submit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Хранитель не запустился'), findsOneWidget);
+    expect(find.textContaining('порт 7340 занят'), findsOneWidget);
+    await tester.tap(find.text('Закрыть'));
+    await tester.pumpAndSettle();
+    expect(find.text('Хранитель не запустился'), findsNothing);
+  });
+
+  testWidgets('программы хранителя нет: окно объясняет, что её нет рядом', (
+    tester,
+  ) async {
+    final a = agent(
+      enableResult: {
+        'started': false,
+        'reason': 'node_not_found',
+        'nodeExecutable': null,
+      },
+    );
+    await openKeeper(tester, a, FakeProcess(state: LinkState.unavailable));
+    await tester.tap(find.byKey(const ValueKey('keeper-enable')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('keeper-submit')));
+    await tester.pumpAndSettle();
+    expect(find.text('Хранитель не запустился'), findsOneWidget);
+    expect(
+      find.textContaining('программа хранителя не найдена'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('места меньше квоты — включить нельзя', (tester) async {

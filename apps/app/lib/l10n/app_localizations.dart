@@ -2762,6 +2762,25 @@ abstract class AppLocalizations {
   /// **'Настройки сохранены, но программа хранителя не найдена рядом с приложением. Запустите службу хранителя вручную.'**
   String get keeperNoBinary;
 
+  /// No description provided for @keeperStartFailedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранитель не запустился'**
+  String get keeperStartFailedTitle;
+
+  /// No description provided for @keeperStartFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Роль хранителя включена, но служба не запустилась. Последние строки журнала хранителя:
+  /// {log}'**
+  String keeperStartFailed(String log);
+
+  /// No description provided for @keeperStartFailedNoLog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Роль хранителя включена, но служба не запустилась, а журнала нет: программа не успела его открыть. Проверьте «Настройки» → «Фоновая работа».'**
+  String get keeperStartFailedNoLog;
+
   /// No description provided for @keeperNoCoordinator.
   ///
   /// In ru, this message translates to:

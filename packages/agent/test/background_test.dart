@@ -56,6 +56,26 @@ final class MemoryServices implements UserServices {
   Future<void> restart(String name) async => running.add(name);
 }
 
+/// Запускатель хранителя без настоящего демона: что вернуть на `start`.
+final class FakeNodeLauncher implements NodeLauncher {
+  new({this.executable, this.starts = true});
+
+  @override
+  final String? executable;
+
+  /// `false` — программы нет (как `ProcessNodeLauncher` без бандла).
+  final bool starts;
+
+  @override
+  String get kind => 'fake';
+
+  @override
+  Future<bool> start(String dataDir) async => starts;
+
+  @override
+  Future<void> disable() async {}
+}
+
 void main() {
   late CryptoProvider crypto;
   late Directory dir;
@@ -83,7 +103,11 @@ void main() {
     dir.deleteSync(recursive: true);
   });
 
-  Future<ControlClient> start({NodeLauncher? launcher, Linger? linger}) async {
+  Future<ControlClient> start({
+    NodeLauncher? launcher,
+    Linger? linger,
+    Duration nodeStartTimeout = const Duration(milliseconds: 300),
+  }) async {
     agents.add(
       await BackupAgent.start(
         home: home,
@@ -97,6 +121,7 @@ void main() {
         wakeDelay: const Duration(milliseconds: 200),
         nodeLauncher: launcher,
         nodeDataDir: '${dir.path}/node',
+        nodeStartTimeout: nodeStartTimeout,
         linger: linger,
       ),
     );
@@ -231,6 +256,58 @@ void main() {
     expect(services.installed, isEmpty);
     expect(loginctl.last, 'loginctl disable-linger tester');
     expect(linger.enabled, isFalse);
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('хранитель: программы нет рядом с агентом — node_not_found, без '
+      'журнала', () async {
+    final log = File(AgentPaths(home).log);
+    final client = await start(launcher: FakeNodeLauncher(starts: false));
+    AppConfig.load(home)
+      ..coordinator = 'https://127.0.0.1:9'
+      ..save(home);
+    final result = await client.call('keeper.enable', {
+      'quotaBytes': 1 << 30,
+    }, const Duration(minutes: 1));
+    expect(result['started'], isFalse);
+    expect(result['reason'], 'node_not_found');
+    expect(result['nodeExecutable'], isNull);
+    expect(result['nodeLog'], isNull);
+    expect(log.readAsStringSync(), contains('keeper_start_failed'));
+  }, timeout: const Timeout(Duration(minutes: 2)));
+
+  test('хранитель: программа есть, но демон не поднялся — причина и хвост '
+      'журнала', () async {
+    // Журнал демона: последние строки — почему он не запустился.
+    final nodeLog = File('${dir.path}/node/logs/node.log')
+      ..createSync(recursive: true)
+      ..writeAsStringSync(
+        [
+          for (var i = 0; i < 20; i++) '{"event":"tick","n":$i}',
+          '{"event":"start_failed","reason":"порт 7340 занят"}',
+        ].join('\n'),
+      );
+    final executable = File('${dir.path}/bin/node')
+      ..createSync(recursive: true);
+    final client = await start(
+      launcher: FakeNodeLauncher(executable: executable.path),
+    );
+    AppConfig.load(home)
+      ..coordinator = 'https://127.0.0.1:9'
+      ..save(home);
+    final result = await client.call('keeper.enable', {
+      'quotaBytes': 1 << 30,
+    }, const Duration(minutes: 1));
+    expect(result['started'], isFalse);
+    expect(result['reason'], 'node_start_failed');
+    expect(result['nodeExecutable'], executable.path);
+    final tail = result['nodeLog']! as String;
+    expect(tail, contains('start_failed'));
+    expect(tail, contains('порт 7340 занят'));
+    expect(nodeLog.readAsStringSync(), contains('start_failed'));
+    expect(
+      File(AgentPaths(home).log).readAsStringSync(),
+      contains('node_start_failed'),
+    );
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('linger уже включён администратором — роль его не выключает', () async {

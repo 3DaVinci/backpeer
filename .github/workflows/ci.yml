@@ -64,6 +64,11 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Тесты Dart-пакетов
         run: dart run melos:melos run test-dart
+      - name: Тесты агента
+        # Отдельно от test-dart: тесты агента запускают его процессом `dart run`
+        # и поэтому идут по одному файлу (-j 1), как `melos run test-agent`
+        # (docs/ci.md, «Параллельность тестов»).
+        run: dart run melos:melos run test-agent
       - name: Тесты с замером памяти и времени
         run: dart run melos:melos run test-serial
       - name: Тесты приложения
@@ -100,9 +105,24 @@ jobs:
           # для Linux ARM64 не выпускают.
           for dir in packages/*/; do
             [ -d "$dir/test" ] || continue
+            # Тесты агента идут отдельным шагом: они запускают агента процессом
+            # `dart run`, а он с Dart 3.14 готовит native assets в общий
+            # временный каталог. Параллельные файлы перезаписывают его друг
+            # другу, и тест падает на загрузке libsodium или sqlite3
+            # (ArgumentError в sqlite3_initialize, docs/ci.md).
+            if [ "$dir" = "packages/agent/" ]; then
+              continue
+            fi
             echo "=== $dir"
             (cd "$dir" && dart test -j 4 -x serial)
           done
+      - name: Тесты агента (по одному файлу)
+        shell: bash
+        run: |
+          # Как `melos run test-agent`, но без melos: он берёт SDK из Flutter,
+          # которого для Linux ARM64 не выпускают.
+          echo "=== packages/agent"
+          (cd packages/agent && dart test -j 1 -x serial)
       - name: Тесты с замером памяти и времени
         shell: bash
         run: |

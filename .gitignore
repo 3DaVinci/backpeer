@@ -29,8 +29,10 @@ tool/rs-vectors/target/
 # Python: кеш байт-кода генераторов векторов
 __pycache__/
 
-# Node.js: сайт (apps/site)
+# Node.js: сайт (apps/site) и панель (apps/admin)
 node_modules/
+apps/admin/node_modules
+apps/admin/dist/
 
 # Справочник geoip (DB-IP Lite) для стенда: данные большие, лицензия CC BY
 /geoip/

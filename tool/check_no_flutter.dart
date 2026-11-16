@@ -22,6 +22,7 @@ const restrictedPackages = [
   'agent',
   'coordinator',
   'relay',
+  'admin',
   'test_vectors',
 ];
 

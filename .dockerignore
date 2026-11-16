@@ -1,5 +1,5 @@
-# Контекст сборки образов координатора и узла (packages/*/Dockerfile):
-# только пакеты рабочего пространства и корневые pubspec.
+# Контекст сборки образов координатора, узла и панели (packages/*/Dockerfile):
+# пакеты рабочего пространства, корневые pubspec и apps/admin для панели.
 **/.dart_tool
 **/build
 **/coverage
@@ -9,7 +9,10 @@
 .idea
 .claude
 .gitlab-ci-local
-apps
+apps/app
+apps/site
+apps/admin/node_modules
+apps/admin/dist
 prototypes
 Planning
 ADR

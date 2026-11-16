@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:core/core.dart' show appVersion;
+import 'package:core/core.dart' show appVersion, redactCrashText;
 
 /// Отчёт о сбое приложения (задача 5.9.3, docs/spec/crash-reports.md):
 /// только тип ошибки, сообщение и стек **после очистки** от путей и ключей,
@@ -29,7 +29,38 @@ final class CrashReporter {
       'at': DateTime.now().toUtc().toIso8601String(),
     };
     await _store(report);
-    await upload?.call(report);
+    try {
+      await upload?.call(report);
+    } on Object {
+      // Отправка не должна влиять на приложение: отчёт остался локально.
+    }
+  }
+
+  /// Отправляет [report] на приёмник панели оператора
+  /// (`CRASH_REPORT_URL/api/v1/crash-reports`). Ошибки сети, таймаут и
+  /// не-2xx ответ — `false`; приложение продолжает работу.
+  static Future<bool> uploadTo(
+    Uri endpoint,
+    Map<String, Object?> report, {
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
+    final client = HttpClient()..connectionTimeout = timeout;
+    try {
+      final request = await client.postUrl(endpoint).timeout(timeout);
+      request.headers.contentType = ContentType.json;
+      request.headers.set(
+        HttpHeaders.userAgentHeader,
+        'backpeer-app/${report['version'] ?? ''}',
+      );
+      request.add(utf8.encode(jsonEncode(report)));
+      final response = await request.close().timeout(timeout);
+      await response.drain<void>().timeout(timeout);
+      return response.statusCode >= 200 && response.statusCode < 300;
+    } on Object {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
   }
 
   Future<void> _store(Map<String, Object?> report) async {
@@ -66,31 +97,7 @@ final class CrashReporter {
   }
 
   /// Очищает текст от путей и похожих на секреты последовательностей
-  /// (docs/spec/crash-reports.md, раздел 4).
-  static String redact(String input) {
-    // Сначала отбросить строки с паролями и фразами (по исходному тексту,
-    // до замен маркеров), затем очистить остальное.
-    final kept = input
-        .split('\n')
-        .where((line) => !_mentionsSecret(line))
-        .join('\n');
-    var out = kept;
-    // Абсолютные пути: `/…` и `X:\…` (и `X:/…`).
-    out = out.replaceAll(RegExp(r'(?:[A-Za-z]:[\\/]|/)[^\s"`,;()]+'), '<path>');
-    // Ключи и хэши — длинный шестнадцатеричный или base64 блоб.
-    out = out.replaceAll(RegExp('[0-9a-fA-F]{32,}'), '<secret>');
-    out = out.replaceAll(RegExp('[A-Za-z0-9+/]{40,}={0,2}'), '<secret>');
-    return out;
-  }
-
-  static bool _mentionsSecret(String line) {
-    final lower = line.toLowerCase();
-    return const [
-      'password',
-      'passwd',
-      'phrase',
-      'пароль',
-      'фраза',
-    ].any(lower.contains);
-  }
+  /// (docs/spec/crash-reports.md, раздел 4). Общая реализация — в `core`,
+  /// её же использует приёмник панели оператора.
+  static String redact(String input) => redactCrashText(input);
 }

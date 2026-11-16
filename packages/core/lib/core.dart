@@ -25,6 +25,7 @@ export 'src/chunking/file_chunker.dart';
 export 'src/coordinator/account_client.dart';
 export 'src/coordinator/coordinator_client.dart';
 export 'src/coordinator/coordinator_storage.dart';
+export 'src/crash_redaction.dart';
 export 'src/crypto/account_keys.dart';
 export 'src/crypto/certificates.dart';
 export 'src/crypto/crypto_provider.dart';

@@ -37,6 +37,9 @@ fi
 if [ -n "${UPDATE_BASE_URL:-}" ]; then
   defines+=("--dart-define=UPDATE_BASE_URL=$UPDATE_BASE_URL")
 fi
+if [ -n "${CRASH_REPORT_URL:-}" ]; then
+  defines+=("--dart-define=CRASH_REPORT_URL=$CRASH_REPORT_URL")
+fi
 if [ ${#defines[@]} -gt 0 ]; then
   (cd apps/app && flutter build linux --release "${defines[@]}")
 else

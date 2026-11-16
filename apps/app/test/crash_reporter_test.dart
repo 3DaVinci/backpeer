@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:app/src/services/crash_report_config.dart';
 import 'package:app/src/services/crash_reporter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -51,5 +52,68 @@ void main() {
 
   test('без file и upload capture не падает', () async {
     await CrashReporter().capture(StateError('x'), StackTrace.current);
+  });
+
+  test('адрес приёмника: только https, полный путь, локальный http', () {
+    expect(resolveCrashReportUri(), isNull);
+    expect(
+      resolveCrashReportUri('https://admin.example.org')?.toString(),
+      'https://admin.example.org/api/v1/crash-reports',
+    );
+    expect(
+      resolveCrashReportUri('https://admin.example.org/')?.toString(),
+      'https://admin.example.org/api/v1/crash-reports',
+    );
+    expect(
+      resolveCrashReportUri('https://admin.example.org/api/v1/crash-reports')
+          ?.toString(),
+      'https://admin.example.org/api/v1/crash-reports',
+    );
+    expect(
+      resolveCrashReportUri('http://127.0.0.1:8092/crash')?.toString(),
+      'http://127.0.0.1:8092/crash',
+    );
+    expect(resolveCrashReportUri('http://admin.example.org/crash'), isNull);
+    expect(resolveCrashReportUri('ftp://admin.example.org'), isNull);
+    expect(
+      resolveCrashReportUri('https://user:pass@admin.example.org'),
+      isNull,
+    );
+  });
+
+  test('uploadTo отправляет JSON и не падает без сервера', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    addTearDown(() => server.close(force: true));
+    final received = <Map<String, Object?>>[];
+    server.listen((request) async {
+      final body = await utf8.decoder.bind(request).join();
+      received.add(jsonDecode(body) as Map<String, Object?>);
+      request.response.statusCode = 202;
+      await request.response.close();
+    });
+    final uri = Uri.parse(
+      'http://127.0.0.1:${server.port}/api/v1/crash-reports',
+    );
+    expect(
+      await CrashReporter.uploadTo(uri, {
+        'version': '0.0.7',
+        'error': 'test',
+        'at': DateTime.utc(2026).toIso8601String(),
+      }),
+      isTrue,
+    );
+    expect(received, hasLength(1));
+    expect(received.single['version'], '0.0.7');
+    final closed = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final port = closed.port;
+    await closed.close();
+    expect(
+      await CrashReporter.uploadTo(
+        Uri.parse('http://127.0.0.1:$port/api/v1/crash-reports'),
+        {'version': '0.0.7'},
+        timeout: const Duration(milliseconds: 300),
+      ),
+      isFalse,
+    );
   });
 }

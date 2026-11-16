@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [coordinator, node, relay, cli]
+        image: [coordinator, node, relay, cli, admin]
         arch: [amd64, arm64]
         include:
           - arch: amd64
@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image: [coordinator, node, relay, cli]
+        image: [coordinator, node, relay, cli, admin]
     steps:
       - name: Имя образа в нижнем регистре
         id: image
@@ -118,6 +118,7 @@ jobs:
     env:
       UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
       UPDATE_BASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
+      CRASH_REPORT_URL: ${{ vars.CRASH_REPORT_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -146,6 +147,7 @@ jobs:
     env:
       UPDATE_PUBLIC_KEY: ${{ vars.UPDATE_PUBLIC_KEY }}
       UPDATE_BASE_URL: https://github.com/${{ github.repository }}/releases/latest/download
+      CRASH_REPORT_URL: ${{ vars.CRASH_REPORT_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup

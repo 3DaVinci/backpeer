@@ -176,6 +176,9 @@ else {
     if ($env:UPDATE_BASE_URL) {
         $defines += "--dart-define=UPDATE_BASE_URL=$env:UPDATE_BASE_URL"
     }
+    if ($env:CRASH_REPORT_URL) {
+        $defines += "--dart-define=CRASH_REPORT_URL=$env:CRASH_REPORT_URL"
+    }
     Push-Location (Join-Path $root 'apps\app')
     try {
         [IO.File]::WriteAllText($values, $appInfo, $utf8)

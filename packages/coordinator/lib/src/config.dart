@@ -99,6 +99,7 @@ final class CoordinatorConfig {
     this.geoIpDirectory,
     this.signerSocket,
     this.adminRole = 'fs_admin',
+    this.adminReadRole = 'fs_admin_web',
     this.logLevel = Level.INFO,
   });
 
@@ -243,6 +244,7 @@ final class CoordinatorConfig {
     'geoip.dir',
     'signer.socket',
     'admin.role',
+    'admin.read_role',
     'log.level',
   };
 
@@ -308,6 +310,11 @@ final class CoordinatorConfig {
   /// Роль PostgreSQL администратора (`coordinator admin`, ADR-007): права
   /// ей выдаёт `coordinator migrate`.
   final String adminRole;
+
+  /// Роль PostgreSQL веб-панели оператора (`admin.read_role`): только
+  /// чтение; права выдаёт `coordinator migrate`, если роль есть
+  /// (docs/ops/admin.md). Пусто — не выдавать.
+  final String adminReadRole;
 
   final Level logLevel;
 }
@@ -495,6 +502,7 @@ final class _Reader {
       geoIpDirectory: _string('geoip.dir'),
       signerSocket: _string('signer.socket'),
       adminRole: _role('admin.role') ?? d.adminRole,
+      adminReadRole: _role('admin.read_role') ?? d.adminReadRole,
       logLevel:
           _enum('log.level', {
             'fine': Level.FINE,

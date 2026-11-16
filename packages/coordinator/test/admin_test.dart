@@ -174,6 +174,36 @@ void main() {
     expect(await AdminAccess.grant(h.db, 'fs_no_such_role'), isFalse);
   });
 
+  adminTest('роль веб-панели: только чтение и без секретов', () async {
+    final readRole =
+        'fs_admin_web_${Random().nextInt(1 << 32).toRadixString(16)}';
+    await h.testDb.createRole(readRole, password);
+    expect(await AdminReadAccess.grant(h.db, readRole), isTrue);
+    final readDb = Database.open(h.testDb.as(readRole, password));
+    addTearDown(readDb.close);
+    await AdminReadAccess.check(readDb, readRole);
+    final accounts = await readDb.run(
+      (s) => s.execute('SELECT count(*) FROM admin_accounts'),
+    );
+    expect(accounts.single.single, isNotNull);
+    const insertAudit =
+        'INSERT INTO admin_audit (os_user, command, arguments, result) '
+        "VALUES ('x', 'x', '{}', 'ok')";
+    for (final sql in [
+      'SELECT key_bundle FROM accounts',
+      'SELECT auth_verifier FROM accounts',
+      'SELECT blob FROM objects',
+      'UPDATE accounts SET blocked_at = NULL',
+      insertAudit,
+    ]) {
+      await expectLater(
+        readDb.run((s) => s.execute(sql)),
+        throwsA(isA<ServerException>().having((e) => e.code, 'code', '42501')),
+      );
+    }
+    expect(await AdminReadAccess.grant(h.db, 'fs_no_such_role'), isFalse);
+  });
+
   adminTest('метрики ремонта читаются ролью администратора (4.3.6)', () async {
     final stats = await admin.repairStats(hours: 6);
     expect(stats['hours'], 6);

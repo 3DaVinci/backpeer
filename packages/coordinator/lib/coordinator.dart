@@ -28,6 +28,7 @@ export 'src/accounts/certificates.dart';
 export 'src/accounts/login_service.dart';
 export 'src/admin/admin_access.dart';
 export 'src/admin/admin_cli.dart';
+export 'src/admin/admin_read_access.dart';
 export 'src/admin/admin_service.dart';
 export 'src/audits/audit_service.dart';
 export 'src/auth/key_directory.dart';

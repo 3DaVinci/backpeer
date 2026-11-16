@@ -35,6 +35,7 @@ git ls-files -z --cached --others --exclude-standard \
       -v "$flutter_sdk:/flutter" -v "$pub_cache:/pub-cache" -v "$out:/out" \
       -e VERSION="$version" -e COMMIT="$commit" \
       -e UPDATE_PUBLIC_KEY="${UPDATE_PUBLIC_KEY:-}" \
-      -e UPDATE_BASE_URL="${UPDATE_BASE_URL:-}" "${gpg_args[@]}" \
+      -e UPDATE_BASE_URL="${UPDATE_BASE_URL:-}" \
+      -e CRASH_REPORT_URL="${CRASH_REPORT_URL:-}" "${gpg_args[@]}" \
       "$image" bash -c 'tar -xf - -C /src && exec /src/tool/linux_package/inside.sh'
 echo "Пакеты: $out"

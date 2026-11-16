@@ -64,6 +64,19 @@ Future<void> main(List<String> arguments) async {
               'granted': granted,
             }),
           );
+          if (config.adminReadRole.isNotEmpty &&
+              config.adminReadRole != config.adminRole) {
+            final readGranted = await AdminReadAccess.grant(
+              db,
+              config.adminReadRole,
+            );
+            log.info(
+              LogEvent('admin_read_grants', {
+                'role': config.adminReadRole,
+                'granted': readGranted,
+              }),
+            );
+          }
         } finally {
           await db.close();
         }

@@ -13,6 +13,7 @@ workspace:
   - packages/node
   - packages/agent
   - packages/coordinator
+  - packages/admin
   - packages/relay
   - packages/test_vectors
   - apps/app
@@ -164,3 +165,11 @@ melos:
       description: Windows — установщик Backpeer-Setup-*.exe (нужны Windows, Visual Studio с C++ и Inno Setup 6.3+, docs/ops/windows-packages.md).
       run: pwsh -NoProfile -ExecutionPolicy Bypass -File tool/windows_package/build.ps1
 
+
+    admin:site:check:
+      description: Веб-панель оператора (apps/admin, нужен Node.js 22+) — типы и сборка.
+      run: cd apps/admin && npm ci && npm run check
+
+    admin:site:dev:
+      description: Пересборка панели оператора при изменениях (отдаёт admin serve).
+      run: cd apps/admin && npm run dev

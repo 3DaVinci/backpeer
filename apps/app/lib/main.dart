@@ -6,6 +6,7 @@ import 'package:agent/agent.dart' show ClientServices;
 import 'package:app/src/app.dart';
 import 'package:app/src/app_scope.dart';
 import 'package:app/src/services/background.dart';
+import 'package:app/src/services/crash_report_config.dart';
 import 'package:app/src/services/crash_reporter.dart';
 import 'package:app/src/services/endpoints.dart';
 import 'package:app/src/services/preferences.dart';
@@ -76,8 +77,12 @@ void main() {
 
   // Отчёты о сбоях (5.9.3): только с согласия пользователя и без путей и
   // ключей — очистка внутри CrashReporter.
+  final crashReportEndpoint = resolveCrashReportUri();
   final crashReporter = CrashReporter(
     file: File('${endpoints.home.dir.path}/app/crash-reports.jsonl'),
+    upload: crashReportEndpoint == null
+        ? null
+        : (report) => CrashReporter.uploadTo(crashReportEndpoint, report),
   );
   void report(Object error, StackTrace stack) {
     if (preferences.crashReports) {

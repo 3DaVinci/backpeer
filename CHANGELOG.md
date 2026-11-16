@@ -15,6 +15,34 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - There are no other changes in this release.
+
+Packages graduated to a stable release (see pre-releases prior to the stable version for changelog entries):
+
+ - `agent` - `v0.0.8`
+ - `app` - `v0.0.8`
+ - `bench` - `v0.0.8`
+ - `cli` - `v0.0.8`
+ - `coordinator` - `v0.0.8`
+ - `core` - `v0.0.8`
+ - `daemon_kit` - `v0.0.8`
+ - `node` - `v0.0.8`
+ - `protocol` - `v0.0.8`
+ - `relay` - `v0.0.8`
+ - `test_vectors` - `v0.0.8`
+
+## 2026-11-16
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - [`agent` - `v0.0.8-dev.7`](#agent---v008-dev7)
  - [`app` - `v0.0.8-dev.7`](#app---v008-dev7)
 

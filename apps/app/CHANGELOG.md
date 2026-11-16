@@ -1,3 +1,7 @@
+## 0.0.8
+
+ - Graduate package to a stable release. See pre-releases prior to this version for changelog entries.
+
 ## 0.0.8-dev.7
 
  - **FIX**(agent,app): причина запуска хранителя и журнал вместо «программа не найдена».

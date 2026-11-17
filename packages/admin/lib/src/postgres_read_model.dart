@@ -102,7 +102,7 @@ final class PostgresReadModel implements AdminReadModel {
         Sql.named('''
           SELECT count(*) FILTER (WHERE passed),
                  count(*) FILTER (WHERE NOT passed),
-                 avg(latency_ms) FILTER (WHERE passed),
+                 (avg(latency_ms) FILTER (WHERE passed))::float8,
                  max(at)
             FROM audits WHERE at >= @t:timestamptz'''),
         parameters: {'t': since},
@@ -955,7 +955,7 @@ final class PostgresReadModel implements AdminReadModel {
         Sql.named('''
           SELECT count(*) FILTER (WHERE passed),
                  count(*) FILTER (WHERE NOT passed),
-                 avg(latency_ms) FILTER (WHERE passed)
+                 (avg(latency_ms) FILTER (WHERE passed))::float8
             FROM audits WHERE at >= @t:timestamptz'''),
         parameters: {'t': since},
       )).single;

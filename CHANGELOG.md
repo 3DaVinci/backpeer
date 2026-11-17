@@ -15,6 +15,43 @@ Packages with breaking changes:
 
 Packages with other changes:
 
+ - [`admin` - `v0.0.10-dev.0`](#admin---v0010-dev0)
+
+Packages versioned in lockstep only:
+
+> Packages listed below have no changes of their own. Their versions have been bumped to keep all packages in this workspace in lockstep.
+
+ - `agent` - `v0.0.10-dev.0`
+ - `app` - `v0.0.10-dev.0`
+ - `bench` - `v0.0.10-dev.0`
+ - `cli` - `v0.0.10-dev.0`
+ - `coordinator` - `v0.0.10-dev.0`
+ - `core` - `v0.0.10-dev.0`
+ - `daemon_kit` - `v0.0.10-dev.0`
+ - `node` - `v0.0.10-dev.0`
+ - `protocol` - `v0.0.10-dev.0`
+ - `relay` - `v0.0.10-dev.0`
+ - `test_vectors` - `v0.0.10-dev.0`
+
+---
+
+#### `admin` - `v0.0.10-dev.0`
+
+ - **FIX**(admin): обзор и сеть падали при наличии пройденных аудитов.
+
+
+## 2026-11-17
+
+### Changes
+
+---
+
+Packages with breaking changes:
+
+ - There are no breaking changes in this release.
+
+Packages with other changes:
+
  - There are no other changes in this release.
 
 Packages graduated to a stable release (see pre-releases prior to the stable version for changelog entries):

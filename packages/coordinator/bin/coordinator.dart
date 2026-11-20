@@ -9,9 +9,9 @@ import 'package:logging/logging.dart';
 const _usage = '''
 Координатор распределённого хранилища.
 
-  coordinator serve [--config <файл>] [--migrate]
-  coordinator migrate [--config <файл>]
-  coordinator admin [--config <файл>] … (coordinator admin --help)
+  coordinator [--config <файл>] serve [--migrate]
+  coordinator [--config <файл>] migrate
+  coordinator [--config <файл>] admin … (coordinator admin --help)
 
 Настройки — YAML-файл и переменные FS_COORDINATOR_* (docs/ops/coordinator.md).
 ''';

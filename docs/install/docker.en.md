@@ -16,9 +16,9 @@ leaving the network.
 - Docker Engine 24 or newer and Compose v2 (`docker compose`), 64-bit Linux.
   Docker Desktop works too, but a permanent node is better on a machine that
   runs around the clock.
-- At least 100 GB for fragments: by default the coordinator does not accept
-  nodes with less capacity. Used space grows gradually; the whole disk is not
-  needed at once.
+- At least 10 GB: this is the minimum the coordinator requires by default. The
+  example node gives 100 GB, and used space grows gradually — the whole disk is
+  not needed at once.
 - Outbound HTTPS to the coordinator. Direct connections to clients work best
   with port 7340 TCP and UDP open; if you cannot open it, the node works
   through a relay.
@@ -57,7 +57,7 @@ services:
     stop_grace_period: 40s
     environment:
       FS_NODE_COORDINATOR_URL: ${BACKPEER_COORDINATOR_URL:?Set the coordinator address in .env}
-      # How much space to give to fragments. 1 TB; at least 100 GB.
+      # How much space to give to fragments. 1 TB; the minimum is 10 GB.
       FS_NODE_STORAGE_QUOTA_BYTES: "1000000000000"
     volumes:
       - node-data:/var/lib/fs-node
@@ -119,7 +119,7 @@ unknown key is a startup error, so a typo shows up immediately.
 | Variable | Default | Purpose |
 |---|---|---|
 | `FS_NODE_COORDINATOR_URL` | — | Coordinator address (`https://…`). Without it the node does not register and accepts no fragments |
-| `FS_NODE_STORAGE_QUOTA_BYTES` | `100000000000` | How much space to give to fragments (100 GB is the coordinator minimum) |
+| `FS_NODE_STORAGE_QUOTA_BYTES` | `100000000000` | How much space to give to fragments (100 GB by default; the coordinator minimum is 10 GB) |
 | `FS_NODE_STORAGE_FREE_RESERVE_BYTES` | `2000000000` | How much free disk space to keep: a fragment that would leave less is not accepted |
 | `FS_NODE_STORAGE_DIR` | data directory | Where to keep fragments and the index, for example on another disk (see "Disk and data") |
 | `FS_NODE_LISTEN_PORT` | `7340` | TCP and UDP listening port; there is no reason to change it inside the container |
